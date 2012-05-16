@@ -39,7 +39,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.callimachusproject.server.util.ChannelUtil;
 import org.callimachusproject.server.util.MessageType;
-import org.openrdf.repository.object.xslt.XMLEventReaderFactory;
+import org.callimachusproject.xslt.XMLEventReaderFactory;
 
 /**
  * Converts an InputStream into a XMLEventReader.
