@@ -597,9 +597,7 @@ public class OWLCompiler {
 		Map<String, String> packages = new HashMap<String, String>();
 		for (String ns : findUndefinedNamespaces(model, cl)) {
 			String prefix = findPrefix(ns, model);
-			String pkgName = pkgPrefix + prefix;
-			pkgName = packageName(pkgName);
-			packages.put(ns, pkgName);
+			packages.put(ns, pkgPrefix + prefix);
 		}
 		JavaNameResolver resolver = createJavaNameResolver(packages,
 				memberPrefix, namespaces, cl);
@@ -622,9 +620,7 @@ public class OWLCompiler {
 				String ns = uri.getNamespace();
 				if (!packages.containsKey(ns)) {
 					String prefix = findPrefix(ns, model);
-					String pkgName = pkgPrefix + prefix;
-					pkgName = packageName(pkgName);
-					packages.put(ns, pkgName);
+					packages.put(ns, pkgPrefix + prefix);
 				}
 			}
 		}
@@ -632,13 +628,6 @@ public class OWLCompiler {
 			resolver.bindPackageToNamespace(e.getValue(), e.getKey());
 		}
 		return resolver;
-	}
-
-	private String packageName(String pkgName) {
-		if (!Character.isLetter(pkgName.charAt(0))) {
-			pkgName = "_" + pkgName;
-		}
-		return pkgName.replaceAll("\\.([^a-zA-Z])", "._$1");
 	}
 
 	private JavaNameResolver createJavaNameResolver(

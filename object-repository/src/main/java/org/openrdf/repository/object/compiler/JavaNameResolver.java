@@ -55,8 +55,8 @@ import org.openrdf.repository.object.managers.RoleMapper;
  * 
  */
 public class JavaNameResolver {
-	private static final Set<String> KEYWORDS = new HashSet<String>(Arrays
-			.asList(new String[] { "abstract", "continue", "for", "new",
+	private static final Set<String> KEYWORDS_SENSITIVE = new HashSet<String>(
+			Arrays.asList(new String[] { "abstract", "continue", "for", "new",
 					"switch", "assert", "default", "goto", "package",
 					"synchronized", "boolean", "do", "if", "private", "this",
 					"break", "double", "implements", "protected", "throw",
@@ -66,6 +66,11 @@ public class JavaNameResolver {
 					"interface", "static", "void", "class", "finally", "long",
 					"strictfp", "volatile", "const", "float", "native",
 					"super", "while" }));
+	private static final Set<String> KEYWORDS_INSENSITIVE = new HashSet<String>(
+			Arrays.asList(new String[] { "CON", "PRN", "AUX", "CLOCK$",
+					"NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6",
+					"COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4",
+					"LPT5", "LPT6", "LPT7", "LPT8", "LPT9" }));
 
 	/** namespace -&gt; package */
 	private Map<String, String> packages = new HashMap<String, String>();
@@ -170,7 +175,7 @@ public class JavaNameResolver {
 	}
 
 	public void bindPackageToNamespace(String packageName, String namespace) {
-		packages.put(namespace, word(packageName));
+		packages.put(namespace, packageName(packageName));
 	}
 
 	public void bindPrefixToNamespace(String prefix, String namespace) {
@@ -259,7 +264,7 @@ public class JavaNameResolver {
 		String ns = name.getNamespace();
 		String localPart = name.getLocalName();
 		if (prefixes.containsKey(ns))
-			return getMemberPrefix(ns) + initcap(localPart);
+			return word(getMemberPrefix(ns) + initcap(localPart));
 		return word(localPart);
 	}
 
@@ -281,7 +286,7 @@ public class JavaNameResolver {
 	}
 
 	public String getSingleParameterName(URI name) {
-		return word(enc(name.getLocalName()));
+		return word(name.getLocalName());
 	}
 
 	public String getPluralParameterName(URI name) {
@@ -291,7 +296,7 @@ public class JavaNameResolver {
 		if (model.contains(new URIImpl(ns + plural), null, null)) {
 			plural = localPart;
 		}
-		return word(enc(plural));
+		return word(plural);
 	}
 
 	public String getMemberPrefix(String ns) {
@@ -331,6 +336,30 @@ public class JavaNameResolver {
 		return enc(localPart);
 	}
 
+	private String packageName(String pkgName) {
+		StringBuilder sb = new StringBuilder();
+		String[] dots = pkgName.split("\\.");
+		for (int i=0;i<dots.length;i++) {
+			if (i>0) {
+				sb.append('.');
+			}
+			sb.append(word(dots[i]));
+		}
+		return sb.toString();
+	}
+
+	private String word(String str) {
+		String enc = enc(str);
+		if (KEYWORDS_SENSITIVE.contains(enc))
+			return "_" + enc;
+		if (KEYWORDS_INSENSITIVE.contains(enc.toUpperCase()))
+			return "_" + enc;
+		char first = enc.charAt(0);
+		if (!Character.isLetter(first) && '_' != first && '$' != first)
+			return "_" + enc;
+		return enc;
+	}
+
 	private String enc(String str) {
 		if (str.length() == 0)
 			return "_";
@@ -341,7 +370,9 @@ public class JavaNameResolver {
 				sb.append(name[i]);
 			} else if ('a' <= name[i] && name[i] <= 'z') {
 				sb.append(name[i]);
-			} else if (i > 0 && '0' <= name[i] && name[i] <= '9') {
+			} else if ('0' <= name[i] && name[i] <= '9') {
+				sb.append(name[i]);
+			} else if ('$' == name[i]) {
 				sb.append(name[i]);
 			} else if ('*' == name[i]) {
 				sb.append("Star");
@@ -352,13 +383,6 @@ public class JavaNameResolver {
 			}
 		}
 		return sb.toString();
-	}
-
-	private String word(String str) {
-		String enc = enc(str);
-		if (KEYWORDS.contains(enc))
-			return "_" + enc;
-		return enc;
 	}
 
 	private Class findJavaClass(URI uri) {
