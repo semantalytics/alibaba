@@ -692,6 +692,8 @@ public class SparqlEvaluator {
 						throw e;
 					}
 				}
+			} catch (MalformedQueryException e) {
+				throw new MalformedQueryException(base + " " + e.getMessage(), e);
 			} finally {
 				in.close();
 			}

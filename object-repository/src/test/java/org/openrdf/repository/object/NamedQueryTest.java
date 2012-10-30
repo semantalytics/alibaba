@@ -1,6 +1,7 @@
 package org.openrdf.repository.object;
 
 import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -27,6 +28,7 @@ public class NamedQueryTest extends ObjectRepositoryTestCase {
 	private static final String PREFIX = "PREFIX :<" + NS + ">\n";
 	private Person me;
 	private Person john;
+	private Person phil;
 
 	public static Test suite() throws Exception {
 		return RepositoryTestCase.suite(NamedQueryTest.class);
@@ -43,6 +45,9 @@ public class NamedQueryTest extends ObjectRepositoryTestCase {
 		int getAge();
 
 		void setAge(int age);
+
+		@Iri("urn:test:friend")
+		public Set<Person> getFriends();
 
 		@Sparql(PREFIX + "INSERT { $this :friend $friend } WHERE { $friend a :Person }")
 		void addFriend(@Bind("friend") Person friend);
@@ -142,6 +147,16 @@ public class NamedQueryTest extends ObjectRepositoryTestCase {
 		john.setName("john");
 		john.setAge(101);
 		me.addFriend(john);
+		phil = con.addDesignation(con.getObject(NS + "phil"), Person.class);
+		phil.setName("phil");
+		phil.setAge(100);
+	}
+
+	public void testAddFriend() throws Exception {
+		int before = new ArrayList<Person>(me.getFriends()).size();
+		me.addFriend(phil);
+		int after = new ArrayList<Person>(me.getFriends()).size();
+		assertEquals(before + 1, after);
 	}
 
 	public void testFriendByName() throws Exception {
@@ -185,7 +200,7 @@ public class NamedQueryTest extends ObjectRepositoryTestCase {
 		Set<Person> set = result.asSet();
 		assertTrue(set.contains(me));
 		assertTrue(set.contains(john));
-		assertEquals(2, set.size());
+		assertEquals(3, set.size());
 	}
 
 	public void testFindAllPerson() throws Exception {
@@ -194,7 +209,7 @@ public class NamedQueryTest extends ObjectRepositoryTestCase {
 		Set<Person> set = result.asSet();
 		assertTrue(set.contains(me));
 		assertTrue(set.contains(john));
-		assertEquals(2, set.size());
+		assertEquals(3, set.size());
 	}
 
 	public void testTupleResult() throws Exception {
@@ -217,14 +232,14 @@ public class NamedQueryTest extends ObjectRepositoryTestCase {
 
 	public void testSet() throws Exception {
 		Set<Person> set = me.findFriends();
-		assertEquals(2, set.size());
+		assertEquals(3, set.size());
 		assertTrue(set.contains(me));
 		assertTrue(set.contains(john));
 	}
 
 	public void testList() throws Exception {
 		List<Person> list = me.findFriendByNames();
-		assertEquals(2, list.size());
+		assertEquals(3, list.size());
 		assertEquals(me, list.get(0));
 		assertEquals(john, list.get(1));
 	}

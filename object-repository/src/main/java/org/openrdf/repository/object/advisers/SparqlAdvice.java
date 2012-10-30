@@ -41,6 +41,7 @@ import org.openrdf.repository.object.advice.Advice;
 import org.openrdf.repository.object.advisers.helpers.SparqlEvaluator;
 import org.openrdf.repository.object.advisers.helpers.SparqlEvaluator.SparqlBuilder;
 import org.openrdf.repository.object.traits.ObjectMessage;
+import org.openrdf.repository.object.traits.Refreshable;
 import org.openrdf.result.Result;
 import org.w3c.dom.Document;
 import org.w3c.dom.DocumentFragment;
@@ -97,12 +98,24 @@ public class SparqlAdvice implements Advice {
 				}
 			}
 		}
-		Object result = cast(with, returnClass, componentClass);
-		if (result == null)
+		if (isUpdate()) {
+			with.asUpdate();
+			if (target instanceof Refreshable) {
+				((Refreshable) target).refresh();
+			}
 			return message.proceed();
-		if (returnClass.isPrimitive() && result.equals(nil(returnClass)))
-			return message.proceed();
-		return result;
+		} else {
+			Object result = cast(with, returnClass, componentClass);
+			if (result == null)
+				return message.proceed();
+			if (returnClass.isPrimitive() && result.equals(nil(returnClass)))
+				return message.proceed();
+			return result;
+		}
+	}
+
+	private boolean isUpdate() {
+		return Void.class.equals(returnClass) || Void.TYPE.equals(returnClass);
 	}
 
 	private Object getDefaultValue(String value, Type type, ObjectConnection con) {
