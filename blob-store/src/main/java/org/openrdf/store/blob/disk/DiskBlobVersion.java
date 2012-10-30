@@ -32,9 +32,10 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -221,6 +222,18 @@ public class DiskBlobVersion implements BlobVersion {
 		return store.getDirectory();
 	}
 
+	protected boolean mkdirs(File dir) {
+		return store.mkdirs(dir);
+	}
+
+	protected OutputStream openOutputStream(File file) throws IOException {
+		return store.openOutputStream(file);
+	}
+
+	protected Writer openWriter(File file, boolean append) throws IOException {
+		return store.openWriter(file, append);
+	}
+
 	protected String getVersion() {
 		return version;
 	}
@@ -262,7 +275,7 @@ public class DiskBlobVersion implements BlobVersion {
 	private File writeChanges(String iri, Set<String> changes)
 			throws IOException {
 		File file = getJournalFile(iri);
-		PrintWriter writer = new PrintWriter(new FileWriter(file));
+		PrintWriter writer = new PrintWriter(store.openWriter(file, false));
 		try {
 			for (String uri : changes) {
 				writer.println(uri);
@@ -290,7 +303,7 @@ public class DiskBlobVersion implements BlobVersion {
 			name = name.substring(0, 4) + File.separatorChar + name.substring(4);
 			file = new File(journal, name);
 		} while (file.exists());
-		file.getParentFile().mkdirs();
+		mkdirs(file.getParentFile());
 		return file;
 	}
 

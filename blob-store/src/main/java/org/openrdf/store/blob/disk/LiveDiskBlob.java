@@ -39,7 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class LiveDiskBlob extends BlobObject {
-	private final Logger logger = LoggerFactory.getLogger(LiveDiskBlob.class);
+	final Logger logger = LoggerFactory.getLogger(LiveDiskBlob.class);
 	private final DiskBlobStore store;
 	private final String uri;
 

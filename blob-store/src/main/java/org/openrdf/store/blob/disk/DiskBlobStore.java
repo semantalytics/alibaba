@@ -31,10 +31,13 @@ package org.openrdf.store.blob.disk;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.io.Writer;
 import java.lang.ref.WeakReference;
 import java.util.Collection;
 import java.util.HashMap;
@@ -58,9 +61,9 @@ public class DiskBlobStore implements BlobStore {
 	};
 
 	private final File dir;
-	private final File journal;
-	private final String prefix;
-	private final AtomicLong seq = new AtomicLong(0);
+	final File journal;
+	final String prefix;
+	final AtomicLong seq = new AtomicLong(0);
 	private final ReentrantReadWriteLock diskLock = new ReentrantReadWriteLock();
 	private final Map<String, Set<DiskListener>> listeners = new HashMap<String, Set<DiskListener>>();
 	/** version -> open DiskTransaction */
@@ -216,6 +219,46 @@ public class DiskBlobStore implements BlobStore {
 		return dir;
 	}
 
+	protected boolean mkdirs(File dir) {
+		if (dir.isDirectory())
+			return false;
+		mkdirs(dir.getParentFile());
+		dir.mkdir();
+		dir.setReadable(false, false);
+		dir.setReadable(true);
+		dir.setWritable(false, false);
+		dir.setWritable(true);
+		dir.setExecutable(false, false);
+		dir.setExecutable(true);
+		return dir.isDirectory();
+	}
+
+	protected OutputStream openOutputStream(File file) throws IOException {
+		File dir = file.getParentFile();
+		mkdirs(dir);
+		if (!dir.canWrite() || file.exists() && !file.canWrite())
+			throw new IOException("Cannot open blob file for writting");
+		file.createNewFile();
+		file.setReadable(false, false);
+		file.setReadable(true);
+		file.setWritable(false, false);
+		file.setWritable(true);
+		return new FileOutputStream(file);
+	}
+
+	protected Writer openWriter(File file, boolean append) throws IOException {
+		File dir = file.getParentFile();
+		mkdirs(dir);
+		if (!dir.canWrite() || file.exists() && !file.canWrite())
+			throw new IOException("Cannot open file for writting");
+		file.createNewFile();
+		file.setReadable(false, false);
+		file.setReadable(true);
+		file.setWritable(false, false);
+		file.setWritable(true);
+		return new FileWriter(file, append);
+	}
+
 	protected void watch(String uri, DiskListener listener) {
 		synchronized (listeners) {
 			Set<DiskListener> set = listeners.get(uri);
@@ -276,7 +319,7 @@ public class DiskBlobStore implements BlobStore {
 		lock();
 		try {
 			File f = new File(journal, "index");
-			PrintWriter index = new PrintWriter(new FileWriter(f, true));
+			PrintWriter index = new PrintWriter(openWriter(f, true));
 			try {
 				String jpath = journal.getAbsolutePath();
 				String path = file.getAbsolutePath();
@@ -323,7 +366,7 @@ public class DiskBlobStore implements BlobStore {
 		boolean empty = true;
 		BufferedReader reader = new BufferedReader(new FileReader(source));
 		try {
-			PrintWriter writer = new PrintWriter(new FileWriter(destintation));
+			PrintWriter writer = new PrintWriter(openWriter(destintation, false));
 			try {
 				String line;
 				while ((line = reader.readLine()) != null) {
@@ -346,7 +389,7 @@ public class DiskBlobStore implements BlobStore {
 		lock();
 		try {
 			File f = new File(journal, "obsolete");
-			PrintWriter index = new PrintWriter(new FileWriter(f, true));
+			PrintWriter index = new PrintWriter(openWriter(f, true));
 			try {
 				for (String o : obsolete) {
 					index.println(o);

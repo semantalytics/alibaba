@@ -32,9 +32,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -72,7 +70,7 @@ public class DiskBlob extends BlobObject implements DiskListener {
 	private final Logger logger = LoggerFactory.getLogger(DiskBlob.class);
 	private final DiskBlobVersion disk;
 	private final String uri;
-	private final File dir;
+	final File dir;
 
 	/** listening for changes by other transactions */
 	private boolean open;
@@ -81,11 +79,11 @@ public class DiskBlob extends BlobObject implements DiskListener {
 	/** uncommitted delete of readFile */
 	private boolean deleted;
 
-	private String readVersion;
-	private File readFile;
-	private boolean readCompressed;
-	private long readLength;
-	private byte[] readDigest;
+	String readVersion;
+	File readFile;
+	boolean readCompressed;
+	long readLength;
+	byte[] readDigest;
 
 	private File writeFile;
 	private boolean writeCompressed;
@@ -224,11 +222,7 @@ public class DiskBlob extends BlobObject implements DiskListener {
 			writeLength = 0;
 			writeDigest = EMPTY_SHA1;
 		}
-		File dir = writeFile.getParentFile();
-		dir.mkdirs();
-		if (!dir.canWrite() || writeFile.exists() && !writeFile.canWrite())
-			throw new IOException("Cannot open blob file for writting");
-		OutputStream out = new FileOutputStream(writeFile);
+		OutputStream out = disk.openOutputStream(writeFile);
 		if (writeCompressed) {
 			out = new GZIPOutputStream(out);
 		}
@@ -397,7 +391,7 @@ public class DiskBlob extends BlobObject implements DiskListener {
 		final AtomicBoolean erased = new AtomicBoolean(false);
 		final File rest = new File(dir, getIndexFileName(disk.getVersion()
 				.hashCode()));
-		final PrintWriter writer = new PrintWriter(new FileWriter(rest));
+		final PrintWriter writer = new PrintWriter(disk.openWriter(rest, false));
 		try {
 			eachVersion(new Closure<Void>() {
 				public Void call(String name, long length, byte[] sha1, String iri) {
@@ -445,7 +439,7 @@ public class DiskBlob extends BlobObject implements DiskListener {
 		try {
 			InputStream in = new GZIPInputStream(new FileInputStream(gz));
 			try {
-				OutputStream out = new FileOutputStream(writeFile);
+				OutputStream out = disk.openOutputStream(file);
 				try {
 					int read;
 					byte[] buf = new byte[512];
@@ -579,7 +573,7 @@ public class DiskBlob extends BlobObject implements DiskListener {
 			throws IOException {
 		assert sha1 != null && sha1.length > 0;
 		File index = new File(dir, getIndexFileName(null));
-		PrintWriter writer = new PrintWriter(new FileWriter(index, true));
+		PrintWriter writer = new PrintWriter(disk.openWriter(index, true));
 		try {
 			if (file != null) {
 				String jpath = dir.getAbsolutePath();
