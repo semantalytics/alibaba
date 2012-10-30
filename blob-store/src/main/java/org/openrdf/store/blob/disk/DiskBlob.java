@@ -241,6 +241,7 @@ public class DiskBlob extends BlobObject implements DiskListener {
 		return writeStream = new FilterOutputStream(out) {
 			private long size = 0;
 			private IOException fatal;
+			private boolean closed;
 
 			public void write(int b) throws IOException {
 				try {
@@ -265,8 +266,11 @@ public class DiskBlob extends BlobObject implements DiskListener {
 			}
 
 			public void close() throws IOException {
-				super.close();
-				written(fatal == null, size, md.digest(), this);
+				if (!closed) {
+					closed = true;
+					super.close();
+					written(fatal == null, size, md.digest(), this);
+				}
 			}
 		};
 	}
@@ -370,6 +374,25 @@ public class DiskBlob extends BlobObject implements DiskListener {
 		});
 	}
 
+	synchronized void written(boolean success, long size,
+			byte[] digest, OutputStream stream) throws IOException {
+		if (success) {
+			if (readFile != null && readLength == size
+					&& MessageDigest.isEqual(readDigest, digest)) {
+				// no change to file
+				deleteWriteFile();
+			}
+			deleted = false;
+			writeLength = size;
+			writeDigest = digest;
+		} else {
+			deleteWriteFile();
+		}
+		if (stream == writeStream) {
+			writeStream = null;
+		}
+	}
+
 	private synchronized boolean filterVersion(final Closure<Boolean> closure) throws IOException {
 		final AtomicBoolean erased = new AtomicBoolean(false);
 		final File rest = new File(dir, getIndexFileName(disk.getVersion()
@@ -437,25 +460,6 @@ public class DiskBlob extends BlobObject implements DiskListener {
 			}
 		} finally {
 			gz.delete();
-		}
-	}
-
-	private synchronized void written(boolean success, long size,
-			byte[] digest, OutputStream stream) throws IOException {
-		if (success) {
-			if (readFile != null && readLength == size
-					&& MessageDigest.isEqual(readDigest, digest)) {
-				// no change to file
-				deleteWriteFile();
-			}
-			deleted = false;
-			writeLength = size;
-			writeDigest = digest;
-		} else {
-			deleteWriteFile();
-		}
-		if (stream == writeStream) {
-			writeStream = null;
 		}
 	}
 
