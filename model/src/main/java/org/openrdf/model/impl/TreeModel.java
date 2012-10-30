@@ -311,6 +311,37 @@ public class TreeModel extends AbstractModel implements SortedSet<Statement> {
 		}
 	}
 
+	Iterator<Statement> match(Value subj, Value pred, Value obj,
+			Value ctx) {
+		if (!isResourceURIResource(subj, pred, ctx)) {
+			Set<Statement> emptySet = Collections.emptySet();
+			return emptySet.iterator();
+		}
+		StatementTree tree = choose(subj, pred, obj, ctx);
+		Iterator<Statement> it = tree.subIterator(before(subj, pred, obj, ctx),true,
+				after(subj, pred, obj, ctx),true);
+		return new ModelIterator(it, tree);
+	}
+
+	int compareValue(Value o1, Value o2) {
+		if (o1 == o2)
+			return 0;
+		if (o1 == BEFORE)
+			return -1;
+		if (o2 == BEFORE)
+			return 1;
+		if (o1 == AFTER)
+			return 1;
+		if (o2 == AFTER)
+			return -1;
+		return vc.compare(o1, o2);
+	}
+
+	SortedSet<Statement> subSet(Statement lo,
+			boolean loInclusive, Statement hi, boolean hiInclusive) {
+		return new SubSet(this, new TreeStatement(lo), loInclusive, new TreeStatement(hi), hiInclusive);
+	}
+
 	private void removeAll(TreeSet<Statement> owner, StatementTree chosen,
 			Iterator<Statement> iter) {
 		while (iter.hasNext()) {
@@ -337,18 +368,6 @@ public class TreeModel extends AbstractModel implements SortedSet<Statement> {
 		if (contexts == null || contexts.length == 0)
 			return new Resource[] { null };
 		return contexts;
-	}
-
-	private Iterator<Statement> match(Value subj, Value pred, Value obj,
-			Value ctx) {
-		if (!isResourceURIResource(subj, pred, ctx)) {
-			Set<Statement> emptySet = Collections.emptySet();
-			return emptySet.iterator();
-		}
-		StatementTree tree = choose(subj, pred, obj, ctx);
-		Iterator<Statement> it = tree.subIterator(before(subj, pred, obj, ctx),true,
-				after(subj, pred, obj, ctx),true);
-		return new ModelIterator(it, tree);
 	}
 
 	private Statement before(Value subj, Value pred, Value obj, Value ctx) {
@@ -408,25 +427,6 @@ public class TreeModel extends AbstractModel implements SortedSet<Statement> {
 		return tree;
 	}
 
-	private int compareValue(Value o1, Value o2) {
-		if (o1 == o2)
-			return 0;
-		if (o1 == BEFORE)
-			return -1;
-		if (o2 == BEFORE)
-			return 1;
-		if (o1 == AFTER)
-			return 1;
-		if (o2 == AFTER)
-			return -1;
-		return vc.compare(o1, o2);
-	}
-
-	private SortedSet<Statement> subSet(Statement lo,
-			boolean loInclusive, Statement hi, boolean hiInclusive) {
-		return new SubSet(this, new TreeStatement(lo), loInclusive, new TreeStatement(hi), hiInclusive);
-	}
-
 	private class ModelIterator implements Iterator<Statement> {
 
 		private Iterator<Statement> iter;
@@ -484,7 +484,7 @@ public class TreeModel extends AbstractModel implements SortedSet<Statement> {
 
 	class StatementTree {
 		private final char[] index;
-		private TreeSet<Statement> tree;
+		TreeSet<Statement> tree;
 
 		public StatementTree(char[] index) {
 			this.index = index;
