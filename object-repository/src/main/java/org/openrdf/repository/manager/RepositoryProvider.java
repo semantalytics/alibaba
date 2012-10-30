@@ -7,6 +7,7 @@ package org.openrdf.repository.manager;
 
 import java.io.File;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -53,7 +54,7 @@ public class RepositoryProvider {
 		}
 	}
 
-	private static final Map<String, SynchronizedManager> managers = new HashMap<String, SynchronizedManager>();
+	static final Map<String, SynchronizedManager> managers = new HashMap<String, SynchronizedManager>();
 
 	static {
 		Runtime.getRuntime().addShutdownHook(new Thread("RepositoryProvider-shutdownHook") {
@@ -76,13 +77,14 @@ public class RepositoryProvider {
 	public static RepositoryManager getRepositoryManager(String url)
 		throws RepositoryConfigException, RepositoryException
 	{
+		String uri = normalize(url);
 		SynchronizedManager sync = null;
 		synchronized (managers) {
-			if (managers.containsKey(url)) {
-				sync = managers.get(url);
+			if (managers.containsKey(uri)) {
+				sync = managers.get(uri);
 			}
 			else {
-				managers.put(url, sync = new SynchronizedManager(url));
+				managers.put(uri, sync = new SynchronizedManager(url));
 			}
 		}
 		return sync.get();
@@ -184,6 +186,44 @@ public class RepositoryProvider {
 	{
 		URI uri = new File(".").toURI().resolve(url);
 		return new File(uri);
+	}
+
+	private static String normalize(String url) throws IllegalArgumentException {
+		try {
+			URI norm = URI.create(url);
+			if (!norm.isAbsolute()) {
+				norm = new File(".").toURI().resolve(url);
+			}
+			norm = norm.normalize();
+			if (norm.isOpaque())
+				throw new IllegalArgumentException(
+						"Repository Manager URL must not be opaque: " + url);
+			String sch = norm.getScheme();
+			String host = norm.getAuthority();
+			String path = norm.getPath();
+			String qs = norm.getRawQuery();
+			String frag = norm.getRawFragment();
+			if (sch != null) {
+				sch = sch.toLowerCase();
+			}
+			if (host != null) {
+				host = host.toLowerCase();
+			}
+			String uri = new URI(sch, host, path, null, null).toASCIIString();
+			if (qs == null && frag == null)
+				return uri;
+			StringBuilder sb = new StringBuilder(uri);
+			if (qs != null) {
+				sb.append('?').append(qs);
+			}
+			if (frag != null) {
+				sb.append('#').append(frag);
+			}
+			sb.append(uri);
+			return sb.toString();
+		} catch (URISyntaxException e) {
+			throw new IllegalArgumentException(e);
+		}
 	}
 
 }
