@@ -5,12 +5,11 @@ import java.io.CharArrayWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
-import java.lang.reflect.Array;
-import java.lang.reflect.GenericArrayType;
-import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.nio.channels.ReadableByteChannel;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,17 +27,14 @@ import org.openrdf.model.Resource;
 import org.openrdf.model.Statement;
 import org.openrdf.model.URI;
 import org.openrdf.model.Value;
-import org.openrdf.model.ValueFactory;
-import org.openrdf.model.impl.LiteralImpl;
-import org.openrdf.model.impl.URIImpl;
 import org.openrdf.query.BindingSet;
 import org.openrdf.query.GraphQueryResult;
 import org.openrdf.query.TupleQueryResult;
 import org.openrdf.repository.object.ObjectConnection;
-import org.openrdf.repository.object.ObjectFactory;
 import org.openrdf.repository.object.RDFObject;
 import org.openrdf.repository.object.advice.Advice;
 import org.openrdf.repository.object.advisers.helpers.SparqlEvaluator;
+import org.openrdf.repository.object.advisers.helpers.SparqlParameters;
 import org.openrdf.repository.object.advisers.helpers.SparqlEvaluator.SparqlBuilder;
 import org.openrdf.repository.object.traits.ObjectMessage;
 import org.openrdf.repository.object.traits.Refreshable;
@@ -53,18 +49,15 @@ public class SparqlAdvice implements Advice {
 	private final SparqlEvaluator evaluator;
 	private final Class<?> returnClass;
 	private final Class<?> componentClass;
-	private final Type[] ptypes;
-	private final String[][] bindingNames;
-	private final String[] defaults;
+	private final Map<Method, SparqlParameters> map = new HashMap<Method, SparqlParameters>();
 
-	public SparqlAdvice(SparqlEvaluator evaluator, Type returnType,
-			Type[] ptypes, String[][] bindingNames, String[] defaults) {
+	public SparqlAdvice(SparqlEvaluator evaluator, Method m) {
 		this.evaluator = evaluator;
-		this.returnClass = asClass(returnType);
-		this.componentClass = asClass(getComponentType(returnClass, returnType));
-		this.ptypes = ptypes;
-		this.bindingNames = bindingNames;
-		this.defaults = defaults;
+		this.returnClass = m.getReturnType();
+		Type rtype = m.getGenericReturnType();
+		SparqlParameters parameters = new SparqlParameters(m);
+		this.componentClass = parameters.getComponentClass(returnClass, rtype);
+		map.put(m, parameters);
 	}
 
 	@Override
@@ -78,26 +71,7 @@ public class SparqlAdvice implements Advice {
 		Resource self = ((RDFObject) target).getResource();
 		SparqlBuilder with = evaluator.prepare(con).with("this", self);
 		Object[] args = message.getParameters();
-		for (int i = 0; i < args.length && i < bindingNames.length; i++) {
-			Object value = args[i];
-			Type vtype = ptypes[i];
-			Class<?> cvtype = asClass(vtype);
-			String defaultValue = defaults[i];
-			if (value == null && defaultValue != null && con != null) {
-				value = getDefaultValue(defaultValue, vtype, con);
-			}
-			if (value == null)
-				continue;
-			if (Set.class.equals(cvtype)) {
-				for (String name : bindingNames[i]) {
-					with = with.with(name, (Set<?>) value);
-				}
-			} else {
-				for (String name : bindingNames[i]) {
-					with = with.with(name, value);
-				}
-			}
-		}
+		getParameters(message.getMethod()).populate(args, with, con);
 		if (isUpdate()) {
 			with.asUpdate();
 			if (target instanceof Refreshable) {
@@ -114,25 +88,16 @@ public class SparqlAdvice implements Advice {
 		}
 	}
 
-	private boolean isUpdate() {
-		return Void.class.equals(returnClass) || Void.TYPE.equals(returnClass);
+	private synchronized SparqlParameters getParameters(Method m) {
+		if (map.containsKey(m))
+			return map.get(m);
+		SparqlParameters parameters = new SparqlParameters(m);
+		map.put(m, parameters);
+		return parameters;
 	}
 
-	private Object getDefaultValue(String value, Type type, ObjectConnection con) {
-		Class<?> ctype = asClass(type);
-		if (Set.class.equals(ctype)) {
-			Object v = getDefaultValue(value, getComponentType(ctype, type), con);
-			if (v == null)
-				return null;
-			return Collections.singleton(v);
-		}
-		ValueFactory vf = con.getValueFactory();
-		ObjectFactory of = con.getObjectFactory();
-		if (of.isDatatype(ctype)) {
-			URIImpl datatype = new URIImpl("java:" + ctype.getName());
-			return of.createValue(of.createObject(new LiteralImpl(value, datatype)));
-		}
-		return vf.createURI(value);
+	private boolean isUpdate() {
+		return Void.class.equals(returnClass) || Void.TYPE.equals(returnClass);
 	}
 
 	private Object cast(SparqlBuilder result, Class<?> rclass,
@@ -222,35 +187,6 @@ public class SparqlAdvice implements Advice {
 		} else {
 			return result.as(rclass);
 		}
-	}
-
-	private Type getComponentType(Class<?> cls, Type type) {
-		if (cls.isArray())
-			return cls.getComponentType();
-		if (type instanceof ParameterizedType) {
-			ParameterizedType ptype = (ParameterizedType) type;
-			Type[] args = ptype.getActualTypeArguments();
-			return args[args.length - 1];
-		}
-		if (Set.class.equals(cls) || Map.class.equals(cls))
-			return Object.class;
-		return null;
-	}
-
-	private Class<?> asClass(Type type) {
-		if (type == null)
-			return null;
-		if (type instanceof Class<?>)
-			return (Class<?>) type;
-		if (type instanceof GenericArrayType) {
-			GenericArrayType atype = (GenericArrayType) type;
-			Class<?> componentType = asClass(atype.getGenericComponentType());
-			return Array.newInstance(asClass(componentType), 0).getClass();
-		}
-		if (type instanceof ParameterizedType) {
-			return asClass(((ParameterizedType) type).getRawType());
-		}
-		return Object.class; // wildcard
 	}
 
 	private Object nil(Class<?> type) {
