@@ -60,11 +60,11 @@ public class AnonymousConceptTest extends ObjectRepositoryTestCase {
 	}
 
 	@Iri("urn:test:MyOtherConcept")
-	public interface MyOtherConcept {
+	public interface MyOtherConcept extends MyConcept {
 	}
 
 	@Iri("urn:test:AnotherConcept")
-	public interface AnotherConcept {
+	public interface AnotherConcept extends MyConcept {
 	}
 
 	@Iri("urn:test:MyConcept")
@@ -143,6 +143,7 @@ public class AnonymousConceptTest extends ObjectRepositoryTestCase {
 		main = con.addDesignation(main, MyOtherConcept.class);
 		assertTrue(main instanceof AnonyoumsUnionConcept);
 		assertTrue(main instanceof MyConcept);
+		assertFalse(main instanceof AnotherConcept);
 		assertEquals(((MyConcept) main).hello(), "world");
 	}
 

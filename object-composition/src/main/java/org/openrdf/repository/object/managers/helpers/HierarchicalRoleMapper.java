@@ -47,11 +47,8 @@ import org.openrdf.repository.object.exceptions.ObjectCompositionException;
 public class HierarchicalRoleMapper implements Cloneable {
 
 	private DirectMapper directMapper = new DirectMapper();
-
 	private TypeMapper typeMapper = new TypeMapper();
-
 	private SimpleRoleMapper simpleRoleMapper = new SimpleRoleMapper();
-
 	private Map<Class<?>, Set<Class<?>>> subclasses = new HashMap<Class<?>, Set<Class<?>>>(256);
 
 	public HierarchicalRoleMapper clone() {
@@ -125,46 +122,40 @@ public class HierarchicalRoleMapper implements Cloneable {
 		return rdfTypes;
 	}
 
-	public synchronized void recordConcept(Class<?> role, URI type, boolean primary) {
+	public synchronized void recordConcept(Class<?> role, URI type, boolean equiv, boolean primary) {
+		assert type != null;
 		recordClassHierarchy(role);
 		if (primary) {
 			typeMapper.recordRole(role, type);
 		}
-		if (!recordRole(role, type)) {
+		if (equiv) {
+			directMapper.recordRole(role, type);
+		}
+		if (simpleRoleMapper.getBaseType().equals(type)) {
+			simpleRoleMapper.recordBaseRole(role);
+		} else {
 			Set<Class<?>> superRoles = getSuperRoles(role);
 			Set<Class<?>> newRoles = new HashSet<Class<?>>(
 					superRoles.size() + 1);
 			newRoles.addAll(superRoles);
 			newRoles.add(role);
-			newRoles = simpleRoleMapper.recordRoles(newRoles, type);
-			for (Class<?> r : directMapper.getDirectRoles(type)) {
-				addRolesInSubclasses(r, newRoles);
-			}
+			recordSubclasses(type, newRoles);
 		}
 	}
 
-	public synchronized void recordBehaviour(Class<?> role, URI type) {
-		if (!recordRole(role, type)) {
-			Set<Class<?>> newRoles = new HashSet<Class<?>>();
-			newRoles.add(role);
-			newRoles = simpleRoleMapper.recordRoles(newRoles, type);
-			for (Class<?> r : directMapper.getDirectRoles(type)) {
-				addRolesInSubclasses(r, newRoles);
-			}
-		}
-	}
-
-	private boolean recordRole(Class<?> role, URI type) {
+	public synchronized void recordBehaviour(Class<?> role, URI type, boolean equiv) {
 		assert type != null;
-		directMapper.recordRole(role, type);
-
-		if (simpleRoleMapper.getBaseType().equals(type)) {
+		if (equiv) {
 			directMapper.recordRole(role, type);
+		}
+		if (simpleRoleMapper.getBaseType().equals(type)) {
 			recordClassHierarchy(role);
 			simpleRoleMapper.recordBaseRole(role);
-			return true;
+		} else {
+			Set<Class<?>> newRoles = new HashSet<Class<?>>();
+			newRoles.add(role);
+			recordSubclasses(type, newRoles);
 		}
-		return false;
 	}
 
 	/**
@@ -207,6 +198,16 @@ public class HierarchicalRoleMapper implements Cloneable {
 			addRelatedRoles(sr, sup, superRoles);
 		}
 		return superRoles;
+	}
+
+	private void recordSubclasses(URI type, Set<Class<?>> newRoles) {
+		newRoles = simpleRoleMapper.recordRoles(newRoles, type);
+		Set<Class<?>> directRoles = directMapper.getDirectRoles(type);
+		if (directRoles != null) {
+			for (Class<?> r : directRoles) {
+				addRolesInSubclasses(r, newRoles);
+			}
+		}
 	}
 
 	private void addRolesInSubclasses(Class<?> role, Set<Class<?>> newRoles) {

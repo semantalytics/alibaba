@@ -310,19 +310,19 @@ public class RoleMapper implements Cloneable {
 	}
 
 	public void addConcept(Class<?> role) throws ObjectStoreConfigException {
-		recordRole(role, role, null, true, true);
+		recordRole(role, role, null, true, true, true);
 	}
 
 	public void addConcept(Class<?> role, URI type)
 			throws ObjectStoreConfigException {
-		recordRole(role, role, type, true, true);
+		recordRole(role, role, type, true, true, true);
 	}
 
 	public void addBehaviour(Class<?> role) throws ObjectStoreConfigException {
 		assertBehaviour(role);
 		boolean hasType = false;
 		for (Class<?> face : role.getInterfaces()) {
-			boolean recorded = recordRole(role, face, null, false, false);
+			boolean recorded = recordRole(role, face, null, true, false, false);
 			if (recorded && hasType) {
 				throw new ObjectStoreConfigException(role.getSimpleName()
 						+ " can only implement one concept");
@@ -338,7 +338,7 @@ public class RoleMapper implements Cloneable {
 	public void addBehaviour(Class<?> role, URI type)
 			throws ObjectStoreConfigException {
 		assertBehaviour(role);
-		recordRole(role, null, type, false, false);
+		recordRole(role, null, type, true, false, false);
 	}
 
 	private void assertBehaviour(Class<?> role)
@@ -383,23 +383,23 @@ public class RoleMapper implements Cloneable {
 	}
 
 	private boolean recordRole(Class<?> role, Class<?> elm, URI rdfType,
-			boolean concept, boolean primary)
+			boolean equiv, boolean concept, boolean primary)
 			throws ObjectStoreConfigException {
 		boolean hasType = false;
 		if (rdfType != null) {
 			if (concept) {
-				roleMapper.recordConcept(role, rdfType, primary);
+				roleMapper.recordConcept(role, rdfType, equiv, primary);
 			} else {
-				roleMapper.recordBehaviour(role, rdfType);
+				roleMapper.recordBehaviour(role, rdfType, equiv);
 			}
 			hasType = true;
 		} else if (elm != null) {
 			URI defType = findDefaultType(elm);
 			if (defType != null) {
 				if (concept) {
-					roleMapper.recordConcept(role, defType, role.equals(elm));
+					roleMapper.recordConcept(role, defType, equiv, role.equals(elm));
 				} else {
-					roleMapper.recordBehaviour(role, defType);
+					roleMapper.recordBehaviour(role, defType, equiv);
 				}
 				hasType = true;
 			}
@@ -407,7 +407,7 @@ public class RoleMapper implements Cloneable {
 		}
 		if (!hasType && elm != null) {
 			for (Class<?> face : elm.getInterfaces()) {
-				hasType |= recordRole(role, face, null, concept, false);
+				hasType |= recordRole(role, face, null, equiv, concept, false);
 			}
 		}
 		if (!hasType && primary) {
@@ -455,11 +455,11 @@ public class RoleMapper implements Cloneable {
 					URI uri = findDefaultType(concept);
 					if (uri != null) {
 						// only equivalent named concepts are supported here
-						recorded |= recordRole(role, concept, uri, isConcept, false);
+						recorded |= recordRole(role, concept, uri, true, isConcept, false);
 					}
 				} else if (v instanceof String) {
 					URI uri = vf.createURI((String) v);
-					recorded |= recordRole(role, role, uri, isConcept, false);
+					recorded |= recordRole(role, role, uri, true, isConcept, false);
 				} else {
 					logger.error("{} must have a value of type Class[] or String[]",
 							name);
@@ -497,7 +497,7 @@ public class RoleMapper implements Cloneable {
 			}
 			if (value instanceof Class<?>) {
 				Class<?> concept = (Class<?>) value;
-				recordRole(concept, concept, null, true, true);
+				recordRole(concept, concept, null, true, true, true);
 				complementClasses.put(role, concept);
 				recorded = true;
 			} else if (value instanceof String) {
@@ -513,7 +513,7 @@ public class RoleMapper implements Cloneable {
 			loop: for (Object v : (Object[]) value) {
 				if (v instanceof Class<?>) {
 					Class<?> concept = (Class<?>) v;
-					recordRole(concept, concept, null, true, true);
+					recordRole(concept, concept, null, true, true, true);
 					ofs.add(concept);
 				} else if (v instanceof String) {
 					Class<?> superclass = role.getSuperclass();
@@ -521,7 +521,7 @@ public class RoleMapper implements Cloneable {
 							&& superclass.isAnnotationPresent(Iri.class)) {
 						if (v.equals(superclass.getAnnotation(Iri.class)
 								.value())) {
-							recordRole(superclass, superclass, null, true, true);
+							recordRole(superclass, superclass, null, true, true, true);
 							ofs.add(superclass);
 							continue loop;
 						}
@@ -529,7 +529,7 @@ public class RoleMapper implements Cloneable {
 					for (Class<?> sp : role.getInterfaces()) {
 						if (sp.isAnnotationPresent(Iri.class)) {
 							if (v.equals(sp.getAnnotation(Iri.class).value())) {
-								recordRole(sp, sp, null, true, true);
+								recordRole(sp, sp, null, true, true, true);
 								ofs.add(sp);
 								continue loop;
 							}
@@ -549,16 +549,16 @@ public class RoleMapper implements Cloneable {
 			for (Object v : (Object[]) value) {
 				if (v instanceof Class<?>) {
 					Class<?> concept = (Class<?>) v;
-					recordRole(concept, concept, null, true, true);
+					recordRole(concept, concept, null, true, true, true);
 					if (role.isAssignableFrom(concept)) {
 						recorded = true; // implied
 					} else {
-						recorded |= recordRole(role, concept, null, isConcept,
-								true);
+						recorded |= recordRole(role, concept, null, false,
+								isConcept, false);
 					}
 				} else if (v instanceof String) {
 					recorded |= recordRole(role, null,
-							vf.createURI((String) v), isConcept, false);
+							vf.createURI((String) v), false, isConcept, false);
 				} else {
 					logger.error(
 							"{} must have a value of type Class[] or String[]",
