@@ -278,11 +278,15 @@ public class AuditingRepository extends ContextAwareRepository {
 	public void shutDown() throws RepositoryException {
 		if (puringTask != null) {
 			puringTask.cancel(false);
-			puringTask.notifyAll();
+			synchronized (puringTask) {
+				puringTask.notifyAll();
+			}
 			while (!puringTask.isDone()) {
 				try {
 					logger.info("Waiting for purging task to complete");
-					puringTask.wait(10000);
+					synchronized (puringTask) {
+						puringTask.wait(10000);
+					}
 				} catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
 				}
@@ -349,8 +353,12 @@ public class AuditingRepository extends ContextAwareRepository {
 			}
 			long later = System.currentTimeMillis();
 			if (delay && puringTask != null) {
-				logger.info("Purged the obsolete activities in {} seconds", (later - now) / 1000.0);
-				puringTask.wait(later - now);
+				if (later - now > 1000) {
+					logger.info("Purged the obsolete activities in {} seconds", (later - now) / 1000.0);
+					synchronized (puringTask) {
+						puringTask.wait(later - now);
+					}
+				}
 			}
 			if (puringTask != null && !puringTask.isCancelled()) {
 				long ready = System.currentTimeMillis();
@@ -361,7 +369,9 @@ public class AuditingRepository extends ContextAwareRepository {
 					con.close();
 				}
 				long done = System.currentTimeMillis();
-				logger.info("Removed the old reified triples in {} seconds", (done - ready) / 1000.0);
+				if (done - ready > 1000) {
+					logger.info("Removed the old reified triples in {} seconds", (done - ready) / 1000.0);
+				}
 			}
 		} catch (OpenRDFException e) {
 			logger.error(e.toString(), e);
@@ -369,7 +379,9 @@ public class AuditingRepository extends ContextAwareRepository {
 			Thread.currentThread().interrupt();
 		} finally {
 			if (puringTask != null) {
-				puringTask.notifyAll();
+				synchronized (puringTask) {
+					puringTask.notifyAll();
+				}
 			}
 		}
 	}
