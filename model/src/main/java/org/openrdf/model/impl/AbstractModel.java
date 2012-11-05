@@ -501,7 +501,7 @@ abstract class AbstractModel extends AbstractSet<Statement> implements
 				}
 				return set.size();
 			} finally {
-				closeIterator(iter);
+				AbstractModel.this.closeIterator(iter);
 			}
 		}
 
@@ -542,7 +542,7 @@ abstract class AbstractModel extends AbstractSet<Statement> implements
 				}
 				return set.toArray();
 			} finally {
-				closeIterator(iter);
+				AbstractModel.this.closeIterator(iter);
 			}
 		}
 
@@ -556,7 +556,7 @@ abstract class AbstractModel extends AbstractSet<Statement> implements
 				}
 				return set.toArray(a);
 			} finally {
-				closeIterator(iter);
+				AbstractModel.this.closeIterator(iter);
 			}
 		}
 
@@ -613,7 +613,7 @@ abstract class AbstractModel extends AbstractSet<Statement> implements
 		protected abstract void removeIteration(Iterator<Statement> iter, V term);
 
 		protected void closeIterator(Iterator<?> iter) {
-			AbstractModel.this.closeIterator(iter);
+			AbstractModel.this.closeIterator(((ValueSetIterator) iter).iter);
 		}
 
 		private void closeIterator(Collection<?> c, Iterator<?> e) {

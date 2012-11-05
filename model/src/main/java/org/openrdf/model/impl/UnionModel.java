@@ -14,8 +14,8 @@ public class UnionModel extends AbstractModel {
 
 	private class UnionIterator implements Iterator<Statement> {
 		private final Model[] models;
-		private Iterator<Statement> iter;
-		private int idx = -1;
+		Iterator<Statement> iter;
+		int idx = -1;
 
 		public UnionIterator(Model[] models) {
 			this.models = models;
@@ -52,6 +52,15 @@ public class UnionModel extends AbstractModel {
 		} else {
 			models = unionOf;
 		}
+	}
+
+	@Override
+	public Model unmodifiable() {
+		Model[] unmodifiables = new Model[models.length];
+		for (int i=0; i<unmodifiables.length; i++) {
+			unmodifiables[i] = models[i].unmodifiable();
+		}
+		return new UnionModel(unmodifiables);
 	}
 
 	public Map<String, String> getNamespaces() {

@@ -64,12 +64,11 @@ public class MemoryOverflowModel extends AbstractModel {
 	private static final long serialVersionUID = 4119844228099208169L;
 	private static final Runtime RUNTIME = Runtime.getRuntime();
 	private static final int LARGE_BLOCK = 10000;
-	private final Logger logger = LoggerFactory
-			.getLogger(MemoryOverflowModel.class);
+	final Logger logger = LoggerFactory.getLogger(MemoryOverflowModel.class);
 	private TreeModel memory;
-	private Repository repository;
-	private RepositoryConnection connection;
-	private RepositoryModel disk;
+	Repository repository;
+	RepositoryConnection connection;
+	RepositoryModel disk;
 	private long baseline = 0;
 	private long maxBlockSize = 0;
 
@@ -173,6 +172,12 @@ public class MemoryOverflowModel extends AbstractModel {
 		}
 	}
 
+	synchronized Model getDelegate() {
+		if (disk == null)
+			return memory;
+		return disk;
+	}
+
 	private void writeObject(ObjectOutputStream s) throws IOException {
 		// Write out any hidden serialization magic
 		s.defaultWriteObject();
@@ -199,12 +204,6 @@ public class MemoryOverflowModel extends AbstractModel {
 		for (int i = 0; i < size; i++) {
 			add((Statement) s.readObject());
 		}
-	}
-
-	private synchronized Model getDelegate() {
-		if (disk == null)
-			return memory;
-		return disk;
 	}
 
 	private synchronized void checkMemoryOverflow() {
