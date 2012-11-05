@@ -30,7 +30,6 @@ package org.openrdf.sail.optimistic.helpers;
 
 import org.openrdf.model.Model;
 import org.openrdf.model.impl.LinkedHashModel;
-import org.openrdf.model.impl.MemoryOverflowModel;
 import org.openrdf.query.BindingSet;
 import org.openrdf.query.Dataset;
 import org.openrdf.query.algebra.Difference;
@@ -112,12 +111,7 @@ public class DeltaMerger extends QueryModelVisitorBase<RuntimeException>
 	}
 
 	private synchronized Model open(Model filtered) {
-		Model model;
-		if (additional == null) {
-			model = new MemoryOverflowModel(filtered);
-		} else {
-			model = filtered;
-		}
+		Model model = filtered.unmodifiable();
 		if (model.isEmpty())
 			return new LinkedHashModel();
 		return model;

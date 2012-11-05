@@ -57,7 +57,7 @@ import org.openrdf.model.URI;
 import org.openrdf.model.Value;
 import org.openrdf.model.ValueFactory;
 import org.openrdf.model.impl.ContextStatementImpl;
-import org.openrdf.model.impl.MemoryOverflowModel;
+import org.openrdf.model.impl.CopyOnWriteModel;
 import org.openrdf.model.impl.NamespaceImpl;
 import org.openrdf.model.impl.UnionModel;
 import org.openrdf.query.BindingSet;
@@ -207,9 +207,9 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 	private boolean serializable;
 	private volatile boolean active;
 	/** locked by this */
-	private final Map<AddOperation,MemoryOverflowModel> added = new LinkedHashMap<AddOperation,MemoryOverflowModel>();
+	private final Map<AddOperation,CopyOnWriteModel> added = new LinkedHashMap<AddOperation,CopyOnWriteModel>();
 	/** locked by this */
-	private final Map<RemoveOperation,MemoryOverflowModel> removed = new LinkedHashMap<RemoveOperation,MemoryOverflowModel>();
+	private final Map<RemoveOperation,CopyOnWriteModel> removed = new LinkedHashMap<RemoveOperation,CopyOnWriteModel>();
 	/** locked by this */
 	private Set<Resource> addedContexts = new HashSet<Resource>();
 	/** locked by this */
@@ -696,8 +696,8 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 				if (included.isEmpty() && excluded.isEmpty())
 					return result;
 				if (!excluded.isEmpty()) {
-					final MemoryOverflowModel set;
-					set = new MemoryOverflowModel(excluded);
+					final Model set;
+					set = excluded.unmodifiable();
 					result = new FilterIteration<Statement, SailException>(
 							result) {
 						protected boolean accept(Statement stmt)
@@ -706,8 +706,8 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 						}
 					};
 				}
-				final MemoryOverflowModel set;
-				set = new MemoryOverflowModel(included);
+				final Model set;
+				set = included.unmodifiable();
 				final Iterator<Statement> iter = set.iterator();
 				CloseableIteration<Statement, SailException> incl;
 				incl = new CloseableIteratorIteration<Statement, SailException>(
@@ -811,7 +811,7 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 			removedContexts.clear();
 		}
 		addedContexts.clear();
-		for (Map.Entry<RemoveOperation, MemoryOverflowModel> e : removed
+		for (Map.Entry<RemoveOperation, CopyOnWriteModel> e : removed
 				.entrySet()) {
 			RemoveOperation op = e.getKey();
 			Model model = e.getValue();
@@ -828,7 +828,7 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 				}
 			}
 		}
-		for (Map.Entry<AddOperation, MemoryOverflowModel> e : added.entrySet()) {
+		for (Map.Entry<AddOperation, CopyOnWriteModel> e : added.entrySet()) {
 			AddOperation op = e.getKey();
 			Model model = e.getValue();
 			if (op.isUpdate()) {
@@ -965,7 +965,7 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 					return key;
 			}
 		} else {
-			added.put(op, new MemoryOverflowModel());
+			added.put(op, new CopyOnWriteModel());
 		}
 		return op;
 	}
@@ -991,7 +991,7 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 					return key;
 			}
 		} else {
-			removed.put(op, new MemoryOverflowModel());
+			removed.put(op, new CopyOnWriteModel());
 		}
 		return op;
 	}
@@ -1037,8 +1037,8 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 	private void resetChangeModel() {
 		added.clear();
 		removed.clear();
-		added.put(explicitAdd, new MemoryOverflowModel());
-		removed.put(explicitRemove, new MemoryOverflowModel());
+		added.put(explicitAdd, new CopyOnWriteModel());
+		removed.put(explicitRemove, new CopyOnWriteModel());
 	}
 
 	private void releaseObservedChange() {
