@@ -30,6 +30,7 @@ package org.openrdf.repository.auditing;
 
 import static org.openrdf.query.QueryLanguage.SPARQL;
 
+import java.math.BigDecimal;
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Date;
@@ -37,6 +38,11 @@ import java.util.GregorianCalendar;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
@@ -108,13 +114,35 @@ public class AuditingRepository extends ContextAwareRepository {
 			+ "FILTER NOT EXISTS { ?obsolete a audit:RecentActivity }\n\t"
 			+ FILTER_NOT_EXISTS_ACTIVE_TRIPLES
 			+ "GRAPH ?obsolete { ?subject ?predicate ?object }\n" + "}";
+	private static final String TRIM_EARLIER = "PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n"
+			+ "PREFIX prov:<http://www.w3.org/ns/prov#>\n"
+			+ "PREFIX audit:<http://www.openrdf.org/rdf/2012/auditing#>\n"
+			+ "DELETE {\n\t"
+			+ "?e1 audit:with ?triple . ?e2 audit:without ?triple .\n\t"
+			+ "?triple rdf:subject ?s ; rdf:predicate ?p ; rdf:object ?o\n"
+			+ "} WHERE {\n\t"
+			+ "?e2 audit:without ?triple . ?prov prov:generated ?e1 ; prov:endedAtTime ?endedAtTime\n\t"
+			+ "FILTER (?endedAtTime < $earlier)\n\t"
+			+ "OPTIONAL { ?e1 audit:with ?triple }\n\t"
+			+ "OPTIONAL { ?triple rdf:subject ?s ; rdf:predicate ?p ; rdf:object ?o }\n"
+			+ "}";
+	private static final ScheduledExecutorService executor = Executors
+			.newSingleThreadScheduledExecutor(new ThreadFactory() {
+				public Thread newThread(Runnable r) {
+					String name = AuditingRepository.class.getSimpleName()
+							+ "-" + Thread.currentThread().getName();
+					Thread t = new Thread(r, name);
+					t.setDaemon(true);
+					return t;
+				}
+			});
 
 	private final Logger logger = LoggerFactory
 			.getLogger(AuditingRepository.class);
 	private final ArrayDeque<URI> recent = new ArrayDeque<URI>(1024);
 	private DatatypeFactory datatypeFactory;
 	private Duration purgeAfter;
-	private long nextPurge = Long.MAX_VALUE;
+	private ScheduledFuture<?> puringTask;
 	private int minRecent;
 	private int maxRecent;
 	private Boolean transactional;
@@ -218,10 +246,20 @@ public class AuditingRepository extends ContextAwareRepository {
 		RepositoryConnection con = super.getConnection();
 		try {
 			recent.addAll(loadRecentActivities(con));
-			if (purgeAfter == null) {
-				nextPurge = Long.MAX_VALUE;
-			} else {
-				nextPurge = System.currentTimeMillis();
+			if (purgeAfter != null) {
+				long now = System.currentTimeMillis();
+				Date next = new Date(now);
+				purgeAfter.multiply(BigDecimal.valueOf(0.25)).addTo(next);
+				long delay = next.getTime() - now;
+				if (delay > 60000) {
+					puringTask = executor.scheduleWithFixedDelay(new Runnable() {
+						public void run() {
+							purge(true);
+						}
+					}, delay, delay, TimeUnit.MILLISECONDS);
+				} else {
+					puringTask = null;
+				}
 			}
 		} catch (MalformedQueryException e) {
 			throw new RepositoryException(e);
@@ -230,7 +268,27 @@ public class AuditingRepository extends ContextAwareRepository {
 		} finally {
 			con.close();
 		}
-		cleanup();
+		trim();
+		if (purgeAfter != null) {
+			purge(false);
+		}
+	}
+
+	@Override
+	public void shutDown() throws RepositoryException {
+		if (puringTask != null) {
+			puringTask.cancel(false);
+			puringTask.notifyAll();
+			while (!puringTask.isDone()) {
+				try {
+					logger.info("Waiting for purging task to complete");
+					puringTask.wait(10000);
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+				}
+			}
+		}
+		super.shutDown();
 	}
 
 	@Override
@@ -256,7 +314,14 @@ public class AuditingRepository extends ContextAwareRepository {
 		recent.addAll(recentActivities);
 	}
 
-	synchronized void cleanup() {
+	void cleanup() {
+		trim();
+		if (puringTask == null && purgeAfter != null) {
+			purge(false);
+		}
+	}
+
+	synchronized void trim() {
 		if (recent.size() >= maxRecent) {
 			try {
 				RepositoryConnection con = super.getConnection();
@@ -269,25 +334,42 @@ public class AuditingRepository extends ContextAwareRepository {
 				logger.warn(e.toString(), e);
 			}
 		}
-		if (nextPurge < Long.MAX_VALUE) {
-			long now = System.currentTimeMillis();
-			if (now >= nextPurge) {
-				Date earlier = new Date(now);
-				purgeAfter.negate().addTo(earlier);
+	}
+
+	void purge(boolean delay) {
+		long now = System.currentTimeMillis();
+		Date earlier = new Date(now);
+		purgeAfter.negate().addTo(earlier);
+		try {
+			RepositoryConnection con = super.getConnection();
+			try {
+				purgeObsolete(earlier, con);
+			} finally {
+				con.close();
+			}
+			long later = System.currentTimeMillis();
+			if (delay && puringTask != null) {
+				logger.info("Purged the obsolete activities in {} seconds", (later - now) / 1000.0);
+				puringTask.wait(later - now);
+			}
+			if (puringTask != null && !puringTask.isCancelled()) {
+				long ready = System.currentTimeMillis();
+				con = super.getConnection();
 				try {
-					RepositoryConnection con = super.getConnection();
-					try {
-						purgeObsolete(earlier, con);
-					} finally {
-						con.close();
-					}
-				} catch (OpenRDFException e) {
-					logger.error(e.toString(), e);
+					trimEarlier(earlier, con);
 				} finally {
-					Date next = new Date(now);
-					purgeAfter.addTo(next);
-					nextPurge = next.getTime();
+					con.close();
 				}
+				long done = System.currentTimeMillis();
+				logger.info("Removed the old reified triples in {} seconds", (done - ready) / 1000.0);
+			}
+		} catch (OpenRDFException e) {
+			logger.error(e.toString(), e);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		} finally {
+			if (puringTask != null) {
+				puringTask.notifyAll();
 			}
 		}
 	}
@@ -325,6 +407,18 @@ public class AuditingRepository extends ContextAwareRepository {
 		XMLGregorianCalendar xgc = datatypeFactory.newXMLGregorianCalendar(cal);
 		ValueFactory vf = con.getValueFactory();
 		Update update = con.prepareUpdate(QueryLanguage.SPARQL, PURGE_EARLIER);
+		update.setBinding("earlier", vf.createLiteral(xgc));
+		update.execute();
+	}
+
+	private void trimEarlier(Date earlier, RepositoryConnection con)
+			throws RepositoryException, MalformedQueryException,
+			UpdateExecutionException {
+		GregorianCalendar cal = new GregorianCalendar(1970, 0, 1);
+		cal.setTime(earlier);
+		XMLGregorianCalendar xgc = datatypeFactory.newXMLGregorianCalendar(cal);
+		ValueFactory vf = con.getValueFactory();
+		Update update = con.prepareUpdate(QueryLanguage.SPARQL, TRIM_EARLIER);
 		update.setBinding("earlier", vf.createLiteral(xgc));
 		update.execute();
 	}
