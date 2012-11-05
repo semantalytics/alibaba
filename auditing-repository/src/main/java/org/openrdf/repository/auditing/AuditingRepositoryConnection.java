@@ -32,6 +32,7 @@ import static org.openrdf.query.QueryLanguage.SPARQL;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -63,7 +64,6 @@ import org.openrdf.query.algebra.QueryModelNode;
 import org.openrdf.query.algebra.StatementPattern;
 import org.openrdf.query.algebra.UpdateExpr;
 import org.openrdf.query.algebra.Var;
-import org.openrdf.query.impl.DatasetImpl;
 import org.openrdf.query.parser.ParsedUpdate;
 import org.openrdf.query.parser.QueryParser;
 import org.openrdf.query.parser.QueryParserUtil;
@@ -76,54 +76,67 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 
 	private static final int MAX_SIZE = 1024;
 	private static final String RECENT_ACTIVITY = "http://www.openrdf.org/rdf/2012/auditing#RecentActivity";
-	private static final String USED = "http://www.w3.org/ns/prov#used";
+	private static final String GENERATED = "http://www.w3.org/ns/prov#generated";
 	private static final String WAS_GENERATED_BY = "http://www.w3.org/ns/prov#wasGeneratedBy";
-	private static final String WAS_INFORMED_BY = "http://www.w3.org/ns/prov#wasInformedBy";
+	private static final String SPECIALIZATION_OF = "http://www.w3.org/ns/prov#specializationOf";
 	private static final String UPDATE_ACTIVITY = "PREFIX prov:<http://www.w3.org/ns/prov#>\n"
 			+ "DELETE {\n\t"
-			+ "?used prov:wasGeneratedBy ?generatedBy .\n\t"
-			+ "?entity prov:wasGeneratedBy ?generatedBy\n"
+			+ "GRAPH ?influencedBy { ?used prov:wasGeneratedBy ?generatedBy }\n\t"
+			+ "GRAPH ?influencedBy { ?entity prov:wasGeneratedBy ?generatedBy }\n"
 			+ "} INSERT {\n\t"
-			+ "GRAPH $activity { ?used prov:wasGeneratedBy $activity }\n\t"
-			+ "GRAPH $activity { $activity prov:used ?entity }\n\t"
-			+ "GRAPH $activity { ?entity prov:wasGeneratedBy $activity }\n"
+			+ "GRAPH $activity { ?used prov:wasGeneratedBy $provenance }\n"
+			+ "GRAPH $activity { $provenance prov:generated ?generated . ?generated prov:specializationOf ?entity }\n\t"
+			+ "GRAPH $activity { ?entity prov:wasGeneratedBy $provenance }\n"
 			+ "} WHERE {\n\t"
 			+ "{\n\t\t"
-			+ "GRAPH $activity { $activity prov:used ?used }\n\t\t"
-			+ "?used prov:wasGeneratedBy ?generatedBy\n\t"
+			+ "GRAPH $activity { $provenance prov:generated ?gen . ?gen prov:specializationOf ?used }\n\t\t"
+			+ "GRAPH ?influencedBy { ?used prov:wasGeneratedBy ?generatedBy } FILTER (?influencedBy != $activity)\n\t\t"
+			+ "BIND (iri(concat(str(?influencedBy),'#',str(?used))) AS ?revised)\n\t"
+			+ "} UNION {\n\t\t"
+			+ "GRAPH $activity { ?entity prov:wasGeneratedBy $provenance }\n\t\t"
+			+ "FILTER ($activity != ?entity)\n\t\t"
+			+ "OPTIONAL { GRAPH ?influencedBy { ?entity prov:wasGeneratedBy ?generatedBy }\n\t\t\t"
+			+ "BIND (iri(concat(str(?influencedBy),'#',str(?entity))) AS ?revised)\n\t\t\t"
+			+ "FILTER (?influencedBy != $activity) }\n\t\t"
+			+ "BIND (iri(concat(str($activity),'#',str(?entity))) AS ?generated)\n\t"
 			+ "} UNION {\n\t\t"
 			+ "GRAPH $activity { ?resource ?predicate ?object }\n\t\t"
 			+ "FILTER isIri(?resource)\n\t\t"
 			+ "FILTER ( !sameTerm($activity,?resource) )\n\t\t"
 			+ "BIND ( if( contains(str(?resource),\"#\"), iri(strbefore(str(?resource),\"#\")), ?resource ) AS ?entity)\n\t\t"
 			+ "FILTER ( !sameTerm($activity,?entity) )\n\t\t"
-			+ "OPTIONAL { ?entity prov:wasGeneratedBy ?generatedBy }\n\t"
-			+ "}\n" + "}";
+			+ "OPTIONAL { GRAPH ?influencedBy { ?entity prov:wasGeneratedBy ?generatedBy }\n\t\t\t"
+			+ "BIND (iri(concat(str(?influencedBy),'#',str(?entity))) AS ?revised)}\n\t\t"
+			+ "FILTER (!bound(?influencedBy) || ?influencedBy != $activity)\n\t\t"
+			+ "BIND (iri(concat(str($activity),'#',str(?entity))) AS ?generated)\n\t"
+			+ "}\n"
+			+ "}";
 	private static final String BALANCE_ACTIVITY = UPDATE_ACTIVITY.substring(0,
 			UPDATE_ACTIVITY.length() - 2)
 			+ "\n\t"
 			+ "FILTER (\n\t\t"
-			+ "!bound(?generatedBy) ||\n\t\t"
-			+ "EXISTS { $activity prov:wasInformedBy ?generatedBy } ||\n\t\t"
-			+ "EXISTS { $activity prov:endedAtTime ?after . ?generatedBy prov:endedAtTime ?before FILTER (?before < ?after) }\n\t"
+			+ "!bound(?influencedBy) ||\n\t\t"
+			+ "EXISTS { $activity prov:wasInformedBy ?influencedBy } ||\n\t\t"
+			+ "EXISTS { $provenance prov:endedAtTime ?after . ?generatedBy prov:endedAtTime ?before FILTER (?before < ?after) }\n\t"
 			+ ")\n" + "}";
 
 	private final AuditingRepository repository;
 	private final Map<URI, Set<URI>> modifiedGraphs = new HashMap<URI, Set<URI>>();
 	private final Map<URI, Map<URI, Boolean>> modifiedEntities = new HashMap<URI, Map<URI, Boolean>>();
-	private final URI provUsed;
+	private final URI provGenerated;
+	private final URI provSpecializationOf;
 	private final URI provWasGeneratedBy;
-	private final URI provWasInformedBy;
-	private Set<URI> uncommittedActivityGraphs = new LinkedHashSet<URI>();
+	private Map<URI, URI> uncommittedActivityGraphs = new LinkedHashMap<URI, URI>();
 	private ActivityFactory activityFactory;
+	private String provenance = "#provenance";
 
 	public AuditingRepositoryConnection(AuditingRepository repository,
 			RepositoryConnection connection) throws RepositoryException {
 		super(repository, connection);
 		this.repository = repository;
-		provUsed = connection.getValueFactory().createURI(USED);
+		provGenerated = connection.getValueFactory().createURI(GENERATED);
+		provSpecializationOf = connection.getValueFactory().createURI(SPECIALIZATION_OF);
 		provWasGeneratedBy = connection.getValueFactory().createURI(WAS_GENERATED_BY);
-		provWasInformedBy = connection.getValueFactory().createURI(WAS_INFORMED_BY);
 	}
 
 	public ActivityFactory getActivityFactory() {
@@ -142,8 +155,18 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 	@Override
 	public synchronized URI getInsertContext() {
 		URI activityGraph = super.getInsertContext();
+		ActivityFactory activityFactory = getActivityFactory();
 		if (activityGraph == null && activityFactory != null) {
-			setInsertContext(activityFactory.createActivityURI(getValueFactory()));
+			URI uri = activityFactory.createActivityURI(getValueFactory());
+			String str = uri.stringValue();
+			int h = str.indexOf('#');
+			if (h > 0) {
+				uri = getValueFactory().createURI(str.substring(0, h));
+				provenance = str.substring(h);
+			} else {
+				provenance = "#provenance";
+			}
+			setInsertContext(uri);
 			return super.getInsertContext();
 		}
 		return activityGraph;
@@ -151,7 +174,7 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 
 	@Override
 	public void commit() throws RepositoryException {
-		Set<URI> recentActivities = finalizeActivityGraphs();
+		Map<URI,URI> recentActivities = finalizeActivityGraphs();
 		super.commit();
 		closeActivityGraphs(recentActivities);
 	}
@@ -246,7 +269,10 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 	@Override
 	protected void addWithoutCommit(Resource subject, URI predicate,
 			Value object, Resource... contexts) throws RepositoryException {
-		activity(getInsertContext(), true, subject, contexts);
+		activity(getInsertContext(), true, subject);
+		for (Resource ctx : contexts) {
+			activity(getInsertContext(), true, ctx);
+		}
 		getDelegate().add(subject, predicate, object, contexts);
 	}
 
@@ -258,16 +284,24 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 	@Override
 	protected void removeWithoutCommit(Resource subject, URI predicate,
 			Value object, Resource... contexts) throws RepositoryException {
-		Resource[] defRemove = getReadContexts();
+		Resource[] defRemove = getRemoveContexts();
 		URI activityGraph = getInsertContext();
-		if (contexts == null || contexts.length > 0) {
-			activity(activityGraph, false, subject, contexts);
+		activity(activityGraph, false, subject);
+		if (contexts == null) {
 			getDelegate().remove(subject, predicate, object, contexts);
-		} else if (defRemove == null || defRemove.length > 0) {
-			activity(activityGraph, false, subject, defRemove);
+		} else if (contexts.length > 0) {
+			for (Resource ctx : contexts) {
+				activity(activityGraph, false, ctx);
+			}
+			getDelegate().remove(subject, predicate, object, contexts);
+		} else if (defRemove == null) {
+			getDelegate().remove(subject, predicate, object, defRemove);
+		} else if (defRemove.length > 0) {
+			for (Resource ctx : defRemove) {
+				activity(activityGraph, false, ctx);
+			}
 			getDelegate().remove(subject, predicate, object, defRemove);
 		} else {
-			activity(activityGraph, false, subject);
 			executeDelete(subject, predicate, object);
 		}
 	}
@@ -351,7 +385,7 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 		return label;
 	}
 
-	private void activity(QueryLanguage ql, String update, String baseURI,
+	void activity(QueryLanguage ql, String update, String baseURI,
 			BindingSet bindings, Dataset dataset)
 			throws MalformedQueryException, RepositoryException,
 			QueryEvaluationException {
@@ -382,7 +416,9 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 		for (URI entity : findEntity(insertExpr, bindings)) {
 			activity(activityGraph, true, entity);
 		}
-		activity(activityGraph, true, null, findGraphs(insertExpr, bindings, dataset));
+		for (URI graph : findGraphs(insertExpr, bindings, dataset)) {
+			activity(activityGraph, true, graph);
+		}
 	}
 
 	private void deleteActivity(QueryModelNode deleteExpr, BindingSet bindings,
@@ -392,7 +428,9 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 		for (URI entity : findEntity(deleteExpr, bindings)) {
 			activity(activityGraph, false, entity);
 		}
-		activity(activityGraph, false, null, findGraphs(deleteExpr, bindings, dataset));
+		for (URI graph : findGraphs(deleteExpr, bindings, dataset)) {
+			activity(activityGraph, false, graph);
+		}
 	}
 
 	private boolean isInsertOperation(UpdateExpr expr) {
@@ -450,7 +488,7 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 		return graphs.toArray(new URI[graphs.size()]);
 	}
 
-	private URI entity(URI subject) {
+	URI entity(URI subject) {
 		URI entity = subject;
 		int hash = entity.stringValue().indexOf('#');
 		if (hash > 0) {
@@ -460,14 +498,19 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 		return entity;
 	}
 
-	private synchronized void activity(URI activityGraph, boolean inserted, Resource subject, Resource... contexts) throws RepositoryException {
+	private synchronized void activity(URI activityGraph, boolean inserted, Resource subject) throws RepositoryException {
 		if (activityGraph == null)
 			return;
+		URI provActivity = uncommittedActivityGraphs.get(activityGraph);
 		RepositoryConnection con = getDelegate();
-		if (uncommittedActivityGraphs.add(activityGraph)) {
+		if (provActivity == null) {
+			provActivity = getValueFactory().createURI(activityGraph.stringValue() +  provenance);
+			uncommittedActivityGraphs.put(activityGraph, provActivity);
+			ActivityFactory activityFactory = getActivityFactory();
 			if (activityFactory != null) {
-				activityFactory.activityStarted(activityGraph, con);
+				activityFactory.activityStarted(provActivity, activityGraph, con);
 			}
+			con.add(activityGraph, provWasGeneratedBy, provActivity, activityGraph);
 		}
 		if (subject instanceof URI && !isActivityEntity(activityGraph, subject)) {
 			Map<URI, Boolean> entities = modifiedEntities.get(activityGraph);
@@ -481,35 +524,21 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 			}
 			if (inserted && wasInserted != Boolean.TRUE) {
 				entities.put(entity, Boolean.TRUE);
-				con.remove(entity, provWasGeneratedBy, null);
-				con.add(entity, provWasGeneratedBy, activityGraph, activityGraph);
-				if (wasInserted == null) {
-					con.add(activityGraph, provUsed, entity, activityGraph);
-				}
+				con.add(entity, provWasGeneratedBy, provActivity, activityGraph);
 			} else if (wasInserted == null) {
 				entities.put(entity, inserted ? Boolean.TRUE : Boolean.FALSE);
-				con.add(activityGraph, provUsed, entity, activityGraph);
+				generated(provActivity, entity, activityGraph, activityGraph, con);
 			}
 		}
-		if (contexts == null || contexts.length == 0)
-			return;
-		if (contexts.length == 1 && activityGraph.equals(contexts[0]))
-			return;
-		Set<URI> graphs = modifiedGraphs.get(activityGraph);
-		if (graphs == null) {
-			modifiedGraphs.put(activityGraph, graphs = new HashSet<URI>());
-		}
-		for (Resource ctx : contexts) {
-			if (ctx instanceof URI && !isActivityEntity(activityGraph, ctx)) {
-				if (graphs.add((URI) ctx)) {
-					con.add(activityGraph, provWasInformedBy, (URI) ctx, activityGraph);
-				}
-				if (graphs.size() >= MAX_SIZE) {
-					graphs.clear();
-					graphs.add((URI) ctx);
-				}
-			}
-		}
+	}
+
+	private void generated(URI provActivity, URI entity, URI targetGraph, URI activityGraph,
+			RepositoryConnection con) throws RepositoryException {
+		ValueFactory vf = getValueFactory();
+		String target = targetGraph.stringValue();
+		URI gen = vf.createURI(target + "#" + entity.stringValue());
+		con.add(provActivity, provGenerated, gen, activityGraph);
+		con.add(gen, provSpecializationOf, entity, activityGraph);
 	}
 
 	private boolean isActivityEntity(URI activityGraph, Resource subject) {
@@ -523,15 +552,15 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 		return false;
 	}
 
-	private synchronized Set<URI> finalizeActivityGraphs()
+	private synchronized Map<URI,URI> finalizeActivityGraphs()
 			throws RepositoryException {
-		Set<URI> recentActivities = uncommittedActivityGraphs;
+		Map<URI, URI> recentActivities = uncommittedActivityGraphs;
 		int size = recentActivities.size();
-		uncommittedActivityGraphs = new LinkedHashSet<URI>(size);
-		for (URI activityGraph : recentActivities) {
-			addMetadata(activityGraph);
+		uncommittedActivityGraphs = new LinkedHashMap<URI,URI>(size);
+		for (Map.Entry<URI, URI> e : recentActivities.entrySet()) {
+			addMetadata(e.getValue(), e.getKey());
 			if (getRepository().isTransactional()) {
-				finalizeActivityGraph(activityGraph);
+				finalizeActivityGraph(e.getValue(), e.getKey());
 			}
 		}
 		modifiedGraphs.clear();
@@ -540,22 +569,22 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 	}
 
 	private synchronized void reset() {
-		uncommittedActivityGraphs = new LinkedHashSet<URI>(uncommittedActivityGraphs.size());
+		uncommittedActivityGraphs = new LinkedHashMap<URI, URI>(uncommittedActivityGraphs.size());
 		modifiedGraphs.clear();
 		modifiedEntities.clear();
 	}
 
-	private void addMetadata(URI activityGraph) throws RepositoryException {
+	private void addMetadata(URI provActivity, URI activityGraph) throws RepositoryException {
 		URI recentActivity = getValueFactory().createURI(RECENT_ACTIVITY);
 		getDelegate().add(activityGraph, RDF.TYPE, recentActivity, activityGraph);
 	}
 
-	private void finalizeActivityGraph(URI activityGraph)
+	private void finalizeActivityGraph(URI provActivity, URI activityGraph)
 			throws RepositoryException {
 		try {
-			Update update = getDelegate().prepareUpdate(SPARQL, UPDATE_ACTIVITY);
+			Update update = prepareUpdate(SPARQL, UPDATE_ACTIVITY);
 			update.setBinding("activity", activityGraph);
-			update.setDataset(new DatasetImpl());
+			update.setBinding("provenance", provActivity);
 			update.execute();
 		} catch (UpdateExecutionException e) {
 			throw new RepositoryException(e);
@@ -564,27 +593,28 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 		}
 	}
 
-	private void closeActivityGraphs(Set<URI> recentActivities)
+	private void closeActivityGraphs(Map<URI, URI> recentActivities)
 			throws RepositoryException {
-		getRepository().addRecentActivities(recentActivities);
+		getRepository().addRecentActivities(recentActivities.keySet());
 		if (!getRepository().isTransactional()) {
-			for (URI activityGraph : recentActivities) {
-				balanceActivityGraph(activityGraph);
+			for (Map.Entry<URI, URI> e : recentActivities.entrySet()) {
+				balanceActivityGraph(e.getValue(), e.getKey());
 			}
 		}
+		ActivityFactory activityFactory = getActivityFactory();
 		if (activityFactory != null) {
-			for (URI activityGraph : recentActivities) {
-				activityFactory.activityEnded(activityGraph, getDelegate());
+			for (Map.Entry<URI, URI> e : recentActivities.entrySet()) {
+				activityFactory.activityEnded(e.getValue(), e.getKey(), getDelegate());
 			}
 		}
 	}
 
-	private void balanceActivityGraph(URI activityGraph)
+	private void balanceActivityGraph(URI provActivity, URI activityGraph)
 			throws RepositoryException {
 		try {
-			Update update = getDelegate().prepareUpdate(SPARQL, BALANCE_ACTIVITY);
+			Update update = prepareUpdate(SPARQL, BALANCE_ACTIVITY);
 			update.setBinding("activity", activityGraph);
-			update.setDataset(new DatasetImpl());
+			update.setBinding("provenance", provActivity);
 			update.execute();
 		} catch (UpdateExecutionException e) {
 			throw new RepositoryException(e);

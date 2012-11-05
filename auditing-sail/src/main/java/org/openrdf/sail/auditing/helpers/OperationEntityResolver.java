@@ -25,7 +25,7 @@ public class OperationEntityResolver {
 	}
 
 	public synchronized URI getEntity(QueryModelNode node, Dataset dataset, BindingSet bindings) {
-		if (dataset == null)
+		if (dataset == null || node == null)
 			return null;
 		URI activity = dataset.getDefaultInsertGraph();
 		if (activity == null || activity.stringValue().indexOf('#') >= 0)

@@ -9,7 +9,7 @@ public interface ActivityFactory {
 
 	URI createActivityURI(ValueFactory vf);
 
-	void activityStarted(URI activityGraph, RepositoryConnection con) throws RepositoryException;
+	void activityStarted(URI provenance, URI activityGraph, RepositoryConnection con) throws RepositoryException;
 
-	void activityEnded(URI activityGraph, RepositoryConnection con) throws RepositoryException;
+	void activityEnded(URI provenance, URI activityGraph, RepositoryConnection con) throws RepositoryException;
 }

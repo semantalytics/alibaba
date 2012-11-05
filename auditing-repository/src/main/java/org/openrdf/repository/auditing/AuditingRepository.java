@@ -68,13 +68,10 @@ import org.slf4j.LoggerFactory;
 public class AuditingRepository extends ContextAwareRepository {
 	private static final String FILTER_NOT_EXISTS_ACTIVE_TRIPLES = "FILTER NOT EXISTS { GRAPH ?obsolete {\n\t\t\t"
 				+ "?s ?p ?o\n\t\t\t"
-				+ "FILTER ( !strstarts(str(?obsolete),str(?s)) )\n\t\t\t"
-				+ "FILTER ( !strstarts(str(?obsolete),str(?o)) )\n\t\t\t"
-				+ "FILTER ( !strstarts(str(?s),str(?obsolete)) )\n\t\t\t"
-				+ "FILTER ( !strstarts(str(?o),str(?obsolete)) )\n\t\t\t"
-				+ "FILTER ( !strstarts(str(?p),str(rdf:)) || sameTerm(?p,rdf:type) && ( !isIRI(?o) || !strstarts(str(?o),str(rdf:)) && !strstarts(str(?o),str(prov:)) && !strstarts(str(?o),str(audit:)) ))\n\t\t\t"
-				+ "FILTER ( !strstarts(str(?p),str(prov:)) )\n\t\t\t"
+				+ "FILTER (isIri(?s) && !strstarts(str(?s),str(?obsolete)) )\n\t\t\t"
+				+ "FILTER ( !strstarts(str(?p),str(rdf:)) )\n\t\t\t"
 				+ "FILTER ( !strstarts(str(?p),str(audit:)) )\n\t\t"
+				+ "FILTER ( !strstarts(str(?p),str(prov:)) || sameTerm(?p,prov:wasGeneratedBy) )\n\t\t\t"
 				+ "}}\n\t\t";
 	private static final String SELECT_RECENT = "PREFIX prov:<http://www.w3.org/ns/prov#>\n"
 			+ "PREFIX audit:<http://www.openrdf.org/rdf/2012/auditing#>\n"
@@ -94,11 +91,8 @@ public class AuditingRepository extends ContextAwareRepository {
 			+ "{\n\t\t\t"
 			+ "BIND ($activity AS ?obsolete)\n\t\t"
 			+ "} UNION {\n\t\t\t"
-			+ "$activity prov:wasInformedBy ?obsolete\n\t\t"
-			+ "} UNION {\n\t\t\t"
-			+ "$activity prov:used ?entity . ?obsolete prov:used ?entity\n\t\t"
+			+ "$activity prov:wasInfluencedBy ?obsolete . ?obsolete a audit:Activity\n\t\t"
 			+ "}\n\t\t"
-			+ "FILTER NOT EXISTS { [prov:wasGeneratedBy ?obsolete] }\n\t"
 			+ FILTER_NOT_EXISTS_ACTIVE_TRIPLES
 			+ "FILTER EXISTS { GRAPH ?obsolete { ?s ?p ?o } }\n\t"
 			+ "}\n"
@@ -109,7 +103,7 @@ public class AuditingRepository extends ContextAwareRepository {
 			+ "DELETE {\n\t"
 			+ "GRAPH ?obsolete { ?subject ?predicate ?object }\n"
 			+ "} WHERE {\n\t"
-			+ "?obsolete a audit:ObsoleteActivity; prov:endedAtTime ?endedAtTime\n\t"
+			+ "?obsolete a audit:ObsoleteActivity; prov:wasGeneratedBy [prov:endedAtTime ?endedAtTime]\n\t"
 			+ "FILTER (?endedAtTime < $earlier)\n\t"
 			+ "FILTER NOT EXISTS { ?obsolete a audit:RecentActivity }\n\t"
 			+ FILTER_NOT_EXISTS_ACTIVE_TRIPLES
@@ -302,7 +296,7 @@ public class AuditingRepository extends ContextAwareRepository {
 			throws RepositoryException, MalformedQueryException,
 			UpdateExecutionException {
 		Set<URI> trim = new LinkedHashSet<URI>(recent.size());
-		while (recent.size() >= minRecent || recent.size() >= maxRecent) {
+		while (recent.size() > minRecent || recent.size() > maxRecent) {
 			URI poll = recent.poll();
 			if (poll == null)
 				break;

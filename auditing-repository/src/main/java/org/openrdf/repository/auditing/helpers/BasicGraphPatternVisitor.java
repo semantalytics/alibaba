@@ -55,7 +55,7 @@ import org.openrdf.query.impl.EmptyBindingSet;
 
 public abstract class BasicGraphPatternVisitor extends
 		QueryModelVisitorBase<QueryEvaluationException> {
-	private final ValueFactory vf = ValueFactoryImpl.getInstance();
+	final ValueFactory vf = ValueFactoryImpl.getInstance();
 
 	@Override
 	public abstract void meet(StatementPattern node)

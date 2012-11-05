@@ -81,12 +81,12 @@ import org.openrdf.sail.optimistic.TransactionalSailConnectionWrapper;
 public class AuditingConnection extends TransactionalSailConnectionWrapper {
 	private static final String AUDIT_2012 = "http://www.openrdf.org/rdf/2012/auditing#";
 	private static final String PROV = "http://www.w3.org/ns/prov#";
-	private static final String WAS_INFORMED_BY = PROV + "wasInformedBy";
-	private static final String QUALIFIED_USAGE = PROV + "qualifiedUsage";
-	private static final String ENTITY = PROV + "entity";
+	private static final String WAS_INFLUENCED_BY = PROV + "wasInfluencedBy";
+	private static final String REVISION_OF = PROV + "wasRevisionOf";
 	private static final String GENERATED_BY = PROV + "wasGeneratedBy";
-	private static final String CHANGED = AUDIT_2012 + "changed";
-	private static int MAX_REVISED = 1024;
+	private static final String WITH = AUDIT_2012 + "with";
+	private static final String WITHOUT = AUDIT_2012 + "without";
+	static int MAX_REVISED = 1024;
 	private final AuditingSail sail;
 	private URI trx;
 	private final DatatypeFactory factory;
@@ -105,10 +105,10 @@ public class AuditingConnection extends TransactionalSailConnectionWrapper {
 	private final OperationEntityResolver entityResolver;
 	private Set<? extends Resource> predecessors;
 	private final URI currentTrx;
-	private final URI informedBy;
-	private final URI qualifiedUsage;
-	private final URI usedEntity;
-	private final URI changed;
+	private final URI influencedBy;
+	private final URI with;
+	private final URI without;
+	private final URI revisionOf;
 	private final URI subject;
 	private final URI predicate;
 	private final URI object;
@@ -122,10 +122,10 @@ public class AuditingConnection extends TransactionalSailConnectionWrapper {
 		entityResolver = new OperationEntityResolver(vf);
 		currentTrx = vf.createURI(CURRENT_TRX.stringValue());
 		this.predecessors = predecessors;
-		informedBy = vf.createURI(WAS_INFORMED_BY);
-		qualifiedUsage = vf.createURI(QUALIFIED_USAGE);
-		usedEntity = vf.createURI(ENTITY);
-		changed = vf.createURI(CHANGED);
+		influencedBy = vf.createURI(WAS_INFLUENCED_BY);
+		revisionOf = vf.createURI(REVISION_OF);
+		with = vf.createURI(WITH);
+		without = vf.createURI(WITHOUT);
 		subject = vf.createURI(RDF.SUBJECT.stringValue());
 		predicate = vf.createURI(RDF.PREDICATE.stringValue());
 		object = vf.createURI(RDF.OBJECT.stringValue());
@@ -513,7 +513,7 @@ public class AuditingConnection extends TransactionalSailConnectionWrapper {
 		return true;
 	}
 
-	private void removeInforming(URI activity, URI entity, Resource subj, URI pred,
+	void removeInforming(URI activity, URI entity, Resource subj, URI pred,
 			Value obj, Resource... contexts) throws SailException {
 		if (contexts != null && contexts.length == 0) {
 			CloseableIteration<? extends Statement, SailException> stmts;
@@ -548,25 +548,39 @@ public class AuditingConnection extends TransactionalSailConnectionWrapper {
 	private void reify(URI activity, URI entity, Resource subj, URI pred,
 			Value obj, Resource ctx) throws SailException {
 		String ns = activity.stringValue();
-		if (ctx instanceof URI) {
-			super.addStatement(activity, informedBy, ctx, activity);
-		}
-		if (entity == null || GENERATED_BY.equals(pred.stringValue()))
+		if (!(ctx instanceof URI) || ctx.equals(activity))
 			return;
-		URI operation = vf.createURI(ns + "#" + hash(ctx, entity));
 		if (ctx instanceof URI) {
-			super.addStatement(ctx, qualifiedUsage, operation, activity);
+			super.addStatement(activity, influencedBy, ctx, activity);
 		}
-		super.addStatement(activity, qualifiedUsage, operation, activity);
-		super.addStatement(operation, usedEntity, entity, activity);
-		Resource node = vf.createBNode();
-		super.addStatement(operation, changed, node, activity);
-		super.addStatement(node, subject, subj, activity);
-		super.addStatement(node, predicate, pred, activity);
-		super.addStatement(node, object, obj, activity);
+		if (GENERATED_BY.equals(pred.stringValue())) {
+			if (!ctx.equals(subj)) {
+				URI prev = vf.createURI(ctx.stringValue() + "#" + subj.stringValue());
+				URI next = vf.createURI(ns + "#" + subj.stringValue());
+				super.addStatement(next, revisionOf, prev, activity);
+			}
+		} else if (entity != null && !(subj instanceof URI && !subj.stringValue().startsWith(entity.stringValue()))) {
+			URI prev = vf.createURI(ctx.stringValue() + "#" + entity.stringValue());
+			URI next = vf.createURI(ns + "#" + entity.stringValue());
+			URI node = vf.createURI(ns + "#" + hash(subj, pred, obj));
+			super.addStatement(prev, with, node, ctx);
+			super.addStatement(next, without, node, activity);
+			super.addStatement(node, subject, subj, activity);
+			super.addStatement(node, predicate, pred, activity);
+			super.addStatement(node, object, obj, activity);
+		}
 	}
 
-	private String hash(Resource ctx, Resource entity) {
-		return Integer.toHexString(31 * ctx.hashCode() + entity.hashCode());
+	private String hash(Resource subj, URI pred, Value obj) {
+		long hash = 31 * 31 * subj.hashCode() + 31 * pred.hashCode() + obj.hashCode();
+		if (obj instanceof Literal) {
+			Literal lit = (Literal) obj;
+			if (lit.getLanguage() != null) {
+				hash += lit.getLanguage().hashCode() * 31 * 31 * 31;
+			} else if (lit.getDatatype() != null) {
+				hash += lit.getDatatype().hashCode() * 31 * 31 * 31;
+			}
+		}
+		return Long.toHexString(Math.abs(hash));
 	}
 }
