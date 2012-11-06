@@ -207,9 +207,9 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 	private boolean serializable;
 	private volatile boolean active;
 	/** locked by this */
-	private final Map<AddOperation,MemoryOverflowModel> added = new LinkedHashMap<AddOperation,MemoryOverflowModel>();
+	final Map<AddOperation,MemoryOverflowModel> added = new LinkedHashMap<AddOperation,MemoryOverflowModel>();
 	/** locked by this */
-	private final Map<RemoveOperation,MemoryOverflowModel> removed = new LinkedHashMap<RemoveOperation,MemoryOverflowModel>();
+	final Map<RemoveOperation,MemoryOverflowModel> removed = new LinkedHashMap<RemoveOperation,MemoryOverflowModel>();
 	/** locked by this */
 	private Set<Resource> addedContexts = new HashSet<Resource>();
 	/** locked by this */
@@ -227,7 +227,7 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 	private volatile SailChangeSetEvent event;
 	private volatile boolean listenersIsEmpty = true;
 	private Set<SailConnectionListener> listeners = new HashSet<SailConnectionListener>();
-	private SailConnection delegate;
+	SailConnection delegate;
 	private final AddOperation explicitAdd = new AddOperation() {
 
 		public void addLater(Resource subj, URI pred, Value obj,
@@ -1125,7 +1125,7 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 		}
 	}
 
-	private Resource[] notNull(Resource[] contexts) {
+	Resource[] notNull(Resource[] contexts) {
 		if (contexts == null) {
 			return new Resource[] { null };
 		}
