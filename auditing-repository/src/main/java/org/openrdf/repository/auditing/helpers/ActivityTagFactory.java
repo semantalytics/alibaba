@@ -58,7 +58,7 @@ public class ActivityTagFactory implements ActivityFactory {
 
 	public URI createActivityURI(ValueFactory vf) {
 		String local = uid + seq.getAndIncrement();
-		return vf.createURI(getNamespace(), local);
+		return vf.createURI(getNamespace() + local + "#provenance");
 	}
 
 	public void activityStarted(URI provenance, URI activityGraph, RepositoryConnection con)

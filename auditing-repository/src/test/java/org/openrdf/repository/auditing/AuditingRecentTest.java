@@ -166,8 +166,10 @@ public class AuditingRecentTest extends TestCase {
 		repo.setActivityFactory(new ActivityFactory() {
 
 			public URI createActivityURI(ValueFactory vf) {
-				URI graph = lastActivityGraph = delegate.createActivityURI(vf);
-				return lastProvActivity = vf.createURI(graph.stringValue() + "#prov");
+				URI prov = lastProvActivity = delegate.createActivityURI(vf);
+				String uri = prov.stringValue();
+				lastActivityGraph = vf.createURI(uri.substring(0, uri.indexOf('#')));
+				return prov;
 			}
 
 			public void activityEnded(URI provenance,

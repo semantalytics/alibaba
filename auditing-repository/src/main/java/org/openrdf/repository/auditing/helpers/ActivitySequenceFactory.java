@@ -30,7 +30,7 @@ public class ActivitySequenceFactory implements ActivityFactory {
 	}
 
 	public URI createActivityURI(ValueFactory vf) {
-		return vf.createURI(ns, uid + seq.getAndIncrement());
+		return vf.createURI(ns, uid + seq.getAndIncrement() + "#provenance");
 	}
 
 	public void activityStarted(URI provenance, URI activityGraph, RepositoryConnection con)

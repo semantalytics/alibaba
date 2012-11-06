@@ -30,7 +30,6 @@ import org.openrdf.repository.sail.SailRepository;
 import org.openrdf.rio.RDFHandlerException;
 import org.openrdf.rio.trig.TriGWriter;
 import org.openrdf.sail.Sail;
-import org.openrdf.sail.auditing.AuditingSail;
 import org.openrdf.sail.memory.MemoryStore;
 
 public class ClientAuditingTest extends TestCase {
@@ -163,8 +162,10 @@ public class ClientAuditingTest extends TestCase {
 		repo.setActivityFactory(new ActivityFactory() {
 
 			public URI createActivityURI(ValueFactory vf) {
-				URI graph = lastActivityGraph = delegate.createActivityURI(vf);
-				return lastProvActivity = vf.createURI(graph.stringValue() + "#prov");
+				URI prov = lastProvActivity = delegate.createActivityURI(vf);
+				String uri = prov.stringValue();
+				lastActivityGraph = vf.createURI(uri.substring(0, uri.indexOf('#')));
+				return prov;
 			}
 
 			public void activityEnded(URI provenance,
