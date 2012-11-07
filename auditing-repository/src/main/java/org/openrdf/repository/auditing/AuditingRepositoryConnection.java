@@ -75,7 +75,7 @@ import org.openrdf.repository.contextaware.ContextAwareConnection;
 public class AuditingRepositoryConnection extends ContextAwareConnection {
 
 	private static final int MAX_SIZE = 1024;
-	private static final String RECENT_ACTIVITY = "http://www.openrdf.org/rdf/2012/auditing#RecentActivity";
+	private static final String RECENT_BUNDLE = "http://www.openrdf.org/rdf/2012/auditing#RecentBundle";
 	private static final String GENERATED = "http://www.w3.org/ns/prov#generated";
 	private static final String WAS_GENERATED_BY = "http://www.w3.org/ns/prov#wasGeneratedBy";
 	private static final String SPECIALIZATION_OF = "http://www.w3.org/ns/prov#specializationOf";
@@ -128,7 +128,8 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 	private final URI provWasGeneratedBy;
 	private Map<URI, URI> uncommittedActivityGraphs = new LinkedHashMap<URI, URI>();
 	private ActivityFactory activityFactory;
-	private String provenance = "#provenance";
+	private URI insertContext;
+	private URI activityURI;
 
 	public AuditingRepositoryConnection(AuditingRepository repository,
 			RepositoryConnection connection) throws RepositoryException {
@@ -154,22 +155,23 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 
 	@Override
 	public synchronized URI getInsertContext() {
-		URI activityGraph = super.getInsertContext();
+		URI bundle = super.getInsertContext();
 		ActivityFactory activityFactory = getActivityFactory();
-		if (activityGraph == null && activityFactory != null) {
-			URI uri = activityFactory.createActivityURI(getValueFactory());
-			String str = uri.stringValue();
+		if (bundle == null && activityFactory != null) {
+			ValueFactory vf = getValueFactory();
+			activityURI = activityFactory.createActivityURI(bundle, vf);
+			String str = activityURI.stringValue();
 			int h = str.indexOf('#');
 			if (h > 0) {
-				uri = getValueFactory().createURI(str.substring(0, h));
-				provenance = str.substring(h);
+				insertContext = vf.createURI(str.substring(0, h));
+				setInsertContext(insertContext);
 			} else {
-				provenance = "#provenance";
+				insertContext = activityURI;
+				setInsertContext(activityURI);
 			}
-			setInsertContext(uri);
 			return super.getInsertContext();
 		}
-		return activityGraph;
+		return bundle;
 	}
 
 	@Override
@@ -504,7 +506,7 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 		URI provActivity = uncommittedActivityGraphs.get(activityGraph);
 		RepositoryConnection con = getDelegate();
 		if (provActivity == null) {
-			provActivity = getValueFactory().createURI(activityGraph.stringValue() +  provenance);
+			provActivity = getActivityURI(activityGraph);
 			uncommittedActivityGraphs.put(activityGraph, provActivity);
 			ActivityFactory activityFactory = getActivityFactory();
 			if (activityFactory != null) {
@@ -530,6 +532,19 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 				generated(provActivity, entity, activityGraph, activityGraph, con);
 			}
 		}
+	}
+
+	private synchronized URI getActivityURI(URI insertContext) {
+		if (insertContext == null)
+			return null;
+		if (insertContext.equals(this.insertContext))
+			return activityURI;
+		ActivityFactory af = getActivityFactory();
+		if (af == null)
+			return null;
+		this.insertContext = insertContext;
+		ValueFactory vf = getValueFactory();
+		return activityURI = af.createActivityURI(insertContext, vf);
 	}
 
 	private void generated(URI provActivity, URI entity, URI targetGraph, URI activityGraph,
@@ -575,7 +590,7 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 	}
 
 	private void addMetadata(URI provActivity, URI activityGraph) throws RepositoryException {
-		URI recentActivity = getValueFactory().createURI(RECENT_ACTIVITY);
+		URI recentActivity = getValueFactory().createURI(RECENT_BUNDLE);
 		getDelegate().add(activityGraph, RDF.TYPE, recentActivity, activityGraph);
 	}
 
