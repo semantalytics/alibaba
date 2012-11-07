@@ -176,9 +176,9 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 
 	@Override
 	public void commit() throws RepositoryException {
-		Map<URI,URI> recentActivities = finalizeBundles();
+		Map<URI,URI> recentBundles = finalizeBundles();
 		super.commit();
-		closeBundle(recentActivities);
+		closeBundle(recentBundles);
 	}
 
 	@Override
@@ -569,18 +569,19 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 
 	private synchronized Map<URI,URI> finalizeBundles()
 			throws RepositoryException {
-		Map<URI, URI> recentActivities = uncommittedBundles;
-		int size = recentActivities.size();
+		Map<URI, URI> recentBundles = uncommittedBundles;
+		int size = recentBundles.size();
 		uncommittedBundles = new LinkedHashMap<URI,URI>(size);
-		for (Map.Entry<URI, URI> e : recentActivities.entrySet()) {
+		for (Map.Entry<URI, URI> e : recentBundles.entrySet()) {
 			addMetadata(e.getValue(), e.getKey());
 			if (getRepository().isTransactional()) {
 				finalizeBundle(e.getValue(), e.getKey());
 			}
 		}
+		uncommittedBundles.clear();
 		modifiedGraphs.clear();
 		modifiedEntities.clear();
-		return recentActivities;
+		return recentBundles;
 	}
 
 	private synchronized void reset() {
@@ -610,7 +611,7 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 
 	private void closeBundle(Map<URI, URI> recentBundles)
 			throws RepositoryException {
-		getRepository().addRecentActivities(recentBundles.keySet());
+		getRepository().addRecentBundles(recentBundles.keySet());
 		if (!getRepository().isTransactional()) {
 			for (Map.Entry<URI, URI> e : recentBundles.entrySet()) {
 				balanceBundle(e.getValue(), e.getKey());

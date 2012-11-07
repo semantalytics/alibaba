@@ -313,9 +313,9 @@ public class AuditingRepository extends ContextAwareRepository {
 		return con;
 	}
 
-	synchronized void addRecentActivities(Collection<URI> recentActivities)
+	synchronized void addRecentBundles(Collection<URI> recentBundles)
 			throws RepositoryException {
-		recent.addAll(recentActivities);
+		recent.addAll(recentBundles);
 	}
 
 	void cleanup() {

@@ -99,6 +99,7 @@ public class ClientAuditingTest extends TestCase {
 
 	private AuditingRepositoryConnection commit(AuditingRepository repo,AuditingRepositoryConnection conn)
 			throws Exception {
+		conn.commit();
 		conn.setAutoCommit(true);
 		conn.close();
 		return repo.getConnection();
@@ -229,6 +230,7 @@ public class ClientAuditingTest extends TestCase {
 				"    ",
 				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#', str(<carmichael>)))",
 				"    FILTER strstarts(str(?provenance1), concat(str(?activity1), '#'))",
+				"    FILTER NOT EXISTS { ?provenance1 prov:endedAtTime ?ended2 FILTER (?ended1 != ?ended2) }",
 				"}"));
 	}
 
