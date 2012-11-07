@@ -95,7 +95,7 @@ public class ObjectConnection extends ContextAwareConnection {
 	private final Set<Resource> merged = new HashSet<Resource>();
 	private final Map<Class<?>, Map<Integer, ObjectQuery>> queries = new HashMap<Class<?>, Map<Integer, ObjectQuery>>();
 	private final BlobStore blobs;
-	private URI activityURI;
+	private URI versionBundle;
 	private BlobVersion blobVersion;
 
 	protected ObjectConnection(ObjectRepository repository,
@@ -120,27 +120,27 @@ public class ObjectConnection extends ContextAwareConnection {
 	 * 
 	 * @return a {@link URI} representing the current connection or null
 	 */
-	public URI getActivityURI() {
-		return activityURI;
+	public URI getVersionBundle() {
+		return versionBundle;
 	}
 
 	/**
-	 * Assigns an activity URI to this connection to be used for new blob
-	 * versions and the default insert graph.
+	 * Assigns a URI to this connection to be used for new blob versions and the
+	 * default insert graph.
 	 * 
-	 * @param activity
+	 * @param bundle
 	 *            a unique URI
 	 */
-	public void setActivityURI(URI activity) {
-		activityURI = activity;
+	public void setVersionBundle(URI bundle) {
+		versionBundle = bundle;
 		if (null == getInsertContext()) {
-			setInsertContext(activity);
+			setInsertContext(bundle);
 		}
 	}
 
 	public String toString() {
 		try {
-			URI uri = getActivityURI();
+			URI uri = getVersionBundle();
 			if (uri == null)
 				return getDelegate().toString();
 			return uri.stringValue();
@@ -616,7 +616,7 @@ public class ObjectConnection extends ContextAwareConnection {
 			if (blobVersion == null && isAutoCommit()) {
 				return blobs.open(uri);
 			} else if (blobVersion == null) {
-				URI version = getActivityURI();
+				URI version = getVersionBundle();
 				if (version == null) {
 					blobVersion = blobs.newVersion();
 				} else {
