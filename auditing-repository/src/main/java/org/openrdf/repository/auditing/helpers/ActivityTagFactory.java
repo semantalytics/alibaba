@@ -25,6 +25,7 @@ import org.openrdf.repository.auditing.ActivityFactory;
  * 
  */
 public class ActivityTagFactory implements ActivityFactory {
+	private static final String FRAGMENT = "#activity";
 	public static final URI ENDED_AT = new URIImpl(
 			"http://www.w3.org/ns/prov#endedAtTime");
 	private static final String uid = "t"
@@ -64,9 +65,9 @@ public class ActivityTagFactory implements ActivityFactory {
 
 	public URI createActivityURI(URI bundle, ValueFactory vf) {
 		if (bundle != null)
-			return vf.createURI(bundle.stringValue() + "#provenance");
+			return vf.createURI(bundle.stringValue() + FRAGMENT);
 		String local = uid + seq.getAndIncrement();
-		return vf.createURI(getNamespace() + local + "#provenance");
+		return vf.createURI(getNamespace() + local + FRAGMENT);
 	}
 
 	public void activityStarted(URI activity, URI bundle,

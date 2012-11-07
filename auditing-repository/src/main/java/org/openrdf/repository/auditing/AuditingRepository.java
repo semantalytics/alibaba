@@ -84,20 +84,20 @@ public class AuditingRepository extends ContextAwareRepository {
 			+ "SELECT REDUCED ?recent { ?recent a audit:RecentBundle\n\t"
 			+ "OPTIONAL { ?recent prov:endedAtTime ?endedAtTime } }\n"
 			+ "ORDER BY ?endedAtTime";
-	private static final String TRIM_RECENT_ACTIVITY = "PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n"
+	private static final String TRIM_RECENT_BUNDLE = "PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n"
 			+ "PREFIX prov:<http://www.w3.org/ns/prov#>\n"
 			+ "PREFIX audit:<http://www.openrdf.org/rdf/2012/auditing#>\n"
 			+ "DELETE {\n\t"
-			+ "GRAPH $activity { $activity a audit:RecentBundle }\n"
+			+ "GRAPH $bundle { $bundle a audit:RecentBundle }\n"
 			+ "} INSERT {\n\t"
 			+ "GRAPH ?obsolete { ?obsolete a audit:ObsoleteBundle }\n"
 			+ "} WHERE {\n\t"
-			+ "$activity a audit:RecentBundle\n\t"
+			+ "$bundle a audit:RecentBundle\n\t"
 			+ "OPTIONAL {\n\t\t"
 			+ "{\n\t\t\t"
-			+ "BIND ($activity AS ?obsolete)\n\t\t"
+			+ "BIND ($bundle AS ?obsolete)\n\t\t"
 			+ "} UNION {\n\t\t\t"
-			+ "$activity prov:wasInfluencedBy ?obsolete\n\t\t"
+			+ "$bundle prov:wasInfluencedBy ?obsolete\n\t\t"
 			+ "}\n\t\t"
 			+ FILTER_NOT_EXISTS_ACTIVE_TRIPLES
 			+ "FILTER EXISTS { GRAPH ?obsolete { ?s ?p ?o } }\n\t"
@@ -354,7 +354,7 @@ public class AuditingRepository extends ContextAwareRepository {
 			long later = System.currentTimeMillis();
 			if (delay && puringTask != null) {
 				if (later - now > 1000) {
-					logger.info("Purged the obsolete activities in {} seconds", (later - now) / 1000.0);
+					logger.info("Purged the obsolete bundles in {} seconds", (later - now) / 1000.0);
 					synchronized (puringTask) {
 						puringTask.wait(later - now);
 					}
@@ -400,8 +400,8 @@ public class AuditingRepository extends ContextAwareRepository {
 			Iterator<URI> iter = trim.iterator();
 			while (iter.hasNext()) {
 				con.setAutoCommit(false);
-				Update update = con.prepareUpdate(SPARQL, TRIM_RECENT_ACTIVITY);
-				update.setBinding("activity", iter.next());
+				Update update = con.prepareUpdate(SPARQL, TRIM_RECENT_BUNDLE);
+				update.setBinding("bundle", iter.next());
 				update.execute();
 				con.setAutoCommit(true);
 				iter.remove();
