@@ -229,7 +229,7 @@ public class AuditingOptimisticTest extends TestCase {
 				"    <carmichael> foaf:knows <harris> .",
 				"    <carmichael> prov:wasGeneratedBy ?provenance1 .",
 				"    ",
-				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#', str(<carmichael>)))",
+				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#!', str(<carmichael>)))",
 				"    FILTER strstarts(str(?provenance1), concat(str(?activity1), '#'))",
 				"}"));
 	}
@@ -339,8 +339,8 @@ public class AuditingOptimisticTest extends TestCase {
 				"    <carmichael> foaf:knows <harris> .",
 				"    <johnston> foaf:knows <carmichael> .",
 				"    ",
-				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#', str(<carmichael>)))",
-				"    FILTER (str(?johnston1) = concat(str(?activity1), '#', str(<johnston>)))",
+				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#!', str(<carmichael>)))",
+				"    FILTER (str(?johnston1) = concat(str(?activity1), '#!', str(<johnston>)))",
 				"    FILTER NOT EXISTS { ?activity1 a audit:ObsoleteBundle }",
 				"    FILTER NOT EXISTS { ?e prov:wasGeneratedBy ?p FILTER (?e != ?activity1) }",
 				"}",
@@ -361,9 +361,9 @@ public class AuditingOptimisticTest extends TestCase {
 				"    <harris> foaf:knows <jackson> .",
 				"    <jackson> foaf:knows <johnston> .",
 				"    ",
-				"    FILTER (str(?carmichael2) = concat(str(?activity2), '#', str(<carmichael>)))",
-				"    FILTER (str(?harris2) = concat(str(?activity2), '#', str(<harris>)))",
-				"    FILTER (str(?jackson2) = concat(str(?activity2), '#', str(<jackson>)))",
+				"    FILTER (str(?carmichael2) = concat(str(?activity2), '#!', str(<carmichael>)))",
+				"    FILTER (str(?harris2) = concat(str(?activity2), '#!', str(<harris>)))",
+				"    FILTER (str(?jackson2) = concat(str(?activity2), '#!', str(<jackson>)))",
 				"    FILTER NOT EXISTS { ?activity2 a audit:ObsoleteBundle }",
 				"    FILTER NOT EXISTS { ?e prov:wasGeneratedBy ?p FILTER (?e != ?activity2) }",
 				"}",
@@ -393,8 +393,8 @@ public class AuditingOptimisticTest extends TestCase {
 				"    <macDonald> foaf:knows <varley> ; prov:wasGeneratedBy ?provenance3 .",
 				"    <varley> foaf:knows <thomson> ; prov:wasGeneratedBy ?provenance3 .",
 				"    ",
-				"    FILTER (str(?johnston3) = concat(str(?activity3), '#', str(<johnston>)))",
-				"    FILTER (str(?lismer3) = concat(str(?activity3), '#', str(<lismer>)))",
+				"    FILTER (str(?johnston3) = concat(str(?activity3), '#!', str(<johnston>)))",
+				"    FILTER (str(?lismer3) = concat(str(?activity3), '#!', str(<lismer>)))",
 				"    FILTER NOT EXISTS { ?activity3 a audit:ObsoleteBundle }",
 				"}"));
 	}
@@ -425,7 +425,7 @@ public class AuditingOptimisticTest extends TestCase {
 				"    ?carmichael1 prov:specializationOf <carmichael> ;",
 				"        audit:with ?triple .",
 				"    ",
-				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#', str(<carmichael>)))",
+				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#!', str(<carmichael>)))",
 				"    FILTER NOT EXISTS { <carmichael> prov:wasGeneratedBy ?activity1 }",
 				"    FILTER NOT EXISTS { <carmichael> prov:wasGeneratedBy ?provenance1 }",
 				"}",
@@ -447,7 +447,7 @@ public class AuditingOptimisticTest extends TestCase {
 				"    ",
 				"    <carmichael> prov:wasGeneratedBy ?provenance2 .",
 				"    ",
-				"    FILTER (str(?carmichael2) = concat(str(?activity2), '#', str(<carmichael>)))",
+				"    FILTER (str(?carmichael2) = concat(str(?activity2), '#!', str(<carmichael>)))",
 				"    FILTER NOT EXISTS { ?activity1 prov:wasGeneratedBy ?provenance2 }",
 				"    FILTER NOT EXISTS { ?activity2 a audit:ObsoleteBundle }",
 				"}"));
@@ -935,7 +935,7 @@ public class AuditingOptimisticTest extends TestCase {
 				"    <carmichael> foaf:knows <harris> .",
 				"    <carmichael> prov:wasGeneratedBy ?provenance1 .",
 				"    ",
-				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#', str(<carmichael>)))",
+				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#!', str(<carmichael>)))",
 				"}"));
 	}
 
@@ -965,7 +965,7 @@ public class AuditingOptimisticTest extends TestCase {
 				"    ?carmichael1 prov:specializationOf <carmichael> ;",
 				"        audit:with ?triple .",
 				"    ",
-				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#', str(<carmichael>)))",
+				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#!', str(<carmichael>)))",
 				"}",
 				"GRAPH ?activity2 {",
 				"    ?activity2 a prov:Bundle ;",
@@ -985,7 +985,7 @@ public class AuditingOptimisticTest extends TestCase {
 				"    ",
 				"    <carmichael> prov:wasGeneratedBy ?provenance2 .",
 				"    ",
-				"    FILTER (str(?carmichael2) = concat(str(?activity2), '#', str(<carmichael>)))",
+				"    FILTER (str(?carmichael2) = concat(str(?activity2), '#!', str(<carmichael>)))",
 				"    FILTER NOT EXISTS { ?activity2 a audit:ObsoleteBundle }",
 				"}"));
 	}
@@ -1121,7 +1121,7 @@ public class AuditingOptimisticTest extends TestCase {
 				"    <carmichael> foaf:knows <harris> .",
 				"    <carmichael> prov:wasGeneratedBy ?provenance1 .",
 				"    ",
-				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#', str(<carmichael>)))",
+				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#!', str(<carmichael>)))",
 				"}"));
 	}
 
@@ -1153,7 +1153,7 @@ public class AuditingOptimisticTest extends TestCase {
 				"    <carmichael> foaf:knows <harris> .",
 				"    <carmichael> prov:wasGeneratedBy ?provenance1 .",
 				"    ",
-				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#', str(<carmichael>)))",
+				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#!', str(<carmichael>)))",
 				"}"));
 	}
 
@@ -1189,9 +1189,48 @@ public class AuditingOptimisticTest extends TestCase {
 				"    <carmichael> prov:wasGeneratedBy ?provenance1 .",
 				"    <graph> prov:wasGeneratedBy ?provenance1 .",
 				"    ",
-				"    FILTER (str(?graph1) = concat(str(?activity1), '#', str(<graph>)))",
-				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#', str(<carmichael>)))",
+				"    FILTER (str(?graph1) = concat(str(?activity1), '#!', str(<graph>)))",
+				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#!', str(<carmichael>)))",
 				"    FILTER strstarts(str(?provenance1), concat(str(?activity1), '#'))",
+				"}"));
+	}
+
+	public void testAddHashGraph() throws Exception {
+		begin(con);
+		assertTrue(con.isEmpty());
+		String other = con.getInsertContext() + "#other-graph";
+		con.add(carmichael, knows, harris, vf.createURI(other));
+		con = commit(repo, con);
+		assertTrue(con.hasStatement(carmichael, knows, harris, false));
+		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
+		assertFalse(con.hasStatement(null, null, null, false, new Resource[]{null}));
+		assertEquals(2, con.getContextIDs().asList().size());
+		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
+		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
+		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
+		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
+		assertFalse(con.hasStatement(null, INFLUENCED_BY, null, false));
+		assertFalse(con.hasStatement(null, WITHOUT, null, false));
+		assertTrue(ask(
+				"GRAPH ?other {",
+				"    <carmichael> foaf:knows <harris>",
+				"}",
+				"GRAPH ?activity1 {",
+				"    ?activity1 a prov:Bundle ;",
+				"        prov:wasGeneratedBy ?provenance1 .",
+				"    ",
+				"    ?provenance1 prov:endedAtTime ?ended1 ;",
+				"        prov:generated ?carmichael1, ?other .",
+				"    ",
+				"    ?carmichael1 prov:specializationOf <carmichael> .",
+				"    ",
+				"    <carmichael> prov:wasGeneratedBy ?provenance1 .",
+				"    ?other prov:wasGeneratedBy ?provenance1 .",
+				"    ",
+				"    FILTER (str(?other) = concat(str(?activity1), '#other-graph'))",
+				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#!', str(<carmichael>)))",
+				"    FILTER strstarts(str(?provenance1), concat(str(?activity1), '#'))",
+				"    FILTER NOT EXISTS { ?something prov:specializationOf ?other }",
 				"}"));
 	}
 
@@ -1227,7 +1266,7 @@ public class AuditingOptimisticTest extends TestCase {
 				"    <carmichael> prov:wasGeneratedBy ?provenance1 .",
 				"    <graph> prov:wasGeneratedBy ?provenance1 .",
 				"    ",
-				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#', str(<carmichael>)))",
+				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#!', str(<carmichael>)))",
 				"    FILTER strstarts(str(?provenance1), concat(str(?activity1), '#'))",
 				"}"));
 	}
@@ -1264,7 +1303,7 @@ public class AuditingOptimisticTest extends TestCase {
 				"    <carmichael> prov:wasGeneratedBy ?provenance1 .",
 				"    <graph> prov:wasGeneratedBy ?provenance1 .",
 				"    ",
-				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#', str(<carmichael>)))",
+				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#!', str(<carmichael>)))",
 				"    FILTER strstarts(str(?provenance1), concat(str(?activity1), '#'))",
 				"}"));
 	}
@@ -1299,7 +1338,7 @@ public class AuditingOptimisticTest extends TestCase {
 				"    ?graph1 prov:specializationOf <graph> .",
 				"    ?carmichael1 prov:specializationOf <carmichael> .",
 				"    ",
-				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#', str(<carmichael>)))",
+				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#!', str(<carmichael>)))",
 				"}",
 				"GRAPH ?activity2 {",
 				"    ?activity2 a prov:Bundle ;",
@@ -1323,8 +1362,62 @@ public class AuditingOptimisticTest extends TestCase {
 				"    <carmichael> prov:wasGeneratedBy ?provenance2 .",
 				"    <graph> prov:wasGeneratedBy ?provenance2 .",
 				"    ",
-				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#', str(<carmichael>)))",
-				"    FILTER (str(?carmichael2) = concat(str(?activity2), '#', str(<carmichael>)))",
+				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#!', str(<carmichael>)))",
+				"    FILTER (str(?carmichael2) = concat(str(?activity2), '#!', str(<carmichael>)))",
+				"    FILTER NOT EXISTS { ?activity2 a audit:ObsoleteBundle }",
+				"}"));
+	}
+
+	public void testDeleteHashGraph() throws Exception {
+		begin(con);
+		assertTrue(con.isEmpty());
+		String other = con.getInsertContext() + "#other-graph";
+		con.add(carmichael, knows, harris, vf.createURI(other));
+		con = reopen(repo, con);
+		con.prepareUpdate(QueryLanguage.SPARQL, "DELETE DATA { <carmichael> <http://xmlns.com/foaf/0.1/knows> <harris> }", "http://example.com/").execute();
+		con = commit(repo, con);
+		assertFalse(con.hasStatement(carmichael, knows, harris, false));
+		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
+		assertEquals(2, con.getContextIDs().asList().size());
+		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
+		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
+		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
+		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
+		assertTrue(con.hasStatement(null, INFLUENCED_BY, null, false));
+		assertTrue(con.hasStatement(null, WITHOUT, null, false));
+		assertTrue(ask("GRAPH ?activity1 {",
+				"    ?activity1 a audit:ObsoleteBundle, prov:Bundle ;",
+				"        prov:wasGeneratedBy ?provenance1 .",
+				"    ",
+				"    ?provenance1 prov:endedAtTime ?ended1 ;",
+				"        prov:generated ?other, ?carmichael1 .",
+				"    ",
+				"    ?carmichael1 prov:specializationOf <carmichael> .",
+				"    ",
+				"    ?other prov:wasGeneratedBy ?provenance1 .",
+				"    FILTER strends(str(?other), '#other-graph')",
+				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#!', str(<carmichael>)))",
+				"}",
+				"GRAPH ?activity2 {",
+				"    ?activity2 a prov:Bundle ;",
+				"        prov:wasInfluencedBy ?other, ?activity1 ;",
+				"        prov:wasGeneratedBy ?provenance2 .",
+				"    ",
+				"    ?provenance2 prov:endedAtTime ?ended2 ;",
+				"        prov:generated ?carmichael2 .",
+				"    ",
+				"    ?carmichael2 prov:specializationOf <carmichael> ;",
+				"        prov:wasRevisionOf ?carmichael1 ;",
+				"        audit:without ?triple .",
+				"    ",
+				"    ?triple rdf:subject <carmichael> ;",
+				"            rdf:predicate foaf:knows ;",
+				"            rdf:object <harris> .",
+				"    ",
+				"    <carmichael> prov:wasGeneratedBy ?provenance2 .",
+				"    ",
+				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#!', str(<carmichael>)))",
+				"    FILTER (str(?carmichael2) = concat(str(?activity2), '#!', str(<carmichael>)))",
 				"    FILTER NOT EXISTS { ?activity2 a audit:ObsoleteBundle }",
 				"}"));
 	}

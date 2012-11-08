@@ -144,8 +144,8 @@ public class AuditingConnection extends TransactionalSailConnectionWrapper {
 	public void executeUpdate(UpdateExpr updateExpr, Dataset ds,
 			BindingSet bindings, boolean includeInferred) throws SailException {
 		SailConnection remover = this;
-		final URI activity = ds == null ? null : ds.getDefaultInsertGraph();
-		if (activity != null) {
+		final URI bundle = ds == null ? null : ds.getDefaultInsertGraph();
+		if (bundle != null) {
 			QueryModelNode node = updateExpr;
 			if (updateExpr instanceof Modify) {
 				node = ((Modify) updateExpr).getDeleteExpr();
@@ -154,7 +154,7 @@ public class AuditingConnection extends TransactionalSailConnectionWrapper {
 			remover = new SailConnectionWrapper(this) {
 				public void removeStatements(Resource subj, URI pred,
 						Value obj, Resource... ctx) throws SailException {
-					removeInforming(activity, entity, subj, pred, obj, ctx);
+					removeInforming(bundle, entity, subj, pred, obj, ctx);
 				}
 			};
 		}
@@ -173,12 +173,12 @@ public class AuditingConnection extends TransactionalSailConnectionWrapper {
 	public void executeDelete(UpdateExpr updateExpr, Dataset ds,
 			BindingSet bindings, Resource subj, URI pred, Value obj,
 			Resource... ctx) throws SailException {
-		URI activity = ds == null ? null : ds.getDefaultInsertGraph();
-		if (activity == null) {
+		URI bundle = ds == null ? null : ds.getDefaultInsertGraph();
+		if (bundle == null) {
 			removeStatements(subj, pred, obj, ctx);
 		} else {
 			URI entity = entityResolver.getEntity(updateExpr, ds, bindings);
-			removeInforming(activity, entity, subj, pred, obj, ctx);
+			removeInforming(bundle, entity, subj, pred, obj, ctx);
 		}
 	}
 
@@ -513,7 +513,7 @@ public class AuditingConnection extends TransactionalSailConnectionWrapper {
 		return true;
 	}
 
-	void removeInforming(URI activity, URI entity, Resource subj, URI pred,
+	void removeInforming(URI bundle, URI entity, Resource subj, URI pred,
 			Value obj, Resource... contexts) throws SailException {
 		if (contexts != null && contexts.length == 0) {
 			CloseableIteration<? extends Statement, SailException> stmts;
@@ -525,49 +525,54 @@ public class AuditingConnection extends TransactionalSailConnectionWrapper {
 					subj = st.getSubject();
 					pred = st.getPredicate();
 					obj = st.getObject();
-					removeInformingGraph(activity, entity, subj, pred, obj, ctx);
+					removeInformingGraph(bundle, entity, subj, pred, obj, ctx);
 				}
 			} finally {
 				stmts.close();
 			}
 		} else if (contexts == null) {
-			removeInformingGraph(activity, entity, subj, pred, obj, null);
+			removeInformingGraph(bundle, entity, subj, pred, obj, null);
 		} else {
 			for (Resource ctx : contexts) {
-				removeInformingGraph(activity, entity, subj, pred, obj, ctx);
+				removeInformingGraph(bundle, entity, subj, pred, obj, ctx);
 			}
 		}
 	}
 
-	private void removeInformingGraph(URI activity, URI entity, Resource subj,
+	private void removeInformingGraph(URI bundle, URI entity, Resource subj,
 			URI pred, Value obj, Resource ctx) throws SailException {
-		reify(activity, entity, subj, pred, obj, ctx);
+		reify(bundle, entity, subj, pred, obj, ctx);
 		super.removeStatements(subj, pred, obj, ctx);
 	}
 
-	private void reify(URI activity, URI entity, Resource subj, URI pred,
+	private void reify(URI bundle, URI entity, Resource subj, URI pred,
 			Value obj, Resource ctx) throws SailException {
-		String ns = activity.stringValue();
-		if (!(ctx instanceof URI) || ctx.equals(activity))
+		String ns = bundle.stringValue();
+		if (!(ctx instanceof URI) || ctx.equals(bundle))
 			return;
 		if (ctx instanceof URI) {
-			super.addStatement(activity, influencedBy, ctx, activity);
+			super.addStatement(bundle, influencedBy, ctx, bundle);
 		}
+		String graph = ctx.stringValue();
 		if (GENERATED_BY.equals(pred.stringValue())) {
 			if (!ctx.equals(subj)) {
-				URI prev = vf.createURI(ctx.stringValue() + "#" + subj.stringValue());
-				URI next = vf.createURI(ns + "#" + subj.stringValue());
-				super.addStatement(next, revisionOf, prev, activity);
+				URI prev = vf.createURI(graph + "#!" + subj.stringValue());
+				URI next = vf.createURI(ns + "#!" + subj.stringValue());
+				super.addStatement(next, revisionOf, prev, bundle);
 			}
-		} else if (entity != null && !(subj instanceof URI && !subj.stringValue().startsWith(entity.stringValue()))) {
-			URI prev = vf.createURI(ctx.stringValue() + "#" + entity.stringValue());
-			URI next = vf.createURI(ns + "#" + entity.stringValue());
-			URI node = vf.createURI(ns + "#" + hash(subj, pred, obj));
-			super.addStatement(prev, with, node, ctx);
-			super.addStatement(next, without, node, activity);
-			super.addStatement(node, subject, subj, activity);
-			super.addStatement(node, predicate, pred, activity);
-			super.addStatement(node, object, obj, activity);
+		} else if (entity != null
+				&& !(subj instanceof URI && !subj.stringValue().startsWith(
+						entity.stringValue()))) {
+			URI next = vf.createURI(ns + "#!" + entity.stringValue());
+			URI node = vf.createURI(ns + "#!" + hash(subj, pred, obj));
+			super.addStatement(next, without, node, bundle);
+			super.addStatement(node, subject, subj, bundle);
+			super.addStatement(node, predicate, pred, bundle);
+			super.addStatement(node, object, obj, bundle);
+			if (graph.indexOf('#') < 0) {
+				String prev = graph + "#!" + entity.stringValue();
+				super.addStatement(vf.createURI(prev), with, node, ctx);
+			}
 		}
 	}
 

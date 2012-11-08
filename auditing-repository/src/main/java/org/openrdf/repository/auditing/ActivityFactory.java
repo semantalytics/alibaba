@@ -21,7 +21,8 @@ public interface ActivityFactory {
 	 * @param bundle
 	 *            the default insert context (a prov:Bundle)
 	 * @param vf
-	 * @return the prov:Activity URI for this insert context
+	 * @return the prov:Activity URI for this insert context or null if no
+	 *         activity
 	 */
 	URI createActivityURI(URI bundle, ValueFactory vf);
 

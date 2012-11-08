@@ -85,20 +85,21 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 			+ "GRAPH ?influencedBy { ?entity prov:wasGeneratedBy ?generatedBy }\n"
 			+ "} INSERT {\n\t"
 			+ "GRAPH $bundle { ?used prov:wasGeneratedBy $activity }\n"
-			+ "GRAPH $bundle { $activity prov:generated ?generated . ?generated prov:specializationOf ?entity }\n\t"
+			+ "GRAPH $bundle { $activity prov:generated ?generated . ?specialization prov:specializationOf ?entity }\n\t"
 			+ "GRAPH $bundle { ?entity prov:wasGeneratedBy $activity }\n"
 			+ "} WHERE {\n\t"
 			+ "{\n\t\t"
 			+ "GRAPH $bundle { $activity prov:generated ?gen . ?gen prov:specializationOf ?used }\n\t\t"
 			+ "GRAPH ?influencedBy { ?used prov:wasGeneratedBy ?generatedBy } FILTER (?influencedBy != $bundle)\n\t\t"
-			+ "BIND (iri(concat(str(?influencedBy),'#',str(?used))) AS ?revised)\n\t"
+			+ "BIND (iri(concat(str(?influencedBy),'#!',str(?used))) AS ?revised)\n\t"
 			+ "} UNION {\n\t\t"
 			+ "GRAPH $bundle { ?entity prov:wasGeneratedBy $activity }\n\t\t"
 			+ "FILTER ($bundle != ?entity)\n\t\t"
 			+ "OPTIONAL { GRAPH ?influencedBy { ?entity prov:wasGeneratedBy ?generatedBy }\n\t\t\t"
-			+ "BIND (iri(concat(str(?influencedBy),'#',str(?entity))) AS ?revised)\n\t\t\t"
+			+ "BIND (iri(concat(str(?influencedBy),'#!',str(?entity))) AS ?revised)\n\t\t\t"
 			+ "FILTER (?influencedBy != $bundle) }\n\t\t"
-			+ "BIND (iri(concat(str($bundle),'#',str(?entity))) AS ?generated)\n\t"
+			+ "BIND (if(contains(str(?entity),'#'),?entity,iri(concat(str($bundle),'#!',str(?entity)))) AS ?generated)\n\t"
+			+ "BIND (if(contains(str(?entity),'#'),?nil,iri(concat(str($bundle),'#!',str(?entity)))) AS ?specialization)\n\t"
 			+ "} UNION {\n\t\t"
 			+ "GRAPH $bundle { ?resource ?predicate ?object }\n\t\t"
 			+ "FILTER isIri(?resource)\n\t\t"
@@ -106,9 +107,10 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 			+ "BIND ( if( contains(str(?resource),\"#\"), iri(strbefore(str(?resource),\"#\")), ?resource ) AS ?entity)\n\t\t"
 			+ "FILTER ( !sameTerm($bundle,?entity) )\n\t\t"
 			+ "OPTIONAL { GRAPH ?influencedBy { ?entity prov:wasGeneratedBy ?generatedBy }\n\t\t\t"
-			+ "BIND (iri(concat(str(?influencedBy),'#',str(?entity))) AS ?revised)}\n\t\t"
+			+ "BIND (iri(concat(str(?influencedBy),'#!',str(?entity))) AS ?revised)}\n\t\t"
 			+ "FILTER (!bound(?influencedBy) || ?influencedBy != $bundle)\n\t\t"
-			+ "BIND (iri(concat(str($bundle),'#',str(?entity))) AS ?generated)\n\t"
+			+ "BIND (if(contains(str(?entity),'#'),?entity,iri(concat(str($bundle),'#!',str(?entity)))) AS ?generated)\n\t"
+			+ "BIND (if(contains(str(?entity),'#'),?nil,iri(concat(str($bundle),'#!',str(?entity)))) AS ?specialization)\n\t"
 			+ "}\n"
 			+ "}";
 	private static final String BALANCE_ACTIVITY = UPDATE_ACTIVITY.substring(0,
@@ -160,16 +162,18 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 		if (bundle == null && activityFactory != null) {
 			ValueFactory vf = getValueFactory();
 			activityURI = activityFactory.createActivityURI(bundle, vf);
-			String str = activityURI.stringValue();
-			int h = str.indexOf('#');
-			if (h > 0) {
-				insertContext = vf.createURI(str.substring(0, h));
-				setInsertContext(insertContext);
-			} else {
-				insertContext = activityURI;
-				setInsertContext(activityURI);
+			if (activityURI != null) {
+				String str = activityURI.stringValue();
+				int h = str.indexOf('#');
+				if (h > 0) {
+					insertContext = vf.createURI(str.substring(0, h));
+					setInsertContext(insertContext);
+				} else {
+					insertContext = activityURI;
+					setInsertContext(activityURI);
+				}
+				return super.getInsertContext();
 			}
-			return super.getInsertContext();
 		}
 		return bundle;
 	}
@@ -415,7 +419,7 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 			Dataset dataset) throws QueryEvaluationException,
 			RepositoryException {
 		URI activityGraph = dataset.getDefaultInsertGraph();
-		for (URI entity : findEntity(insertExpr, bindings)) {
+		for (URI entity : findEntity(insertExpr, bindings, activityGraph)) {
 			activity(activityGraph, true, entity);
 		}
 		for (URI graph : findGraphs(insertExpr, bindings, dataset)) {
@@ -427,7 +431,7 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 			Dataset dataset) throws QueryEvaluationException,
 			RepositoryException {
 		URI activityGraph = dataset.getDefaultInsertGraph();
-		for (URI entity : findEntity(deleteExpr, bindings)) {
+		for (URI entity : findEntity(deleteExpr, bindings, activityGraph)) {
 			activity(activityGraph, false, entity);
 		}
 		for (URI graph : findGraphs(deleteExpr, bindings, dataset)) {
@@ -445,7 +449,7 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 		return expr instanceof Clear || expr instanceof DeleteData;
 	}
 
-	private Set<URI> findEntity(QueryModelNode expr, final BindingSet bindings) throws QueryEvaluationException {
+	private Set<URI> findEntity(QueryModelNode expr, final BindingSet bindings, final URI bundle) throws QueryEvaluationException {
 		final Set<URI> entities = new HashSet<URI>();
 		expr.visit(new BasicGraphPatternVisitor() {
 			public void meet(StatementPattern node) {
@@ -455,7 +459,7 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 					subj = bindings.getValue(var.getName());
 				}
 				if (subj instanceof URI) {
-					entities.add(entity((URI) subj));
+					entities.add(entity(bundle, (URI) subj));
 				}
 			}
 		});
@@ -490,12 +494,13 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 		return graphs.toArray(new URI[graphs.size()]);
 	}
 
-	URI entity(URI subject) {
+	URI entity(URI bundle, URI subject) {
 		URI entity = subject;
-		int hash = entity.stringValue().indexOf('#');
-		if (hash > 0) {
+		String uri = entity.stringValue();
+		int hash = uri.indexOf('#');
+		if (hash > 0 && !uri.substring(0, hash).equals(bundle.stringValue())) {
 			ValueFactory vf = getValueFactory();
-			entity = vf.createURI(entity.stringValue().substring(0, hash));
+			entity = vf.createURI(uri.substring(0, hash));
 		}
 		return entity;
 	}
@@ -507,6 +512,8 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 		RepositoryConnection con = getDelegate();
 		if (activity == null) {
 			activity = getActivityURI(bundle);
+			if (activity == null)
+				return;
 			uncommittedBundles.put(bundle, activity);
 			ActivityFactory activityFactory = getActivityFactory();
 			if (activityFactory != null) {
@@ -514,12 +521,12 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 			}
 			con.add(bundle, provWasGeneratedBy, activity, bundle);
 		}
-		if (subject instanceof URI && !isBundledEntity(bundle, subject)) {
+		if (subject instanceof URI && !isBundledEntity(bundle, activity, subject)) {
 			Map<URI, Boolean> entities = modifiedEntities.get(bundle);
 			if (entities == null) {
 				modifiedEntities.put(bundle, entities = new HashMap<URI, Boolean>());
 			}
-			URI entity = entity((URI) subject);
+			URI entity = entity(bundle, (URI) subject);
 			Boolean wasInserted = entities.get(entity);
 			if (entities.size() >= MAX_SIZE) {
 				entities.clear();
@@ -551,18 +558,22 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 			RepositoryConnection con) throws RepositoryException {
 		ValueFactory vf = getValueFactory();
 		String target = targetGraph.stringValue();
-		URI gen = vf.createURI(target + "#" + entity.stringValue());
-		con.add(activity, provGenerated, gen, bundle);
-		con.add(gen, provSpecializationOf, entity, bundle);
+		if (target.indexOf('#') > 0) {
+			con.add(activity, provGenerated, entity, bundle);
+		} else {
+			URI gen = vf.createURI(target + "#!" + entity.stringValue());
+			con.add(activity, provGenerated, gen, bundle);
+			con.add(gen, provSpecializationOf, entity, bundle);
+		}
 	}
 
-	private boolean isBundledEntity(URI bundle, Resource entity) {
-		if (bundle.equals(entity))
+	private boolean isBundledEntity(URI bundle, URI activity, Resource entity) {
+		if (bundle.equals(entity) || activity.equals(entity))
 			return true;
 		if (entity instanceof URI) {
 			String ns = bundle.stringValue();
 			String subj = entity.stringValue();
-			return subj.startsWith(ns) && subj.startsWith(ns + "#");
+			return subj.startsWith(ns) && subj.startsWith(ns + "#!");
 		}
 		return false;
 	}
