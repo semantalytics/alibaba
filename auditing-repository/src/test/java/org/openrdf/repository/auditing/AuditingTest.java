@@ -178,6 +178,7 @@ public class AuditingTest extends TestCase {
 
 			public void activityEnded(URI activity,
 					URI bundle, RepositoryConnection con) throws RepositoryException {
+				con.remove(activity, ENDED_AT, null, bundle);
 				delegate.activityEnded(activity, bundle, con);
 			}
 		});
@@ -399,6 +400,86 @@ public class AuditingTest extends TestCase {
 				"}"));
 	}
 
+	public void testAddManyDefaultGraph() throws Exception {
+		begin(con);
+		assertTrue(con.isEmpty());
+		repo.setInsertContext(graph);
+		con = reopen(repo, con);
+		con.add(carmichael, knows, harris);
+		con.add(johnston, knows, carmichael);
+		con = reopen(repo, con);
+		con.add(carmichael, knows, jackson);
+		con.add(harris, knows, jackson);
+		con.add(jackson, knows, johnston);
+		con = reopen(repo, con);
+		con.add(carmichael, knows, lismer);
+		con.add(harris, knows, macDonald);
+		con.add(jackson, knows, varley);
+		con.add(johnston, knows, lismer);
+		con.add(lismer, knows, macDonald);
+		con.add(macDonald, knows, varley);
+		con.add(varley, knows, thomson);
+		con = commit(repo, con);
+		assertTrue(con.hasStatement(carmichael, knows, harris, false));
+		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
+		assertFalse(con.hasStatement(null, null, null, false, new Resource[]{null}));
+		assertEquals(1, con.getContextIDs().asList().size());
+		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
+		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
+		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
+		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
+		assertFalse(con.hasStatement(null, INFLUENCED_BY, null, false));
+		assertFalse(con.hasStatement(null, WITHOUT, null, false));
+		assertEquals(0, con.getStatements(null, RDF.TYPE, RECENT, false).asList().size());
+		assertTrue(ask("FILTER NOT EXISTS {\n"
+				+ "    ?activity prov:generated [prov:specializationOf ?self]\n"
+				+ "    FILTER (strstarts(?self,?activity))\n" + "}\n"));
+		assertTrue(ask("FILTER NOT EXISTS {\n"
+				+ "    ?activity prov:generated ?generated\n"
+				+ "    FILTER (!strstarts(?generated,?activity))\n" + "}\n"));
+		assertFalse(ask("?activity prov:wasInfluencedBy ?activity"));
+		assertTrue(ask(
+				"GRAPH <graph> {",
+				"    <graph> a prov:Bundle ;",
+				"        prov:wasGeneratedBy ?provenance1 .",
+				"    ",
+				"    ?provenance1 prov:endedAtTime ?ended1 ;",
+				"        prov:generated ?carmichael3, ?harris1, ?jackson1, ?johnston1, ?lismer1, ?macDonald1, ?varley1 .",
+				"    ",
+				"    ?carmichael1 prov:specializationOf <carmichael> .",
+				"    ?johnston1 prov:specializationOf <johnston> .",
+				"    ",
+				"    <carmichael> foaf:knows <harris> .",
+				"    <johnston> foaf:knows <carmichael> .",
+				"    ",
+				"    ?harris1 prov:specializationOf <harris> .",
+				"    ?jackson1 prov:specializationOf <jackson> .",
+				"    ",
+				"    <carmichael> foaf:knows <jackson> .",
+				"    <harris> foaf:knows <jackson> .",
+				"    <jackson> foaf:knows <johnston> .",
+				"    ",
+				"    ?harris1 prov:specializationOf <harris> .",
+				"    ?jackson1 prov:specializationOf <jackson> .",
+				"    ?lismer1 prov:specializationOf <lismer> .",
+				"    ?macDonald1 prov:specializationOf <macDonald> .",
+				"    ?varley1 prov:specializationOf <varley> .",
+				"    ",
+				"    <carmichael> foaf:knows <lismer> ; prov:wasGeneratedBy ?provenance1 .",
+				"    <harris> foaf:knows <macDonald> ; prov:wasGeneratedBy ?provenance1 .",
+				"    <jackson> foaf:knows <varley> ; prov:wasGeneratedBy ?provenance1 .",
+				"    <johnston> foaf:knows <lismer> ; prov:wasGeneratedBy ?provenance1 .",
+				"    <lismer> foaf:knows <macDonald> ; prov:wasGeneratedBy ?provenance1 .",
+				"    <macDonald> foaf:knows <varley> ; prov:wasGeneratedBy ?provenance1 .",
+				"    <varley> foaf:knows <thomson> ; prov:wasGeneratedBy ?provenance1 .",
+				"    ",
+				"    FILTER (str(?johnston1) = concat(str(<graph>), '#!', str(<johnston>)))",
+				"    FILTER (str(?lismer1) = concat(str(<graph>), '#!', str(<lismer>)))",
+				"    FILTER NOT EXISTS { <graph> a audit:ObsoleteBundle }",
+				"    FILTER NOT EXISTS { <graph> prov:wasInfluencedBy ?other }",
+				"}"));
+	}
+
 	public void testRemove() throws Exception {
 		begin(con);
 		assertTrue(con.isEmpty());
@@ -450,6 +531,40 @@ public class AuditingTest extends TestCase {
 				"    FILTER (str(?carmichael2) = concat(str(?activity2), '#!', str(<carmichael>)))",
 				"    FILTER NOT EXISTS { ?activity1 prov:wasGeneratedBy ?provenance2 }",
 				"    FILTER NOT EXISTS { ?activity2 a audit:ObsoleteBundle }",
+				"}"));
+	}
+
+	public void testRemoveDefaultGraph() throws Exception {
+		begin(con);
+		assertTrue(con.isEmpty());
+		repo.setInsertContext(graph);
+		con = reopen(repo, con);
+		con.add(carmichael, knows, harris);
+		con = reopen(repo, con);
+		con.remove(carmichael, knows, harris);
+		con = commit(repo, con);
+		assertFalse(con.hasStatement(carmichael, knows, harris, false));
+		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
+		assertEquals(1, con.getContextIDs().asList().size());
+		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
+		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
+		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
+		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
+		assertFalse(con.hasStatement(null, INFLUENCED_BY, null, false));
+		assertFalse(con.hasStatement(null, WITHOUT, null, false));
+		assertTrue(ask("GRAPH <graph> {",
+				"    <graph> a prov:Bundle ;",
+				"        prov:wasGeneratedBy ?provenance1 .",
+				"    ",
+				"    ?provenance1 prov:endedAtTime ?ended1 ;",
+				"        prov:generated ?carmichael1 .",
+				"    ",
+				"    ?carmichael1 prov:specializationOf <carmichael> .",
+				"    ",
+				"    <carmichael> prov:wasGeneratedBy ?provenance2 .",
+				"    ",
+				"    FILTER (str(?carmichael1) = concat(str(<graph>), '#!', str(<carmichael>)))",
+				"    FILTER NOT EXISTS { <graph> a audit:ObsoleteBundle }",
 				"}"));
 	}
 
@@ -1192,6 +1307,40 @@ public class AuditingTest extends TestCase {
 				"    FILTER (str(?graph1) = concat(str(?activity1), '#!', str(<graph>)))",
 				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#!', str(<carmichael>)))",
 				"    FILTER strstarts(str(?provenance1), concat(str(?activity1), '#'))",
+				"}"));
+	}
+
+	public void testAddDefaultGraph() throws Exception {
+		begin(con);
+		assertTrue(con.isEmpty());
+		con.setInsertContext(graph);
+		con.add(carmichael, knows, harris);
+		con = commit(repo, con);
+		assertTrue(con.hasStatement(carmichael, knows, harris, false));
+		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
+		assertFalse(con.hasStatement(null, null, null, false, new Resource[]{null}));
+		assertEquals(Arrays.asList(graph), con.getContextIDs().asList());
+		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
+		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
+		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
+		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
+		assertFalse(con.hasStatement(null, INFLUENCED_BY, null, false));
+		assertFalse(con.hasStatement(null, WITHOUT, null, false));
+		assertTrue(ask(
+				"GRAPH <graph> {",
+				"    <carmichael> foaf:knows <harris> .",
+				"    <graph> a prov:Bundle ;",
+				"        prov:wasGeneratedBy ?provenance1 .",
+				"    ",
+				"    ?provenance1 prov:endedAtTime ?ended1 ;",
+				"        prov:generated ?carmichael1, ?graph1 .",
+				"    ",
+				"    ?carmichael1 prov:specializationOf <carmichael> .",
+				"    ",
+				"    <carmichael> prov:wasGeneratedBy ?provenance1 .",
+				"    ",
+				"    FILTER (str(?carmichael1) = concat(str(<graph>), '#!', str(<carmichael>)))",
+				"    FILTER strstarts(str(?provenance1), concat(str(<graph>), '#'))",
 				"}"));
 	}
 
