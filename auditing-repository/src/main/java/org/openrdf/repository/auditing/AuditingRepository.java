@@ -130,7 +130,9 @@ public class AuditingRepository extends ContextAwareRepository {
 			.newSingleThreadScheduledExecutor(new ThreadFactory() {
 				public Thread newThread(Runnable r) {
 					String name = AuditingRepository.class.getSimpleName()
-							+ "-" + Thread.currentThread().getName();
+							+ "-"
+							+ Integer.toHexString(AuditingRepository.class
+									.hashCode());
 					Thread t = new Thread(r, name);
 					t.setDaemon(true);
 					return t;
