@@ -17,7 +17,7 @@
 	<owl:Ontology rdf:about="">
 		<rdfs:label xml:lang="en">Auditing Repository</rdfs:label>
 		<dc:title xml:lang="en">AliBaba Auditing Repository Ontology</dc:title>
-		<dc:date rdf:datatype="&xsd;date">2012-06-21</dc:date>
+		<dc:date rdf:datatype="&xsd;date">2012-11-13</dc:date>
 		<dc:format>OWL-Lite</dc:format>
 		<dc:creator>James Leigh &lt;james@3roundstones.com&gt;</dc:creator>
 		<owl:versionInfo>2.0</owl:versionInfo>
@@ -25,27 +25,37 @@
 
 	<!-- Classes -->
 
-	<owl:Class rdf:ID="RecentActivity">
-		<rdfs:label xml:lang="en">Recent Activity</rdfs:label>
-		<rdfs:comment xml:lang="en">A rolling set of recent changes.</rdfs:comment>
+	<owl:Class rdf:ID="RecentBundle">
+		<rdfs:label xml:lang="en">Recent Bundle</rdfs:label>
+		<rdfs:comment xml:lang="en">A rolling set of recent activity bundles.</rdfs:comment>
 		<rdfs:isDefinedBy rdf:resource="" />
-		<rdfs:subClassOf rdf:resource="&prov;Activity" />
+		<rdfs:subClassOf rdf:resource="&prov;Bundle" />
 	</owl:Class>
 
-	<owl:Class rdf:ID="ObsoleteActivity">
-		<rdfs:label xml:lang="en">Obsolete Activity</rdfs:label>
-		<rdfs:comment xml:lang="en">An activity that does not contribute to the current state of any entity.</rdfs:comment>
+	<owl:Class rdf:ID="ObsoleteBundle">
+		<rdfs:label xml:lang="en">Obsolete Bundle</rdfs:label>
+		<rdfs:comment xml:lang="en">An activity bundle that does not contribute to the current state of any entity.</rdfs:comment>
 		<rdfs:isDefinedBy rdf:resource="" />
-		<rdfs:subClassOf rdf:resource="&prov;Activity" />
+		<rdfs:subClassOf rdf:resource="&prov;Bundle" />
 	</owl:Class>
 
 	<!-- Properties -->
 
-	<owl:ObjectProperty rdf:ID="changed">
-		<rdfs:label xml:lang="en">changed</rdfs:label>
-		<rdfs:comment xml:lang="en">Triple that was added or removed.</rdfs:comment>
+	<owl:ObjectProperty rdf:ID="without">
+		<rdfs:label xml:lang="en">without</rdfs:label>
+		<rdfs:comment xml:lang="en">Triple that was deleted as part of the process that generate this entity.</rdfs:comment>
 		<rdfs:isDefinedBy rdf:resource="" />
-		<rdfs:domain rdf:resource="&prov;Usage" />
+		<rdfs:domain rdf:resource="&prov;Entity" />
+		<rdfs:range rdf:resource="&rdf;Statement" />
+	</owl:ObjectProperty>
+
+	<!-- Properties -->
+
+	<owl:ObjectProperty rdf:ID="with">
+		<rdfs:label xml:lang="en">with</rdfs:label>
+		<rdfs:comment xml:lang="en">Triple that was inserted as part of the process that generate this entity.</rdfs:comment>
+		<rdfs:isDefinedBy rdf:resource="" />
+		<rdfs:domain rdf:resource="&prov;Entity" />
 		<rdfs:range rdf:resource="&rdf;Statement" />
 	</owl:ObjectProperty>
 
