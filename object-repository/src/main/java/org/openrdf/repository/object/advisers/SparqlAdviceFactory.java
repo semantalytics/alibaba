@@ -43,6 +43,9 @@ import org.openrdf.repository.object.advice.AdviceFactory;
 import org.openrdf.repository.object.advice.AdviceProvider;
 import org.openrdf.repository.object.advisers.helpers.SparqlEvaluator;
 
+/**
+ * Creates Advice for a given method @Sparql annotation.
+ */
 public class SparqlAdviceFactory implements AdviceFactory, AdviceProvider {
 	private static final Pattern NOT_URI = Pattern.compile("\\s|\\}|\\]|\\>|\"");
 

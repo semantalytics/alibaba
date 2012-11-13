@@ -36,6 +36,9 @@ import java.util.Map;
 import org.openrdf.store.blob.BlobStore;
 import org.openrdf.store.blob.BlobStoreProvider;
 
+/**
+ * Create a blob store with no history.
+ */
 public class FileBlobStoreProvider implements BlobStoreProvider {
 
 	public BlobStore createBlobStore(String url, Map<String, String> map)

@@ -38,6 +38,10 @@ import org.openrdf.store.blob.BlobVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * A blob object that represents the latest committed blob version and commits
+ * changes as soon as the OutputStream is closed.
+ */
 public class LiveDiskBlob extends BlobObject {
 	final Logger logger = LoggerFactory.getLogger(LiveDiskBlob.class);
 	private final DiskBlobStore store;

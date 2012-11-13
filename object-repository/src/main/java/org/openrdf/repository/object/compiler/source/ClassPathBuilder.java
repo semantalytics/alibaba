@@ -46,6 +46,9 @@ import java.util.jar.Manifest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Searches the system properties to get the File location of the default classpath.
+ */
 public class ClassPathBuilder {
 	private final Logger logger = LoggerFactory
 			.getLogger(ClassPathBuilder.class);

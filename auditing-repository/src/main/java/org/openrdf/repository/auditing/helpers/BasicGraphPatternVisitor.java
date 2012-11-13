@@ -53,6 +53,10 @@ import org.openrdf.query.algebra.evaluation.impl.EvaluationStrategyImpl;
 import org.openrdf.query.algebra.helpers.QueryModelVisitorBase;
 import org.openrdf.query.impl.EmptyBindingSet;
 
+/**
+ * Walks UPDATE operations, like DELETE DATA, INSERT DATA, and DELETE/INSERT/WHERE,
+ * and calls meet(StatementPattern) for triple in a DATA clause.
+ */
 public abstract class BasicGraphPatternVisitor extends
 		QueryModelVisitorBase<QueryEvaluationException> {
 	final ValueFactory vf = ValueFactoryImpl.getInstance();

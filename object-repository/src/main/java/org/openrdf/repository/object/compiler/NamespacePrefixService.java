@@ -46,6 +46,9 @@ import org.openrdf.rio.helpers.RDFHandlerBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Looks up a default prefix for a namespace using the prefix.cc service.
+ */
 public class NamespacePrefixService {
 	private static final NamespacePrefixService INSTANCE = new NamespacePrefixService();
 	private static final String PREFIX_LOOKUP = "http://prefix.cc/reverse?format=ttl&uri=";

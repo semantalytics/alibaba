@@ -48,6 +48,9 @@ import java.util.concurrent.locks.Lock;
 import org.openrdf.store.blob.BlobObject;
 import org.openrdf.store.blob.BlobVersion;
 
+/**
+ * Contains version information for a DiskBlob.
+ */
 public class DiskBlobVersion implements BlobVersion {
 	private final DiskBlobStore store;
 	private final String version;

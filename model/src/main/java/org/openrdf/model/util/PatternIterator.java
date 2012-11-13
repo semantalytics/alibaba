@@ -35,6 +35,9 @@ import org.openrdf.model.Statement;
 import org.openrdf.model.Value;
 import org.openrdf.util.iterators.FilterIterator;
 
+/**
+ * Excludes an Iterator<Statement> based on a given basic graph pattern.
+ */
 public class PatternIterator<S extends Statement> extends FilterIterator<S> {
 
 	private Value subj;

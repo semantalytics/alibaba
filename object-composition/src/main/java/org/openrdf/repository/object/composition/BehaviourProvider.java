@@ -34,6 +34,9 @@ import java.util.Set;
 import org.openrdf.repository.object.exceptions.ObjectCompositionException;
 import org.openrdf.repository.object.managers.PropertyMapper;
 
+/**
+ * Selects some of the BehaviourFactories to be used with the set of classes.
+ */
 public interface BehaviourProvider {
 
 	void setClassDefiner(ClassFactory definer);

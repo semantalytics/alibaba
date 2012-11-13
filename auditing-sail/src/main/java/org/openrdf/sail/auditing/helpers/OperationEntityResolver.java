@@ -41,6 +41,9 @@ import org.openrdf.query.algebra.QueryModelNode;
 import org.openrdf.query.algebra.StatementPattern;
 import org.openrdf.query.algebra.Var;
 
+/**
+ * Determines if an operation modifies a single entity.
+ */
 public class OperationEntityResolver {
 	private final ValueFactory vf;
 	private QueryModelNode node;

@@ -45,6 +45,10 @@ import org.openrdf.annotations.Precedes;
 import org.openrdf.repository.object.composition.BehaviourFactory;
 import org.openrdf.repository.object.traits.RDFObjectBehaviour;
 
+/**
+ * Create a behaviour class using its default constructor or an Object constructor
+ * that takes the proxy object as parameter.
+ */
 public class BehaviourConstructor implements BehaviourFactory {
 	private static Set<String> special = new HashSet<String>(Arrays.asList(
 			"groovy.lang.GroovyObject", RDFObjectBehaviour.class.getName()));

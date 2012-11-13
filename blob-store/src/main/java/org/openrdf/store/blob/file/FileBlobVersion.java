@@ -39,6 +39,9 @@ import java.util.concurrent.locks.Lock;
 import org.openrdf.store.blob.BlobObject;
 import org.openrdf.store.blob.BlobVersion;
 
+/**
+ * A blob store transaction that can pool and commit multiple changes at once.
+ */
 @Deprecated
 public class FileBlobVersion implements BlobVersion {
 	private final FileBlobStore store;

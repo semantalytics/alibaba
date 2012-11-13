@@ -36,6 +36,9 @@ import org.openrdf.annotations.ParameterTypes;
 import org.openrdf.repository.object.advice.Advice;
 import org.openrdf.repository.object.composition.BehaviourFactory;
 
+/**
+ * Modifies composed classes to call Advice.
+ */
 public class AdviceBehaviourFactory implements BehaviourFactory {
 	private static final Method intercept = Advice.class.getMethods()[0];
 	private final Advice advice;

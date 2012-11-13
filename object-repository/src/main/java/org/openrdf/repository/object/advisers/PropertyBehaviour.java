@@ -43,6 +43,9 @@ import org.openrdf.repository.object.traits.ObjectMessage;
 import org.openrdf.repository.object.traits.PropertyConsumer;
 import org.openrdf.repository.object.traits.Refreshable;
 
+/**
+ * Reads and writes properties from an RDF store.
+ */
 public final class PropertyBehaviour implements Advice, Mergeable,
 		Refreshable, PropertyConsumer {
 	private final Class<?> concept;

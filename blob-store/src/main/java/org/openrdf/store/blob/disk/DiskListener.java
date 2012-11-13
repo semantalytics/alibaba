@@ -28,7 +28,9 @@
  */
 package org.openrdf.store.blob.disk;
 
-
+/**
+ * Listens for notification of changes to blobs.
+ */
 public interface DiskListener {
 
 	void changed(String uri);

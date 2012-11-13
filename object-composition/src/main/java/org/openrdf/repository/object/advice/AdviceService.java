@@ -37,6 +37,9 @@ import java.util.ServiceLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Looks up the AdviceFactory for a method annotation.
+ */
 public class AdviceService {
 	private static final ServiceLoader<AdviceProvider> installed = ServiceLoader
 			.load(AdviceProvider.class, AdviceService.class.getClassLoader());

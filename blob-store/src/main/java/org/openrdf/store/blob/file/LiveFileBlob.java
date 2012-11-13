@@ -38,6 +38,9 @@ import org.openrdf.store.blob.BlobVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Commits changes to a blob as soon as OutputStream is closed.
+ */
 public class LiveFileBlob extends BlobObject {
 	private final Logger logger = LoggerFactory.getLogger(LiveFileBlob.class);
 	private final FileBlobStore store;

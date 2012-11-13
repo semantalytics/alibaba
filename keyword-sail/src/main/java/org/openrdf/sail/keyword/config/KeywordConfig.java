@@ -49,6 +49,9 @@ import org.openrdf.sail.config.DelegatingSailImplConfigBase;
 import org.openrdf.sail.config.SailConfigException;
 import org.openrdf.sail.config.SailImplConfig;
 
+/**
+ * Keyword SAIL configuration bean
+ */
 public class KeywordConfig extends DelegatingSailImplConfigBase {
 	private final ValueFactory vf = ValueFactoryImpl.getInstance();
 

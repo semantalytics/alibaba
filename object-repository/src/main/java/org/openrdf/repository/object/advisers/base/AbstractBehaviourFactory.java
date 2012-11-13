@@ -38,6 +38,9 @@ import java.util.Map;
 import org.openrdf.annotations.ParameterTypes;
 import org.openrdf.repository.object.composition.BehaviourFactory;
 
+/**
+ * Implements common methods for BehaviourFactory.
+ */
 public abstract class AbstractBehaviourFactory implements BehaviourFactory {
 	private final Class<?> behaviourType;
 	private final Class<?>[] interfaces;

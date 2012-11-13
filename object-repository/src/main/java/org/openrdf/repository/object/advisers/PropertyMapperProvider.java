@@ -54,6 +54,10 @@ import org.openrdf.repository.object.traits.ObjectMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Creates BehaviourFactories to modify classes and changed their @Iri annotated
+ * properties to read/write to an RDF store.
+ */
 public class PropertyMapperProvider implements BehaviourProvider {
 	private static final Method intercept;
 	static {

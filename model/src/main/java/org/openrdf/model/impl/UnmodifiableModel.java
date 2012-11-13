@@ -38,6 +38,9 @@ import org.openrdf.model.Statement;
 import org.openrdf.model.URI;
 import org.openrdf.model.Value;
 
+/**
+ * A Model wrapper that prevents modification to the underlying model.
+ */
 class UnmodifiableModel extends AbstractModel {
 	private static final long serialVersionUID = 6335569454318096059L;
 	private final AbstractModel model;

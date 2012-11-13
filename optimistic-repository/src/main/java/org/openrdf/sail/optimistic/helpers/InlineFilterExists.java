@@ -38,6 +38,9 @@ import org.openrdf.query.algebra.TupleExpr;
 import org.openrdf.query.algebra.evaluation.QueryOptimizer;
 import org.openrdf.query.algebra.helpers.QueryModelVisitorBase;
 
+/**
+ * Detects if a FILTER EXISTS clause exists in the given query.
+ */
 public class InlineFilterExists extends QueryModelVisitorBase<RuntimeException> implements QueryOptimizer {
 	private boolean readOnly;
 	private boolean present;

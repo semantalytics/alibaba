@@ -43,6 +43,10 @@ import org.openrdf.repository.object.traits.Refreshable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Reads and write properties to/from an RDF store before and after a method is
+ * called that uses fields with an @Iri annotation.
+ */
 public final class FieldBehaviour implements Advice, Mergeable,
 		Refreshable, PropertyConsumer {
 	private final Logger logger = LoggerFactory.getLogger(FieldBehaviour.class);

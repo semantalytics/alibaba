@@ -41,6 +41,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.openrdf.store.blob.BlobObject;
 import org.openrdf.store.blob.BlobStore;
 
+/**
+ * Set of blob objects that do not support version history.
+ */
 @Deprecated
 public class FileBlobStore implements BlobStore {
 	private final File dir;

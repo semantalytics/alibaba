@@ -72,6 +72,9 @@ import org.openrdf.repository.RepositoryException;
 import org.openrdf.repository.auditing.helpers.BasicGraphPatternVisitor;
 import org.openrdf.repository.contextaware.ContextAwareConnection;
 
+/**
+ * RepositoryConnection that exposes the activityFactory property for a connection.
+ */
 public class AuditingRepositoryConnection extends ContextAwareConnection {
 
 	private static final int MAX_SIZE = 1024;

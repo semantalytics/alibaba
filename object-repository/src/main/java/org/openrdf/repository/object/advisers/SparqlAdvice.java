@@ -73,6 +73,9 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
 
+/**
+ * Executes a SPARQL query/update operation when a method with @Sparql is called.
+ */
 public class SparqlAdvice implements Advice {
 	private final SparqlEvaluator evaluator;
 	private final Class<?> returnClass;

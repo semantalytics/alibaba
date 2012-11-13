@@ -42,6 +42,9 @@ import org.openrdf.store.blob.BlobObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * A blob with no history.
+ */
 @Deprecated
 public class FileBlob extends BlobObject implements FileListener {
 	private final Logger logger = LoggerFactory.getLogger(FileBlob.class);

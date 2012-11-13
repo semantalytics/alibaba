@@ -49,6 +49,9 @@ import org.openrdf.model.vocabulary.XMLSchema;
 import org.openrdf.repository.config.RepositoryConfigException;
 import org.openrdf.repository.contextaware.config.ContextAwareConfig;
 
+/**
+ * Configuration bean for auditing repository that can serialize to/from turtle.
+ */
 public class AuditingRepositoryConfig extends ContextAwareConfig {
 
 	private String ns;

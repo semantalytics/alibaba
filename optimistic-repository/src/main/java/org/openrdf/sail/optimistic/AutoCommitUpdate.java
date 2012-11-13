@@ -26,6 +26,9 @@ import org.openrdf.sail.SailException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Starts a transaction before issuing the update command.
+ */
 class AutoCommitUpdate extends SailUpdate {
 
 	private final Logger logger = LoggerFactory.getLogger(AutoCommitUpdate.class);

@@ -45,6 +45,9 @@ import org.openrdf.repository.object.composition.ClassFactory;
 import org.openrdf.repository.object.exceptions.ObjectCompositionException;
 import org.openrdf.repository.object.managers.PropertyMapper;
 
+/**
+ * Searhes a class' methods for annotations that have advice.
+ */
 public class AdviceBehaviourProvider implements BehaviourProvider {
 	private final AdviceService service = AdviceService.newInstance();
 

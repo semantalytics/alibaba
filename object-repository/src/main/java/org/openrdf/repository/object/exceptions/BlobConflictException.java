@@ -30,7 +30,10 @@ package org.openrdf.repository.object.exceptions;
 
 import java.io.IOException;
 
-
+/**
+ * Thrown to indicate a blob had since changed before these changes could be
+ * committed.
+ */
 public class BlobConflictException extends BlobStoreException {
 	private static final long serialVersionUID = 1974016700016020613L;
 

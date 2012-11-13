@@ -38,6 +38,9 @@ import org.openrdf.model.ValueFactory;
 import org.openrdf.query.QueryEvaluationException;
 import org.openrdf.query.algebra.evaluation.TripleSource;
 
+/**
+ * Throws an exception when accessed.
+ */
 public class InvalidTripleSource implements TripleSource {
 	private final ValueFactory vf;
 

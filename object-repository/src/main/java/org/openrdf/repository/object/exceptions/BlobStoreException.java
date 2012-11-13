@@ -30,7 +30,9 @@ package org.openrdf.repository.object.exceptions;
 
 import java.io.IOException;
 
-
+/**
+ * A general exception has occured while reading/writing to the blob store.
+ */
 public class BlobStoreException extends RDFObjectException {
 	private static final long serialVersionUID = 8927666647235222028L;
 

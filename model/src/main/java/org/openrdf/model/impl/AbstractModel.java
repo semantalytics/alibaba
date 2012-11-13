@@ -46,6 +46,9 @@ import org.openrdf.model.Value;
 import org.openrdf.model.util.ModelException;
 import org.openrdf.model.util.ModelUtil;
 
+/**
+ * Provides basic operations that are common to all Models.
+ */
 abstract class AbstractModel extends AbstractSet<Statement> implements
 		Model {
 	private static final long serialVersionUID = 4254119331281455614L;

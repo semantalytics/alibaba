@@ -37,6 +37,9 @@ import org.openrdf.model.Statement;
 import org.openrdf.model.URI;
 import org.openrdf.model.Value;
 
+/**
+ * Treats multiple models as a combined model.
+ */
 public class UnionModel extends AbstractModel {
 	private static final long serialVersionUID = -2735528661997692589L;
 

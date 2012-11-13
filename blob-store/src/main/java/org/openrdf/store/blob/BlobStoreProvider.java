@@ -30,6 +30,9 @@ package org.openrdf.store.blob;
 
 import java.util.Map;
 
+/**
+ * Interface to create BlobStores.
+ */
 public interface BlobStoreProvider {
 	BlobStore createBlobStore(String url, Map<String, String> parameters) throws Exception;
 }

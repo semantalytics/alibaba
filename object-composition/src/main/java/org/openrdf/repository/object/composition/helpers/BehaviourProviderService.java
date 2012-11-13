@@ -40,6 +40,9 @@ import org.openrdf.repository.object.composition.BehaviourProvider;
 import org.openrdf.repository.object.composition.ClassFactory;
 import org.openrdf.repository.object.managers.PropertyMapper;
 
+/**
+ * Looks up BehaviourFactory for a set of classes.
+ */
 public class BehaviourProviderService {
 	public static BehaviourProviderService newInstance(ClassFactory cl) {
 		return new BehaviourProviderService(cl);

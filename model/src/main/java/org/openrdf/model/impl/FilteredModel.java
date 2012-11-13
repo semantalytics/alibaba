@@ -37,6 +37,9 @@ import org.openrdf.model.Statement;
 import org.openrdf.model.URI;
 import org.openrdf.model.Value;
 
+/**
+ * Applies a basic graph pattern filter to what triples can be see.
+ */
 abstract class FilteredModel extends AbstractModel {
 	private final AbstractModel model;
 

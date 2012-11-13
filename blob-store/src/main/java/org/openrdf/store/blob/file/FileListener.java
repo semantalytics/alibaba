@@ -28,7 +28,9 @@
  */
 package org.openrdf.store.blob.file;
 
-
+/**
+ * Listens for notifications for blob changes.
+ */
 @Deprecated
 public interface FileListener {
 

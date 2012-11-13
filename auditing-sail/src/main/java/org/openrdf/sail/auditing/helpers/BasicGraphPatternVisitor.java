@@ -53,6 +53,9 @@ import org.openrdf.query.algebra.evaluation.impl.EvaluationStrategyImpl;
 import org.openrdf.query.algebra.helpers.QueryModelVisitorBase;
 import org.openrdf.query.impl.EmptyBindingSet;
 
+/**
+ * Triples in DATA clauses are sent to the meet(StatementPattern) method.
+ */
 public abstract class BasicGraphPatternVisitor extends
 		QueryModelVisitorBase<QueryEvaluationException> {
 	private final ValueFactory vf = ValueFactoryImpl.getInstance();

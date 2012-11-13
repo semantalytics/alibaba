@@ -50,6 +50,10 @@ import org.openrdf.repository.object.ObjectConnection;
 import org.openrdf.repository.object.ObjectFactory;
 import org.openrdf.repository.object.advisers.helpers.SparqlEvaluator.SparqlBuilder;
 
+/**
+ * Stores the binding names, type and default values for a method with @Sparql
+ * annotation as read from the parameter annotations.
+ */
 public class SparqlParameters {
 	private final Type[] ptypes;
 	private final String[][] bindingNames;
