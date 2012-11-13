@@ -550,9 +550,7 @@ public class AuditingConnection extends TransactionalSailConnectionWrapper {
 		String ns = bundle.stringValue();
 		if (!(ctx instanceof URI) || ctx.equals(bundle))
 			return;
-		if (ctx instanceof URI && !ctx.equals(bundle)) {
-			super.addStatement(bundle, influencedBy, ctx, bundle);
-		}
+		super.addStatement(bundle, influencedBy, ctx, bundle);
 		String graph = ctx.stringValue();
 		if (GENERATED_BY.equals(pred.stringValue())) {
 			if (!ctx.equals(subj)) {
