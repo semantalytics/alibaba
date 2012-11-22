@@ -29,8 +29,9 @@ Object Repository
  other Sesame RDF Repositories, with full triple access, but it returns an
  ObjectConnection in the getConnection method. The ObjectConnection is an
  extension of the RepositoryConnection and includes additional methods
- for working with objects and information-resources. However, before
- objects can be used, object classes must first be created and registered.
+ for working with objects and information-resources. These objects are actually
+ just proxies to the ObjectConnection that returned them. However, before
+ objects can be returned, object classes must first be created and registered.
  
  To create classes for the ObjectRepository add the @Iri annotation to
  all classes and fields (or interfaces and property methods)
@@ -80,7 +81,9 @@ public class Document {
  method of the ObjectConnection. The method accepts a URI or an anonymous
  identifier. An anonymous identifier maybe different for different
  ObjectConnections and should only be used within a single
- ObjectConnection. A URI, however, will never change and can be used in any connection.
+ ObjectConnection. A URI, however, will never change and can be used in any
+ connection. Once the ObjectConnection is closed, the objects it returned
+ must be discarded.
  
  Removing an object is more difficult, as every property of the object
  will need to be removed, by setting the fields or properties to null.
