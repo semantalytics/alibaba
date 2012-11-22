@@ -73,6 +73,57 @@ public abstract class BlobStoreTestCase extends TestCase {
 		assertEquals("blob store test", str.toString());
 	}
 
+	public void testReuseVersion() throws Exception {
+		BlobVersion trx1 = store.newVersion("urn:test:trx1");
+		Writer file1 = trx1.open("urn:test:file1").openWriter();
+		file1.append("blob store test");
+		file1.close();
+		trx1.commit();
+		BlobVersion trx2 = store.newVersion("urn:test:trx2");
+		file1 = trx2.open("urn:test:file1").openWriter();
+		file1.append("blob store test");
+		file1.close();
+		trx2.commit();
+		Writer file2 = trx2.open("urn:test:file2").openWriter();
+		file2.append("blob store test");
+		file2.close();
+		trx2.commit();
+		trx2 = store.newVersion("urn:test:trx2");
+		file2 = trx2.open("urn:test:file2").openWriter();
+		file2.append("blob store test");
+		file2.close();
+		trx2.commit();
+		BlobVersion trx3 = store.newVersion("urn:test:trx3");
+		CharSequence str1 = trx3.open("urn:test:file1").getCharContent(true);
+		assertEquals("blob store test", str1.toString());
+		CharSequence str2 = trx3.open("urn:test:file2").getCharContent(true);
+		assertEquals("blob store test", str2.toString());
+	}
+
+	public void testReuseVersionWithDelete() throws Exception {
+		BlobVersion trx1 = store.newVersion("urn:test:trx1");
+		Writer file1 = trx1.open("urn:test:file1").openWriter();
+		file1.append("blob store test");
+		file1.close();
+		trx1.commit();
+		BlobVersion trx2 = store.newVersion("urn:test:trx2");
+		trx2.open("urn:test:file1").delete();
+		trx2.commit();
+		trx2 = store.newVersion("urn:test:trx2");
+		Writer file2 = trx2.open("urn:test:file2").openWriter();
+		file2.append("blob store test");
+		file2.close();
+		trx2.commit();
+		trx2 = store.newVersion("urn:test:trx2");
+		trx2.open("urn:test:file2").delete();
+		trx2.commit();
+		BlobVersion trx3 = store.newVersion("urn:test:trx3");
+		CharSequence str1 = trx3.open("urn:test:file1").getCharContent(true);
+		assertNull(str1);
+		CharSequence str2 = trx3.open("urn:test:file2").getCharContent(true);
+		assertNull(str2);
+	}
+
 	public void testAutocommit() throws Exception {
 		Writer file = store.open("urn:test:file").openWriter();
 		file.append("blob store test");

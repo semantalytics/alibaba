@@ -371,7 +371,8 @@ public class DiskBlob extends BlobObject implements DiskListener {
 	synchronized void written(boolean success, long size,
 			byte[] digest, OutputStream stream) throws IOException {
 		if (success) {
-			if (readFile != null && readLength == size
+			if (readFile != null && !readFile.equals(writeFile)
+					&& readLength == size
 					&& MessageDigest.isEqual(readDigest, digest)) {
 				// no change to file
 				deleteWriteFile();

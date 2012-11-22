@@ -146,8 +146,8 @@ public class DiskBlobVersion implements BlobVersion {
 		}
 		Set<String> obsolete = new HashSet<String>(open.size());
 		for (Map.Entry<String, DiskBlob> e : open.entrySet()) {
-			String version = e.getValue().getCommittedVersion();
 			if (e.getValue().isChangePending()) {
+				String version = e.getValue().getCommittedVersion();
 				if (committed.contains(e.getKey())) {
 					if (e.getValue().resync()) {
 						obsolete.add(version);
