@@ -498,7 +498,7 @@ public class AuditingPurgeTest extends TestCase {
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
 		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
 		assertTrue(con.hasStatement(null, INFLUENCED_BY, null, false));
-		assertTrue(con.hasStatement(null, WITHOUT, null, false));
+		assertFalse(con.hasStatement(null, WITHOUT, null, false));
 		assertTrue(ask("GRAPH ?activity2 {",
 				"    ?activity2 a prov:Bundle ;",
 				"        prov:wasGeneratedBy ?provenance2 ;",
@@ -508,17 +508,63 @@ public class AuditingPurgeTest extends TestCase {
 				"        prov:generated ?carmichael2 .",
 				"    ",
 				"    ?carmichael2 prov:specializationOf <carmichael> ;",
-				"        prov:wasRevisionOf ?carmichael1 ;",
-				"        audit:without ?triple .",
-				"    ",
-				"    ?triple rdf:subject <carmichael> ;",
-				"            rdf:predicate foaf:knows ;",
-				"            rdf:object <harris> .",
+				"        prov:wasRevisionOf ?carmichael1 .",
 				"    ",
 				"    <carmichael> prov:wasGeneratedBy ?provenance2 .",
 				"    ",
 				"    FILTER (str(?carmichael2) = concat(str(?activity2), '#!', str(<carmichael>)))",
 				"    FILTER NOT EXISTS { ?activity1 prov:wasGeneratedBy ?provenance2 }",
+				"    FILTER NOT EXISTS { ?activity2 a audit:ObsoleteBundle }",
+				"}"));
+	}
+
+	public void testRemoveSome() throws Exception {
+		begin(con);
+		assertTrue(con.isEmpty());
+		con.add(carmichael, knows, harris);
+		con.add(carmichael, knows, jackson);
+		con = reopen(repo, con);
+		con.remove(carmichael, knows, harris);
+		con = commit(repo, con);
+		assertFalse(con.hasStatement(carmichael, knows, harris, false));
+		assertTrue(con.hasStatement(carmichael, knows, jackson, false));
+		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
+		assertEquals(2, con.getContextIDs().asList().size());
+		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
+		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
+		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
+		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
+		assertTrue(con.hasStatement(null, INFLUENCED_BY, null, false));
+		assertFalse(con.hasStatement(null, WITHOUT, null, false));
+		assertTrue(ask("GRAPH ?activity1 {",
+				"    ?activity1 a prov:Bundle ;",
+				"        prov:wasGeneratedBy ?provenance1 .",
+				"    ",
+				"    ?provenance1 prov:endedAtTime ?ended1 ;",
+				"        prov:generated ?carmichael1 .",
+				"    ",
+				"    ?carmichael1 prov:specializationOf <carmichael> .",
+				"    ",
+				"    <carmichael> foaf:knows <jackson> .",
+				"    ",
+				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#!', str(<carmichael>)))",
+				"    FILTER NOT EXISTS { <carmichael> prov:wasGeneratedBy ?activity1 }",
+				"    FILTER NOT EXISTS { <carmichael> prov:wasGeneratedBy ?provenance1 }",
+				"}",
+				"GRAPH ?activity2 {",
+				"    ?activity2 a prov:Bundle ;",
+				"        prov:wasGeneratedBy ?provenance2 ;",
+				"        prov:wasInfluencedBy ?activity1 .",
+				"    ",
+				"    ?provenance2 prov:endedAtTime ?ended2 ;",
+				"        prov:generated ?carmichael2 .",
+				"    ",
+				"    ?carmichael2 prov:specializationOf <carmichael> ;",
+				"        prov:wasRevisionOf ?carmichael1 .",
+				"    ",
+				"    <carmichael> prov:wasGeneratedBy ?provenance2 .",
+				"    ",
+				"    FILTER (str(?carmichael2) = concat(str(?activity2), '#!', str(<carmichael>)))",
 				"    FILTER NOT EXISTS { ?activity2 a audit:ObsoleteBundle }",
 				"}"));
 	}
@@ -678,7 +724,7 @@ public class AuditingPurgeTest extends TestCase {
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
 		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
 		assertTrue(con.hasStatement(null, INFLUENCED_BY, null, false));
-		assertTrue(con.hasStatement(null, WITHOUT, null, false));
+		assertFalse(con.hasStatement(null, WITHOUT, null, false));
 		assertFalse(ask("?activity prov:wasInfluencedBy ?activity"));
 		assertTrue(ask("GRAPH ?activity2 {",
 				"    ?activity2 a prov:Bundle ;",
@@ -689,12 +735,7 @@ public class AuditingPurgeTest extends TestCase {
 				"        prov:generated ?carmichael2 .",
 				"    ",
 				"    ?carmichael2 prov:specializationOf <carmichael> ;",
-				"        prov:wasRevisionOf ?carmichael1 ;",
-				"        audit:without ?triple .",
-				"    ",
-				"    ?triple rdf:subject <carmichael> ;",
-				"            rdf:predicate foaf:knows ;",
-				"            rdf:object <harris> .",
+				"        prov:wasRevisionOf ?carmichael1 .",
 				"    ",
 				"    ?carmichael2 prov:specializationOf <carmichael> .",
 				"    <carmichael> foaf:knows <jackson> ; prov:wasGeneratedBy ?provenance2 .",
@@ -865,7 +906,7 @@ public class AuditingPurgeTest extends TestCase {
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
 		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
 		assertTrue(con.hasStatement(null, INFLUENCED_BY, null, false));
-		assertTrue(con.hasStatement(null, WITHOUT, null, false));
+		assertFalse(con.hasStatement(null, WITHOUT, null, false));
 		assertFalse(ask("?activity prov:wasInfluencedBy ?activity"));
 		assertTrue(ask("GRAPH ?activity3 {",
 				"    ?activity3 a prov:Bundle ;",
@@ -876,16 +917,7 @@ public class AuditingPurgeTest extends TestCase {
 				"        prov:generated ?carmichael3 .",
 				"    ",
 				"    ?carmichael3 prov:specializationOf <carmichael> ;",
-				"        prov:wasRevisionOf ?carmichael2 ;",
-				"        audit:without ?triple1, ?triple2 .",
-				"    ",
-				"    ?triple1 rdf:subject <carmichael> ;",
-				"            rdf:predicate foaf:knows ;",
-				"            rdf:object <harris> .",
-				"    ",
-				"    ?triple2 rdf:subject <carmichael> ;",
-				"            rdf:predicate foaf:knows ;",
-				"            rdf:object <jackson> .",
+				"        prov:wasRevisionOf ?carmichael2 .",
 				"    ",
 				"    <carmichael> foaf:knows <johnston> ; prov:wasGeneratedBy ?provenance3 .",
 				"}"));
@@ -956,7 +988,7 @@ public class AuditingPurgeTest extends TestCase {
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
 		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
 		assertTrue(con.hasStatement(null, INFLUENCED_BY, null, false));
-		assertTrue(con.hasStatement(null, WITHOUT, null, false));
+		assertFalse(con.hasStatement(null, WITHOUT, null, false));
 		assertTrue(ask("GRAPH ?activity2 {",
 				"    ?activity2 a prov:Bundle ;",
 				"        prov:wasInfluencedBy ?activity1 ;",
@@ -966,12 +998,7 @@ public class AuditingPurgeTest extends TestCase {
 				"        prov:generated ?carmichael2 .",
 				"    ",
 				"    ?carmichael2 prov:specializationOf <carmichael> ;",
-				"        prov:wasRevisionOf ?carmichael1 ;",
-				"        audit:without ?triple .",
-				"    ",
-				"    ?triple rdf:subject <carmichael> ;",
-				"            rdf:predicate foaf:knows ;",
-				"            rdf:object <harris> .",
+				"        prov:wasRevisionOf ?carmichael1 .",
 				"    ",
 				"    <carmichael> prov:wasGeneratedBy ?provenance2 .",
 				"    ",
@@ -1017,7 +1044,7 @@ public class AuditingPurgeTest extends TestCase {
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
 		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
 		assertTrue(con.hasStatement(null, INFLUENCED_BY, null, false));
-		assertTrue(con.hasStatement(null, WITHOUT, null, false));
+		assertFalse(con.hasStatement(null, WITHOUT, null, false));
 		assertFalse(ask("?activity prov:wasInfluencedBy ?activity"));
 		assertTrue(ask("GRAPH ?activity2 {",
 				"    ?activity2 a prov:Bundle ;",
@@ -1028,12 +1055,7 @@ public class AuditingPurgeTest extends TestCase {
 				"        prov:generated ?carmichael2 .",
 				"    ",
 				"    ?carmichael2 prov:specializationOf <carmichael> ;",
-				"        prov:wasRevisionOf ?carmichael1 ;",
-				"        audit:without ?triple .",
-				"    ",
-				"    ?triple rdf:subject <carmichael> ;",
-				"            rdf:predicate foaf:knows ;",
-				"            rdf:object <harris> .",
+				"        prov:wasRevisionOf ?carmichael1 .",
 				"    ",
 				"    ?carmichael2 prov:specializationOf <carmichael> .",
 				"    <carmichael> foaf:knows <jackson> ; prov:wasGeneratedBy ?provenance2 .",
@@ -1311,7 +1333,7 @@ public class AuditingPurgeTest extends TestCase {
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
 		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
 		assertTrue(con.hasStatement(null, INFLUENCED_BY, null, false));
-		assertTrue(con.hasStatement(null, WITHOUT, null, false));
+		assertFalse(con.hasStatement(null, WITHOUT, null, false));
 		assertTrue(ask("GRAPH ?activity2 {",
 				"    ?activity2 a prov:Bundle ;",
 				"        prov:wasInfluencedBy <graph>, ?activity1 ;",
@@ -1324,12 +1346,7 @@ public class AuditingPurgeTest extends TestCase {
 				"        prov:wasRevisionOf ?graph1 .",
 				"    ",
 				"    ?carmichael2 prov:specializationOf <carmichael> ;",
-				"        prov:wasRevisionOf ?carmichael1 ;",
-				"        audit:without ?triple .",
-				"    ",
-				"    ?triple rdf:subject <carmichael> ;",
-				"            rdf:predicate foaf:knows ;",
-				"            rdf:object <harris> .",
+				"        prov:wasRevisionOf ?carmichael1 .",
 				"    ",
 				"    <carmichael> prov:wasGeneratedBy ?provenance2 .",
 				"    <graph> prov:wasGeneratedBy ?provenance2 .",
@@ -1356,7 +1373,7 @@ public class AuditingPurgeTest extends TestCase {
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
 		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
 		assertTrue(con.hasStatement(null, INFLUENCED_BY, null, false));
-		assertTrue(con.hasStatement(null, WITHOUT, null, false));
+		assertFalse(con.hasStatement(null, WITHOUT, null, false));
 		assertTrue(ask("GRAPH ?activity2 {",
 				"    ?activity2 a prov:Bundle ;",
 				"        prov:wasInfluencedBy ?other, ?activity1 ;",
@@ -1366,12 +1383,7 @@ public class AuditingPurgeTest extends TestCase {
 				"        prov:generated ?carmichael2 .",
 				"    ",
 				"    ?carmichael2 prov:specializationOf <carmichael> ;",
-				"        prov:wasRevisionOf ?carmichael1 ;",
-				"        audit:without ?triple .",
-				"    ",
-				"    ?triple rdf:subject <carmichael> ;",
-				"            rdf:predicate foaf:knows ;",
-				"            rdf:object <harris> .",
+				"        prov:wasRevisionOf ?carmichael1 .",
 				"    ",
 				"    <carmichael> prov:wasGeneratedBy ?provenance2 .",
 				"    ",
@@ -1432,7 +1444,7 @@ public class AuditingPurgeTest extends TestCase {
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
 		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
 		assertTrue(con.hasStatement(null, INFLUENCED_BY, null, false));
-		assertTrue(con.hasStatement(null, WITHOUT, null, false));
+		assertFalse(con.hasStatement(null, WITHOUT, null, false));
 		assertTrue(ask("GRAPH ?activity2 {",
 				"    ?activity2 a prov:Bundle ;",
 				"        prov:wasInfluencedBy ?activity1 ;",
@@ -1442,16 +1454,7 @@ public class AuditingPurgeTest extends TestCase {
 				"        prov:generated ?carmichael2 .",
 				"    ",
 				"    ?carmichael2 prov:specializationOf <carmichael> ;",
-				"        prov:wasRevisionOf ?carmichael1 ;",
-				"        audit:without ?triple1, ?triple2 .",
-				"    ",
-				"    ?triple1 rdf:subject <carmichael> ;",
-				"        rdf:predicate foaf:knows ;",
-				"        rdf:object ?node .",
-				"    ",
-				"    ?triple2 rdf:subject ?node ;",
-				"        rdf:predicate foaf:knows ;",
-				"        rdf:object <jackson> .",
+				"        prov:wasRevisionOf ?carmichael1 .",
 				"    ",
 				"    <carmichael> prov:wasGeneratedBy ?provenance2 .",
 				"}"));
@@ -1475,7 +1478,7 @@ public class AuditingPurgeTest extends TestCase {
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
 		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
 		assertTrue(con.hasStatement(null, INFLUENCED_BY, null, false));
-		assertTrue(con.hasStatement(null, WITHOUT, null, false));
+		assertFalse(con.hasStatement(null, WITHOUT, null, false));
 		assertFalse(con.hasStatement(null, null, jackson, false));
 		assertTrue(ask("GRAPH ?activity2 {",
 				"    ?activity2 a prov:Bundle ;",
@@ -1486,12 +1489,7 @@ public class AuditingPurgeTest extends TestCase {
 				"        prov:generated ?carmichael2 .",
 				"    ",
 				"    ?carmichael2 prov:specializationOf <carmichael> ;",
-				"        prov:wasRevisionOf ?carmichael1 ;",
-				"        audit:without ?triple1 .",
-				"    ",
-				"    ?triple1 rdf:subject <carmichael> ;",
-				"        rdf:predicate foaf:knows ;",
-				"        rdf:object [] .",
+				"        prov:wasRevisionOf ?carmichael1 .",
 				"    ",
 				"    <carmichael> prov:wasGeneratedBy ?provenance2 .",
 				"}"));
@@ -1515,7 +1513,7 @@ public class AuditingPurgeTest extends TestCase {
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
 		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
 		assertTrue(con.hasStatement(null, INFLUENCED_BY, null, false));
-		assertTrue(con.hasStatement(null, WITHOUT, null, false));
+		assertFalse(con.hasStatement(null, WITHOUT, null, false));
 		assertTrue(ask("GRAPH ?activity2 {",
 				"    ?activity2 a prov:Bundle ;",
 				"        prov:wasGeneratedBy ?provenance2 .",
@@ -1536,12 +1534,7 @@ public class AuditingPurgeTest extends TestCase {
 				"        prov:generated ?carmichael3 .",
 				"    ",
 				"    ?carmichael3 prov:specializationOf <carmichael> ;",
-				"        prov:wasRevisionOf ?carmichael1 ;",
-				"        audit:without ?triple1 .",
-				"    ",
-				"    ?triple1 rdf:subject <carmichael> ;",
-				"        rdf:predicate foaf:knows ;",
-				"        rdf:object <harris> .",
+				"        prov:wasRevisionOf ?carmichael1 .",
 				"    ",
 				"    <carmichael> prov:wasGeneratedBy ?provenance3 .",
 				"    ",
@@ -1621,7 +1614,7 @@ public class AuditingPurgeTest extends TestCase {
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
 		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
 		assertTrue(con.hasStatement(null, INFLUENCED_BY, null, false));
-		assertTrue(con.hasStatement(null, WITHOUT, null, false));
+		assertFalse(con.hasStatement(null, WITHOUT, null, false));
 		assertTrue(ask("GRAPH ?activity2 {",
 				"    ?activity2 a prov:Bundle ;",
 				"        prov:wasGeneratedBy ?provenance2 .",
@@ -1647,12 +1640,7 @@ public class AuditingPurgeTest extends TestCase {
 				"    ?set3 prov:specializationOf <set> ;",
 				"        prov:wasRevisionOf ?set2 .",
 				"    ?carmichael3 prov:specializationOf <carmichael> ;",
-				"        prov:wasRevisionOf ?carmichael1 ;",
-				"        audit:without ?triple1 .",
-				"    ",
-				"    ?triple1 rdf:subject <carmichael> ;",
-				"        rdf:predicate foaf:knows ;",
-				"        rdf:object <harris> .",
+				"        prov:wasRevisionOf ?carmichael1 .",
 				"    ",
 				"    <graph> prov:wasGeneratedBy ?provenance3 .",
 				"    <set> prov:wasGeneratedBy ?provenance3 .",

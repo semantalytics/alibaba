@@ -521,6 +521,55 @@ public class ClientAuditingTest extends TestCase {
 				"FILTER (?activity1 != ?activity2)"));
 	}
 
+	public void testRemoveSome() throws Exception {
+		begin(con);
+		assertTrue(con.isEmpty());
+		con.add(carmichael, knows, harris);
+		con.add(carmichael, knows, jackson);
+		con = reopen(repo, con);
+		con.remove(carmichael, knows, harris);
+		con = commit(repo, con);
+		assertFalse(con.hasStatement(carmichael, knows, harris, false));
+		assertTrue(con.hasStatement(carmichael, knows, jackson, false));
+		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
+		assertEquals(2, con.getContextIDs().asList().size());
+		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
+		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
+		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
+		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
+		assertFalse(con.hasStatement(null, INFLUENCED_BY, null, false));
+		assertFalse(con.hasStatement(null, WITHOUT, null, false));
+		assertTrue(ask("GRAPH ?activity1 {",
+				"    ?activity1 a prov:Bundle ;",
+				"        prov:wasGeneratedBy ?provenance1 .",
+				"    ",
+				"    ?provenance1 prov:endedAtTime ?ended1 ;",
+				"        prov:generated ?carmichael1 .",
+				"    ",
+				"    ?carmichael1 prov:specializationOf <carmichael> .",
+				"    ",
+				"    <carmichael> foaf:knows <jackson> .",
+				"    ",
+				"    FILTER (str(?carmichael1) = concat(str(?activity1), '#!', str(<carmichael>)))",
+				"    FILTER NOT EXISTS { <carmichael> prov:wasGeneratedBy ?activity1 }",
+				"    FILTER NOT EXISTS { <carmichael> prov:wasGeneratedBy ?provenance1 }",
+				"}",
+				"GRAPH ?activity2 {",
+				"    ?activity2 a prov:Bundle ;",
+				"        prov:wasGeneratedBy ?provenance2 .",
+				"    ",
+				"    ?provenance2 prov:endedAtTime ?ended2 ;",
+				"        prov:generated ?carmichael2 .",
+				"    ",
+				"    ?carmichael2 prov:specializationOf <carmichael> .",
+				"    ",
+				"    <carmichael> prov:wasGeneratedBy ?provenance2 .",
+				"    ",
+				"    FILTER (str(?carmichael2) = concat(str(?activity2), '#!', str(<carmichael>)))",
+				"    FILTER NOT EXISTS { ?activity2 a audit:ObsoleteBundle }",
+				"}"));
+	}
+
 	public void testRemoveNil() throws Exception {
 		begin(con);
 		assertTrue(con.isEmpty());

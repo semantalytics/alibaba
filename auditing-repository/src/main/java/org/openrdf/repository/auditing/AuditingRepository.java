@@ -121,8 +121,10 @@ public class AuditingRepository extends ContextAwareRepository {
 			+ "?e1 audit:with ?triple . ?e2 audit:without ?triple .\n\t"
 			+ "?triple rdf:subject ?s ; rdf:predicate ?p ; rdf:object ?o\n"
 			+ "} WHERE {\n\t"
-			+ "?e2 audit:without ?triple . ?prov prov:generated ?e1 ; prov:endedAtTime ?endedAtTime\n\t"
-			+ "FILTER (?endedAtTime < $earlier)\n\t"
+			+ "GRAPH ?bundle { ?e2 audit:without ?triple }\n\t"
+			+ "OPTIONAL { ?prov prov:generated ?e2 ; prov:endedAtTime ?endedAtTime }\n\t"
+			+ "FILTER (bound(?endedAtTime) && ?endedAtTime < $earlier)\n\t"
+			+ "FILTER NOT EXISTS { ?bundle a audit:RecentBundle }\n\t"
 			+ "OPTIONAL { ?e1 audit:with ?triple }\n\t"
 			+ "OPTIONAL { ?triple rdf:subject ?s ; rdf:predicate ?p ; rdf:object ?o }\n"
 			+ "}";
@@ -139,7 +141,7 @@ public class AuditingRepository extends ContextAwareRepository {
 				}
 			});
 
-	private final Logger logger = LoggerFactory
+	final Logger logger = LoggerFactory
 			.getLogger(AuditingRepository.class);
 	private final ArrayDeque<URI> recent = new ArrayDeque<URI>(1024);
 	private DatatypeFactory datatypeFactory;
@@ -347,33 +349,14 @@ public class AuditingRepository extends ContextAwareRepository {
 		Date earlier = new Date(now);
 		purgeAfter.negate().addTo(earlier);
 		try {
-			RepositoryConnection con = super.getConnection();
-			try {
-				purgeObsolete(earlier, con);
-			} finally {
-				con.close();
-			}
-			long later = System.currentTimeMillis();
+			long length = purgeObsolete(earlier);
 			if (delay && puringTask != null) {
-				if (later - now > 1000) {
-					logger.info("Purged the obsolete bundles in {} seconds", (later - now) / 1000.0);
-					synchronized (puringTask) {
-						puringTask.wait(later - now);
-					}
+				synchronized (puringTask) {
+					puringTask.wait(length);
 				}
 			}
-			if (puringTask != null && !puringTask.isCancelled()) {
-				long ready = System.currentTimeMillis();
-				con = super.getConnection();
-				try {
-					trimEarlier(earlier, con);
-				} finally {
-					con.close();
-				}
-				long done = System.currentTimeMillis();
-				if (done - ready > 1000) {
-					logger.info("Removed the old reified triples in {} seconds", (done - ready) / 1000.0);
-				}
+			if (puringTask == null || !puringTask.isCancelled()) {
+				trimEarlier(earlier);
 			}
 		} catch (OpenRDFException e) {
 			logger.error(e.toString(), e);
@@ -413,6 +396,27 @@ public class AuditingRepository extends ContextAwareRepository {
 		}
 	}
 
+	private long purgeObsolete(Date earlier) throws RepositoryException,
+			MalformedQueryException, UpdateExecutionException {
+		ScheduledFuture<?> task = executor.schedule(new Runnable() {
+			public void run() {
+				logger.info("Purging obsolete bundles");
+			}
+		}, 1, TimeUnit.SECONDS);
+		long begin = System.currentTimeMillis();
+		RepositoryConnection con = super.getConnection();
+		try {
+			purgeObsolete(earlier, con);
+		} finally {
+			con.close();
+		}
+		long end = System.currentTimeMillis();
+		if (!task.cancel(false)) {
+			logger.info("Purged the obsolete bundles in {} seconds", (end - begin) / 1000.0);
+		}
+		return end - begin;
+	}
+
 	private void purgeObsolete(Date earlier, RepositoryConnection con)
 			throws RepositoryException, MalformedQueryException,
 			UpdateExecutionException {
@@ -423,6 +427,26 @@ public class AuditingRepository extends ContextAwareRepository {
 		Update update = con.prepareUpdate(QueryLanguage.SPARQL, PURGE_EARLIER);
 		update.setBinding("earlier", vf.createLiteral(xgc));
 		update.execute();
+	}
+
+	private void trimEarlier(Date earlier) throws RepositoryException,
+			MalformedQueryException, UpdateExecutionException {
+		ScheduledFuture<?> task = executor.schedule(new Runnable() {
+			public void run() {
+				logger.info("Removing old reified triples");
+			}
+		}, 1, TimeUnit.SECONDS);
+		long begin = System.currentTimeMillis();
+		RepositoryConnection con = super.getConnection();
+		try {
+			trimEarlier(earlier, con);
+		} finally {
+			con.close();
+		}
+		if (!task.cancel(false)) {
+			long end = System.currentTimeMillis();
+			logger.info("Removed old reified triples in {} seconds", (end - begin) / 1000.0);
+		}
 	}
 
 	private void trimEarlier(Date earlier, RepositoryConnection con)
