@@ -16,7 +16,12 @@ public class RepositoryProviderTest extends TestCase {
 		try {
 			RepositoryManager byfile = RepositoryProvider.getRepositoryManager(dir);
 			RepositoryManager byurl = RepositoryProvider.getRepositoryManager(dir.toURI().getRawPath());
-			assertEquals(byfile, byurl);
+			try {
+				assertEquals(byfile, byurl);
+			} finally {
+				byfile.shutDown();
+				byurl.shutDown();
+			}
 		} finally {
 			FileUtil.deleteDir(dir);
 		}
