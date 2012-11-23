@@ -183,8 +183,18 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 
 	@Override
 	public void commit() throws RepositoryException {
-		Map<URI,URI> recentBundles = finalizeBundles();
-		super.commit();
+		Map<URI,URI> recentBundles;
+		boolean autoCommit = super.isAutoCommit();
+		try {
+			super.setAutoCommit(false);
+			recentBundles = finalizeBundles();
+			super.setAutoCommit(autoCommit);
+			super.commit();
+		} finally {
+			if (autoCommit) {
+				super.rollback();
+			}
+		}
 		closeBundle(recentBundles);
 	}
 
@@ -221,19 +231,30 @@ public class AuditingRepositoryConnection extends ContextAwareConnection {
 		return new Update(){
 			public void execute() throws UpdateExecutionException {
 				try {
-					BindingSet bindings = prepared.getBindings();
-					Dataset dataset = prepared.getDataset();
-					if (dataset != null) {
-						activity(ql, update, baseURI, bindings, dataset);
+					boolean autoCommit = isAutoCommit();
+					try {
+						setAutoCommit(false);
+						try {
+							BindingSet bindings = prepared.getBindings();
+							Dataset dataset = prepared.getDataset();
+							if (dataset != null) {
+								activity(ql, update, baseURI, bindings, dataset);
+							}
+						} catch (MalformedQueryException e) {
+							// ignore
+						} catch (QueryEvaluationException e) {
+							// ignore
+						}
+						prepared.execute();
+						setAutoCommit(autoCommit);
+					} finally {
+						if (autoCommit) {
+							rollback();
+						}
 					}
-				} catch (MalformedQueryException e) {
-					// ignore
-				} catch (QueryEvaluationException e) {
-					// ignore
 				} catch (RepositoryException e) {
 					throw new UpdateExecutionException(e);
 				}
-				prepared.execute();
 			}
 
 			public void setBinding(String name, Value value) {
