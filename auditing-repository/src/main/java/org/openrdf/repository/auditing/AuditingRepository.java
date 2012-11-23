@@ -72,13 +72,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class AuditingRepository extends ContextAwareRepository {
-	private static final String FILTER_NOT_EXISTS_ACTIVE_TRIPLES = "FILTER NOT EXISTS { GRAPH ?obsolete {\n\t\t\t"
-				+ "?s ?p ?o\n\t\t\t"
-				+ "FILTER (isIri(?s) && !strstarts(str(?s),str(?obsolete)) )\n\t\t\t"
-				+ "FILTER ( !strstarts(str(?p),str(rdf:)) )\n\t\t\t"
-				+ "FILTER ( !strstarts(str(?p),str(audit:)) )\n\t\t"
-				+ "FILTER ( !strstarts(str(?p),str(prov:)) || sameTerm(?p,prov:wasGeneratedBy) )\n\t\t\t"
-				+ "}}\n\t\t";
 	private static final String SELECT_RECENT = "PREFIX prov:<http://www.w3.org/ns/prov#>\n"
 			+ "PREFIX audit:<http://www.openrdf.org/rdf/2012/auditing#>\n"
 			+ "SELECT REDUCED ?recent { ?recent a audit:RecentBundle\n\t"
@@ -99,7 +92,16 @@ public class AuditingRepository extends ContextAwareRepository {
 			+ "} UNION {\n\t\t\t"
 			+ "$bundle prov:wasInfluencedBy ?obsolete\n\t\t"
 			+ "}\n\t\t"
-			+ FILTER_NOT_EXISTS_ACTIVE_TRIPLES
+			+ "FILTER NOT EXISTS {\n\t\t\t"
+			+ "GRAPH ?obsolete {\n\t\t\t\t"
+			+ "?s ?p ?o\n\t\t\t\t"
+			+ "FILTER ( !strstarts(str(?s),str(?obsolete)) )\n\t\t\t\t"
+			+ "FILTER ( !strstarts(str(?p),str(rdf:)) || sameTerm(?p,rdf:type) && !strstarts(str(?o),'http://www.openrdf.org/rdf/2009/auditing#') )\n\t\t\t\t"
+			+ "FILTER ( !strstarts(str(?p),str(audit:)) )\n\t\t\t\t"
+			+ "FILTER ( !strstarts(str(?p),'http://www.openrdf.org/rdf/2009/auditing#') )\n\t\t\t\t"
+			+ "FILTER ( !strstarts(str(?p),str(prov:)) || sameTerm(?p,prov:wasGeneratedBy) )\n\t\t\t"
+			+ "}\n\t\t"
+			+ "}\n\t\t"
 			+ "FILTER EXISTS { GRAPH ?obsolete { ?s ?p ?o } }\n\t"
 			+ "}\n"
 			+ "}";
@@ -109,10 +111,10 @@ public class AuditingRepository extends ContextAwareRepository {
 			+ "DELETE {\n\t"
 			+ "GRAPH ?obsolete { ?subject ?predicate ?object }\n"
 			+ "} WHERE {\n\t"
-			+ "?obsolete a audit:ObsoleteBundle; prov:wasGeneratedBy [prov:endedAtTime ?endedAtTime]\n\t"
-			+ "FILTER (?endedAtTime < $earlier)\n\t"
+			+ "?obsolete a audit:ObsoleteBundle\n\t"
+			+ "OPTIONAL { ?obsolete prov:wasGeneratedBy [prov:endedAtTime ?endedAtTime] }\n\t"
+			+ "FILTER (!bound(?endedAtTime) || ?endedAtTime < $earlier)\n\t"
 			+ "FILTER NOT EXISTS { ?obsolete a audit:RecentBundle }\n\t"
-			+ FILTER_NOT_EXISTS_ACTIVE_TRIPLES
 			+ "GRAPH ?obsolete { ?subject ?predicate ?object }\n" + "}";
 	private static final String TRIM_EARLIER = "PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n"
 			+ "PREFIX prov:<http://www.w3.org/ns/prov#>\n"
@@ -123,7 +125,7 @@ public class AuditingRepository extends ContextAwareRepository {
 			+ "} WHERE {\n\t"
 			+ "GRAPH ?bundle { ?e2 audit:without ?triple }\n\t"
 			+ "OPTIONAL { ?prov prov:generated ?e2 ; prov:endedAtTime ?endedAtTime }\n\t"
-			+ "FILTER (bound(?endedAtTime) && ?endedAtTime < $earlier)\n\t"
+			+ "FILTER (!bound(?endedAtTime) || ?endedAtTime < $earlier)\n\t"
 			+ "FILTER NOT EXISTS { ?bundle a audit:RecentBundle }\n\t"
 			+ "OPTIONAL { ?e1 audit:with ?triple }\n\t"
 			+ "OPTIONAL { ?triple rdf:subject ?s ; rdf:predicate ?p ; rdf:object ?o }\n"
