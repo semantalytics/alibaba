@@ -113,7 +113,7 @@ public class AuditingRepository extends ContextAwareRepository {
 			+ "} WHERE {\n\t"
 			+ "?obsolete a audit:ObsoleteBundle\n\t"
 			+ "OPTIONAL { ?obsolete prov:wasGeneratedBy [prov:endedAtTime ?endedAtTime] }\n\t"
-			+ "FILTER (!bound(?endedAtTime) || ?endedAtTime < $earlier)\n\t"
+			+ "FILTER (!bound(?endedAtTime) || ?endedAtTime <= $earlier)\n\t"
 			+ "FILTER NOT EXISTS { ?obsolete a audit:RecentBundle }\n\t"
 			+ "GRAPH ?obsolete { ?subject ?predicate ?object }\n" + "}";
 	private static final String TRIM_EARLIER = "PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n"
@@ -125,7 +125,7 @@ public class AuditingRepository extends ContextAwareRepository {
 			+ "} WHERE {\n\t"
 			+ "GRAPH ?bundle { ?e2 audit:without ?triple }\n\t"
 			+ "OPTIONAL { ?prov prov:generated ?e2 ; prov:endedAtTime ?endedAtTime }\n\t"
-			+ "FILTER (!bound(?endedAtTime) || ?endedAtTime < $earlier)\n\t"
+			+ "FILTER (!bound(?endedAtTime) || ?endedAtTime <= $earlier)\n\t"
 			+ "FILTER NOT EXISTS { ?bundle a audit:RecentBundle }\n\t"
 			+ "OPTIONAL { ?e1 audit:with ?triple }\n\t"
 			+ "OPTIONAL { ?triple rdf:subject ?s ; rdf:predicate ?p ; rdf:object ?o }\n"
