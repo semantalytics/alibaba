@@ -160,6 +160,7 @@ public class AuditingOptimisticTest extends TestCase {
 		Repository r = new OptimisticRepository(sail);
 		repo = new AuditingRepository(r);
 		repo.initialize();
+		vf = repo.getValueFactory();
 		final ActivityFactory delegate = repo.getActivityFactory();
 		repo.setActivityFactory(new ActivityFactory() {
 

@@ -162,6 +162,7 @@ public class AuditingRecentTest extends TestCase {
 		repo.setMinRecent(1);
 		repo.setMaxRecent(1);
 		repo.initialize();
+		vf = repo.getValueFactory();
 		final ActivityFactory delegate = repo.getActivityFactory();
 		repo.setActivityFactory(new ActivityFactory() {
 

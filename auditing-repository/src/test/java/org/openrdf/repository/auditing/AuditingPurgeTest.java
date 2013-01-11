@@ -163,6 +163,7 @@ public class AuditingPurgeTest extends TestCase {
 		repo = new AuditingRepository(r);
 		repo.setPurgeAfter(DatatypeFactory.newInstance().newDuration("PT0S"));
 		repo.initialize();
+		vf = repo.getValueFactory();
 		final ActivityFactory delegate = repo.getActivityFactory();
 		repo.setActivityFactory(new ActivityFactory() {
 

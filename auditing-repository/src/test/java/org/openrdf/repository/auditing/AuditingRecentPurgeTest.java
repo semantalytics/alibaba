@@ -165,6 +165,7 @@ public class AuditingRecentPurgeTest extends TestCase {
 		repo.setMaxRecent(1);
 		repo.setPurgeAfter(DatatypeFactory.newInstance().newDuration("PT0S"));
 		repo.initialize();
+		vf = repo.getValueFactory();
 		final ActivityFactory delegate = repo.getActivityFactory();
 		repo.setActivityFactory(new ActivityFactory() {
 
