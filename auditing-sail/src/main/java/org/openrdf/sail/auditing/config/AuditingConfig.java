@@ -30,27 +30,7 @@
  */
 package org.openrdf.sail.auditing.config;
 
-import static org.openrdf.sail.auditing.config.AuditingSchema.ARCHIVING;
-import static org.openrdf.sail.auditing.config.AuditingSchema.MAX_ARCHIVE;
-import static org.openrdf.sail.auditing.config.AuditingSchema.MAX_RECENT;
-import static org.openrdf.sail.auditing.config.AuditingSchema.MIN_RECENT;
-import static org.openrdf.sail.auditing.config.AuditingSchema.PURGE_AFTER;
-import static org.openrdf.sail.auditing.config.AuditingSchema.TRX_NAMESPACE;
-
-import javax.xml.datatype.DatatypeConfigurationException;
-import javax.xml.datatype.DatatypeFactory;
-import javax.xml.datatype.Duration;
-
-import org.openrdf.model.Graph;
-import org.openrdf.model.Literal;
-import org.openrdf.model.Model;
-import org.openrdf.model.Resource;
-import org.openrdf.model.ValueFactory;
-import org.openrdf.model.impl.LinkedHashModel;
-import org.openrdf.model.impl.ValueFactoryImpl;
-import org.openrdf.model.vocabulary.XMLSchema;
 import org.openrdf.sail.config.DelegatingSailImplConfigBase;
-import org.openrdf.sail.config.SailConfigException;
 import org.openrdf.sail.config.SailImplConfig;
 
 /**
@@ -64,111 +44,6 @@ public class AuditingConfig extends DelegatingSailImplConfigBase {
 
 	public AuditingConfig(SailImplConfig delegate) {
 		super(AuditingFactory.SAIL_TYPE, delegate);
-	}
-
-	private String ns;
-	private boolean archiving;
-	private int maxArchive;
-	private int minRecent;
-	private int maxRecent;
-	private Duration purgeAfter;
-
-	public String getNamespace() {
-		return ns;
-	}
-
-	public void setNamespace(String ns) {
-		this.ns = ns;
-	}
-
-	public boolean isArchiving() {
-		return archiving;
-	}
-
-	public void setArchiving(boolean archiving) {
-		this.archiving = archiving;
-	}
-
-	public int getMaxArchive() {
-		return maxArchive;
-	}
-
-	public void setMaxArchive(int maxArchive) {
-		this.maxArchive = maxArchive;
-	}
-
-	public int getMinRecent() {
-		return minRecent;
-	}
-
-	public void setMinRecent(int minRecent) {
-		this.minRecent = minRecent;
-	}
-
-	public int getMaxRecent() {
-		return maxRecent;
-	}
-
-	public void setMaxRecent(int maxRecent) {
-		this.maxRecent = maxRecent;
-	}
-
-	public Duration getPurgeAfter() {
-		return purgeAfter;
-	}
-
-	public void setPurgeAfter(Duration purgeAfter) {
-		this.purgeAfter = purgeAfter;
-	}
-
-	@Override
-	public Resource export(Graph model) {
-		ValueFactory vf = ValueFactoryImpl.getInstance();
-		Resource self = super.export(model);
-		if (ns != null) {
-			model.add(self, TRX_NAMESPACE, vf.createLiteral(ns));
-		}
-		model.add(self, ARCHIVING, vf.createLiteral(archiving));
-		model.add(self, MAX_ARCHIVE, vf.createLiteral(maxArchive));
-		model.add(self, MIN_RECENT, vf.createLiteral(minRecent));
-		model.add(self, MAX_RECENT, vf.createLiteral(maxRecent));
-		if (purgeAfter != null) {
-			model.add(self, PURGE_AFTER, vf.createLiteral(purgeAfter.toString(), XMLSchema.DURATION));
-		}
-		return self;
-	}
-
-	@Override
-	public void parse(Graph graph, Resource implNode)
-			throws SailConfigException {
-		super.parse(graph, implNode);
-		Model model = new LinkedHashModel(graph);
-		setNamespace(model.filter(implNode, TRX_NAMESPACE, null).objectString());
-		Literal lit = model.filter(implNode, ARCHIVING, null).objectLiteral();
-		if (lit != null) {
-			setArchiving(lit.booleanValue());
-		}
-		lit = model.filter(implNode, MAX_ARCHIVE, null).objectLiteral();
-		if (lit != null) {
-			setMaxArchive(lit.intValue());
-		}
-		lit = model.filter(implNode, MIN_RECENT, null).objectLiteral();
-		if (lit != null) {
-			setMinRecent(lit.intValue());
-		}
-		lit = model.filter(implNode, MAX_RECENT, null).objectLiteral();
-		if (lit != null) {
-			setMaxRecent(lit.intValue());
-		}
-		lit = model.filter(implNode, PURGE_AFTER, null).objectLiteral();
-		if (lit != null) {
-			try {
-				DatatypeFactory df = DatatypeFactory.newInstance();
-				setPurgeAfter(df.newDuration(lit.stringValue()));
-			} catch (DatatypeConfigurationException e) {
-				throw new SailConfigException(e);
-			}
-		}
 	}
 
 }

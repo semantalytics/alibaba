@@ -66,14 +66,7 @@ public class AuditingFactory implements SailFactory {
 					+ config.getType());
 		}
 		assert config instanceof AuditingConfig;
-		AuditingConfig cfg = (AuditingConfig) config;
 		AuditingSail sail = new AuditingSail();
-		sail.setNamespace(cfg.getNamespace());
-		sail.setArchiving(cfg.isArchiving());
-		sail.setMaxArchive(cfg.getMaxArchive());
-		sail.setMinRecent(cfg.getMinRecent());
-		sail.setMaxRecent(cfg.getMaxRecent());
-		sail.setPurgeAfter(cfg.getPurgeAfter());
 		return sail;
 	}
 }
