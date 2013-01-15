@@ -1,12 +1,5 @@
- ----------------------------------------
- Optimistic Repository
- ----------------
- James Leigh
- ----------------
- Jan 2012
-
-
 Optimistic Repository
+=====================
  
  The Optimistic Repository provides concurrent optimistic
  transactions for embedded Sesame stores. It can replace the
@@ -15,7 +8,7 @@ Optimistic Repository
  with the create command, including optimistic-memory and
  optimistic-native (among others). The configuration templates that
  create ObjectRepositories also include the optimistic repository.
- 
+
  The optimistic repository is designed for small concurrent transactions.
  Although it also works for larger transactions, you may want to disable read
  snapshot during large bulk-load transactions. Serializable or snapshot
@@ -24,11 +17,11 @@ Optimistic Repository
  repository. Applications that utilize the optimistic repository in serializable
  or snapshot mode must be
  prepared for a ConcurrencyException when a transaction is committed.
- 
+
  Sesame 2.x does not support transaction isolation across HTTP and
  therefore the optimistic repository has no effect on remote clients and
  is only useful with embedded repositories.
- 
+
  The OptimisticRepository has four incremental modes of operation. The default
  mode (read snapshot) is similar to what is provided by the SailRepository, but
  the OptimisticRepository allows concurrent writes. Each transaction occurs in

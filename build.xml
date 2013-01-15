@@ -111,11 +111,6 @@
 			<zipfileset src="object-repository/target/alibaba-repository-object-${project.version}.jar" excludes="${excludes}" />
 			<zipfileset src="runtime/target/alibaba-runtime-${project.version}.jar" excludes="${excludes}" />
 		</jar>
-		<concat destfile="target/README.txt" fixlastline="yes">
-			<fileset dir="." includes="src/site/apt/index.apt"/>
-			<fileset dir="." includes="object-repository/src/site/apt/index.apt"/>
-			<fileset dir="." includes="optimistic-repository/src/site/apt/index.apt"/>
-		</concat>
 		<zip destfile="target/openrdf-alibaba-${project.version}.zip">
 			<zipfileset dir="." includes="*.txt" />
 			<zipfileset dir="target" includes="README.txt" />
@@ -231,9 +226,6 @@
 	</target>
 
 	<target name="site">
-		<antcall target="mvn">
-			<param name="args" value="site site:deploy" />
-		</antcall>
 		<xmlproperty file="pom.xml" />
 		<zip destfile="target/alibaba-site-${project.version}.zip" basedir="target/website" />
 	</target>

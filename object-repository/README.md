@@ -1,20 +1,13 @@
- ----------------------------------------
- Object Repository
- ----------------
- James Leigh
- ----------------
- Feb 2012
-
-
 Object Repository
- 
+=================
+
  The Object Repository is an extension to the Sesame RDF Repository that
  allows an RDF store to function as an object store. It maps Java objects
  to and from RDF resources and OWL classes to Java classes in a
  non-intrusive manner that enables developers to work with resources
  stored in an RDF Repository as objects. The Object Repository may also
  optionally be configured with a BLOB store, to store information-resources.
- 
+
  Sesame Repositories can be created using the console. Use the connect
  command to set the data directory before creating a repository using the
  create command. Once the repository has been created it can be accessed
@@ -22,7 +15,7 @@ Object Repository
  method, which takes the directory location that was used in
  the connect command of the console. Then the repository can be accessed
  using the getRepository(id) method of the returned RepositoryManager.
- 
+
  The ObjectRepository must be created through the
  ObjectRepositoryFactory, using the createRepository method, passing an
  existing Repository. Once the ObjectRepository is created it is like
@@ -32,7 +25,7 @@ Object Repository
  for working with objects and information-resources. These objects are actually
  just proxies to the ObjectConnection that returned them. However, before
  objects can be returned, object classes must first be created and registered.
- 
+
  To create classes for the ObjectRepository add the @Iri annotation to
  all classes and fields (or interfaces and property methods)
  that should be stored in the repository. Then
@@ -41,26 +34,24 @@ Object Repository
  classes have been created, as shown in Figure 5,
  they can be used with new ObjectRepositories.
  
- <<Figure 5. A Class Compatible with the ObjectRepository>>
+Figure 5. A Class Compatible with the ObjectRepository
 
-+--
-// Document.java
-import org.openrdf.annotations.Iri;
+    // Document.java
+    import org.openrdf.annotations.Iri;
 
-@Iri(Document.NS + "Document")
-public class Document {
-  public static final String NS = "http://example.com/rdf/2012/gs#";
+    @Iri(Document.NS + "Document")
+    public class Document {
+      public static final String NS = "http://example.com/rdf/2012/gs#";
 
-  @Iri(NS + "title") String title;
+      @Iri(NS + "title") String title;
 
-  public String getTitle() {
-    return title;
-  }
-  public void setTitle(String title) {
-    this.title = title;
-  }
-}
-+--
+      public String getTitle() {
+        return title;
+      }
+      public void setTitle(String title) {
+        this.title = title;
+      }
+    }
  
  To add an object to the ObjectRepository, create an ObjectConnection and
  call the addObject method (as shown in Figure 6). This method will recursively
@@ -76,7 +67,7 @@ public class Document {
  need to be referenced directly or has a conceptual identity. For all
  other objects, such as anonymous collections, an automatic identifier
  may be good enough.
- 
+
  To retrieve an existing object, use the getObject(Class, Resource)
  method of the ObjectConnection. The method accepts a URI or an anonymous
  identifier. An anonymous identifier maybe different for different
@@ -84,34 +75,32 @@ public class Document {
  ObjectConnection. A URI, however, will never change and can be used in any
  connection. Once the ObjectConnection is closed, the objects it returned
  must be discarded.
- 
+
  Removing an object is more difficult, as every property of the object
  will need to be removed, by setting the fields or properties to null.
  Furthermore, the type of the object must also be removed from the
  repository, this can be done using the removeDesignation method of the
  ObjectConnection.
- 
- <<Figure 6. Using an ObjectConnection>>
 
-+--
-// create a Document
-Document doc = new Document();
-doc.setTitle("Getting Started");
+Figure 6. Using an ObjectConnection
 
-// add a Document to the repository
-ObjectConnection con = repository.getConnection();
-ValueFactory vf = con.getValueFactory();
-URI id = vf.createURI("http://example.com/data/2012/getting-started");
-con.addObject(id, doc);
-
-// retrieve a Document by id
-Document doc = con.getObject(Document.class, id);
-
-// remove a Document from the repository
-Document doc = con.getObject(Document.class, id);
-doc.setTitle(null);
-con.removeDesignation(doc, Document.class);
-+--
+    // create a Document
+    Document doc = new Document();
+    doc.setTitle("Getting Started");
+    
+    // add a Document to the repository
+    ObjectConnection con = repository.getConnection();
+    ValueFactory vf = con.getValueFactory();
+    URI id = vf.createURI("http://example.com/data/2012/getting-started");
+    con.addObject(id, doc);
+    
+    // retrieve a Document by id
+    Document doc = con.getObject(Document.class, id);
+    
+    // remove a Document from the repository
+    Document doc = con.getObject(Document.class, id);
+    doc.setTitle(null);
+    con.removeDesignation(doc, Document.class);
  
  Objects can also be retrieved by their type using the getObjects(Class)
  method, which includes subclasses. More fine grained queries can be
@@ -130,50 +119,48 @@ con.removeDesignation(doc, Document.class);
  or one of the other prepareQuery methods. The prepareObjectQuery method
  returns an ObjectQuery that allows objects and their type to be assigned to
  variables within the query before execution.
- 
- <<Figure 7. Executing Queries>>
 
-+--
+Figure 7. Executing Queries
 
-// retrieve all Documents
-Result<Document> result = con.getObjects(Document.class);
-while (result.hasNext()) {
-  out.println(result.next().getTitle());
-}
-
-import org.openrdf.annotations.Sparql;
-import org.openrdf.annotations.Bind;
-
-// retrieve a Document by title using a named query
-@Sparql("PREFIX gs:<http://example.com/rdf/2012/gs#>\n"+
-  "SELECT ?doc WHERE {?doc gs:title $title}")
-public Document findDocumentByTitle(@Bind("title") String title) {
-  return null;
-}
-
-
-// retrieve a Document by title using a named query
-ValueFactory vf = con.getRepository().getValueFactory();
-URI myQueryID = vf.createURI("http://example.com/rdf/2012/my-query");
-
-NamedQuery named = con.getRepository().createNamedQuery(myQueryID,
-  "PREFIX gs:<http://example.com/rdf/2012/gs#>\n"+
-  "SELECT ?doc WHERE {?doc gs:title ?title}");
-
-ObjectQuery query = con.prepareObjectQuery(named.getQueryString());
-query.setObject("title", "Getting Started");
-Document doc = query.evaluate(Document.class).singleResult();
-
-
-// retrieve a Document by title using a dynamic query
-ObjectQuery query = con.prepareObjectQuery(
-  "PREFIX gs:<http://example.com/rdf/2012/gs#>\n"+
-  "SELECT ?doc WHERE {?doc gs:title ?title}");
-query.setObject("title", "Getting Started");
-Document doc = query.evaluate(Document.class).singleResult();
-+--
+    // retrieve all Documents
+    Result<Document> result = con.getObjects(Document.class);
+    while (result.hasNext()) {
+      out.println(result.next().getTitle());
+    }
+    
+    import org.openrdf.annotations.Sparql;
+    import org.openrdf.annotations.Bind;
+    
+    // retrieve a Document by title using a named query
+    @Sparql("PREFIX gs:<http://example.com/rdf/2012/gs#>\n"+
+      "SELECT ?doc WHERE {?doc gs:title $title}")
+    public Document findDocumentByTitle(@Bind("title") String title) {
+      return null;
+    }
+    
+    
+    // retrieve a Document by title using a named query
+    ValueFactory vf = con.getRepository().getValueFactory();
+    URI myQueryID = vf.createURI("http://example.com/rdf/2012/my-query");
+    
+    NamedQuery named = con.getRepository().createNamedQuery(myQueryID,
+      "PREFIX gs:<http://example.com/rdf/2012/gs#>\n"+
+      "SELECT ?doc WHERE {?doc gs:title ?title}");
+    
+    ObjectQuery query = con.prepareObjectQuery(named.getQueryString());
+    query.setObject("title", "Getting Started");
+    Document doc = query.evaluate(Document.class).singleResult();
+    
+    
+    // retrieve a Document by title using a dynamic query
+    ObjectQuery query = con.prepareObjectQuery(
+      "PREFIX gs:<http://example.com/rdf/2012/gs#>\n"+
+      "SELECT ?doc WHERE {?doc gs:title ?title}");
+    query.setObject("title", "Getting Started");
+    Document doc = query.evaluate(Document.class).singleResult();
 
 Concepts
+--------
 
  Concepts are a hierarchical model of resource classes, that include a
  description of supported operations on a type, including syntax and semantics.
@@ -196,6 +183,7 @@ Concepts
  be mapped to an RDF property using the given predicate.
 
 Mixin Behaviours
+----------------
 
  Behaviours are implementations that are mixed into objects, retrieved from the
  store. By using behaviours, code can be organized by what it does, not just by
@@ -229,33 +217,33 @@ Mixin Behaviours
  resource of the store within the same ObjectConnection.
 
 Implementing Inverse Properties
+-------------------------------
 
  To simulate inverse properties in Java use named SPARQL queries for the Java getter and setter.
 
- <<Figure 8. Inverse Property>>
+Figure 8. Inverse Property
 
-+--
-@Iri(FOAF + "Person")
-public interface Person {
-  @Iri(FOAF + "depiction")
-  Image getDepiction();
-
-  @Iri(FOAF + "depiction")
-  void setDepiction(Image depiction);
-}
-
-@Iri(FOAF + "Image")
-public interface Image {
-  @Sparql(PREFIX + "SELECT ?person { ?person foaf:depiction $this }")
-  Person getDepicts();
-
-  @Sparql(PREFIX + "DELETE { ?p foaf:depiction $this } WHERE { ?p foaf:depiction $this } ;\n"+
-    "INSERT { $person foaf:depiction $this } WHERE {} ")
-  void setDepicts(@Bind("person") Person person);
-}
-+--
+    @Iri(FOAF + "Person")
+    public interface Person {
+      @Iri(FOAF + "depiction")
+      Image getDepiction();
+      
+      @Iri(FOAF + "depiction")
+      void setDepiction(Image depiction);
+    }
+    
+    @Iri(FOAF + "Image")
+    public interface Image {
+      @Sparql(PREFIX + "SELECT ?person { ?person foaf:depiction $this }")
+      Person getDepicts();
+      
+      @Sparql(PREFIX + "DELETE { ?p foaf:depiction $this } WHERE { ?p foaf:depiction $this } ;\n"+
+        "INSERT { $person foaf:depiction $this } WHERE {} ")
+      void setDepicts(@Bind("person") Person person);
+    }
 
 Collections
+-----------
 
  In RDF the most natural collection is an unordered set, or non-functional
  property. Sets are triples that share the same subject and predicate.
@@ -285,54 +273,52 @@ Collections
  Java. In both cases calling java.util.List#add(Object) has no effect on the RDF
  store.
 
- <<Figure 9. Unordered Collection with element index>>
+Figure 9. Unordered Collection with element index
 
-+--
-import org.openrdf.annotations.Iri;
-
-@Iri(NS + "Node")
-public interface Node {
-	@Iri(NS + "child")
-	Set<Node> getChildren();
-
-	@Iri(NS + "child")
-	void setChildren(Set<Node> children);
-
-	@Iri(NS + "position")
-	Integer getPosition();
-
-	@Iri(NS + "position")
-	void setPosition(Integer position);
-
-	@Sparql(PREFIX
-			+ "SELECT ?child { $this ex:child ?child . ?child ex:position ?position }\n"
-			+ "ORDER BY ?position")
-	List<Node> getOrderedChildren();
-
-	List<Node> getSortedChildren();
-}
-
-public abstract class NodeSupport implements Node {
-	public List<Node> getSortedChildren() {
-		Set<Node> live = getChildren();
-		List<Node> memory = new ArrayList<Node>(live);
-		Collections.sort(memory, new Comparator<Node>() {
-			public int compare(Node o1, Node o2) {
-				Integer p1 = o1.getPosition();
-				Integer p2 = o2.getPosition();
-				if (p1 == p2)
-					return 0;
-				if (p1 == null)
-					return -1;
-				if (p2 == null)
-					return 1;
-				return p1.compareTo(p2);
-			}
-		});
-		return memory;
-	}
-}
-+--
+    import org.openrdf.annotations.Iri;
+    
+    @Iri(NS + "Node")
+    public interface Node {
+	    @Iri(NS + "child")
+	    Set<Node> getChildren();
+    
+	    @Iri(NS + "child")
+	    void setChildren(Set<Node> children);
+    
+	    @Iri(NS + "position")
+	    Integer getPosition();
+    
+	    @Iri(NS + "position")
+	    void setPosition(Integer position);
+    
+	    @Sparql(PREFIX
+			    + "SELECT ?child { $this ex:child ?child . ?child ex:position ?position }\n"
+			    + "ORDER BY ?position")
+	    List<Node> getOrderedChildren();
+    
+	    List<Node> getSortedChildren();
+    }
+    
+    public abstract class NodeSupport implements Node {
+	    public List<Node> getSortedChildren() {
+		    Set<Node> live = getChildren();
+		    List<Node> memory = new ArrayList<Node>(live);
+		    Collections.sort(memory, new Comparator<Node>() {
+			    public int compare(Node o1, Node o2) {
+				    Integer p1 = o1.getPosition();
+				    Integer p2 = o2.getPosition();
+				    if (p1 == p2)
+					    return 0;
+				    if (p1 == null)
+					    return -1;
+				    if (p2 == null)
+					    return 1;
+				    return p1.compareTo(p2);
+			    }
+		    });
+		    return memory;
+	    }
+    }
 
 Aspect Behaviours
 
@@ -369,36 +355,36 @@ Aspect Behaviours
  @Precedes annotations distinguish an Aspect Behaviour class from a Mixin
  Behaviour class.
 
- <<Figure 11. Intercept method call>>
+Figure 11. Intercept method call
 
-+--
-@Iri(FOAF + "Person")
-public interface Person {
-  @Iri(FOAF + "depiction")
-  Image getDepiction();
-
-  @Iri(FOAF + "depiction")
-  void setDepiction(Image depiction);
-}
-
-public abstract class PersonSupport implements Person, RDFObject {
-  @ParameterTypes({})
-  public Image getDepiction(ObjectMessage msg) throws RepositoryException {
-     Image depiction = (Image) msg.proceed();
-     if (depiction == null) {
-     	return (Image) getObjectConnection().getObject(DEFAULT_IMAGE_URI);
-     }
-     return depiction;
-  }
-
-  void setDepiction(Image depiction) {
-    // When @ParameterTypes is not used, proceed() is automatically called
-    System.out.println("setDepiction called with: " + depiction);
-  }
-}
+    @Iri(FOAF + "Person")
+    public interface Person {
+      @Iri(FOAF + "depiction")
+      Image getDepiction();
+      
+      @Iri(FOAF + "depiction")
+      void setDepiction(Image depiction);
+    }
+    
+    public abstract class PersonSupport implements Person, RDFObject {
+      @ParameterTypes({})
+      public Image getDepiction(ObjectMessage msg) throws RepositoryException {
+         Image depiction = (Image) msg.proceed();
+         if (depiction == null) {
+         	return (Image) getObjectConnection().getObject(DEFAULT_IMAGE_URI);
+         }
+         return depiction;
+      }
+      
+      void setDepiction(Image depiction) {
+        // When @ParameterTypes is not used, proceed() is automatically called
+        System.out.println("setDepiction called with: " + depiction);
+      }
+    }
 +--
 
 Advice
+------
 
  Advice is code that is executed around a method execution. Unlike Aspect
  Behaviours, Advice has a static life cycle. It is reused for multiple proxy
@@ -414,53 +400,52 @@ Advice
  assigns Advice to declared methods, with that annotation type, in objects
  retrieved from the store.
 
- <<Figure 12. Advice Security>>
+Figure 12. Advice Security
 
-+--
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
-public @interface ProtectedBy {
-  String value();
-}
-
-@Iri(FOAF + "Person")
-public interface Person {
-  @ProtectedBy("somethingImportantPermission")
-  void doSomethingImportant();
-}
-
-public class ProtectedAdvice implements Advice {
-  private SecurityManager sm;
-  private String directive;
-  public ProtectedAdvice(SecurityManager sm, String directive) {
-    this.sm = sm;
-    this.directive = directive;
-  }
-
-  public Object intercept(ObjectMessage msg) throws Exception {
-    sm.checkSecurityAccess(directive);
-    return msg.proceed();
-  }
-}
-
-public static class ProtectedAdviceFactory implements AdviceFactory, AdviceProvider {
-  private SecurityManager sm = System.getSecurityManager();
-  public AdviceFactory getAdviserFactory(Class<?> annotationType) {
-    if (sm != null && ProtectedBy.class.equals(annotationType))
-      return this;
-    return null;
-  }
-  public Advice createAdvice(Method method) {
-    ProtectedBy ann = method.getAnnotation(ProtectedBy.class);
-    return new ProtectedAdvice(sm, ann.value());
-  }
-}
-
-# META-INF/services/org.openrdf.repository.object.advice.AdviceProvider
-ProtectedAdviceFactory
-+--
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    public @interface ProtectedBy {
+      String value();
+    }
+    
+    @Iri(FOAF + "Person")
+    public interface Person {
+      @ProtectedBy("somethingImportantPermission")
+      void doSomethingImportant();
+    }
+    
+    public class ProtectedAdvice implements Advice {
+      private SecurityManager sm;
+      private String directive;
+      public ProtectedAdvice(SecurityManager sm, String directive) {
+        this.sm = sm;
+        this.directive = directive;
+      }
+      
+      public Object intercept(ObjectMessage msg) throws Exception {
+        sm.checkSecurityAccess(directive);
+        return msg.proceed();
+      }
+    }
+    
+    public static class ProtectedAdviceFactory implements AdviceFactory, AdviceProvider {
+      private SecurityManager sm = System.getSecurityManager();
+      public AdviceFactory getAdviserFactory(Class<?> annotationType) {
+        if (sm != null && ProtectedBy.class.equals(annotationType))
+          return this;
+        return null;
+      }
+      public Advice createAdvice(Method method) {
+        ProtectedBy ann = method.getAnnotation(ProtectedBy.class);
+        return new ProtectedAdvice(sm, ann.value());
+      }
+    }
+    
+    # META-INF/services/org.openrdf.repository.object.advice.AdviceProvider
+    ProtectedAdviceFactory
 
 Information Resources (BLOBs)
+-----------------------------
 
  The method getBlobObject can be used to retrieve a FileObject interface of an
  information resource by URI. The FileObject interface includes methods to open
@@ -473,6 +458,7 @@ Information Resources (BLOBs)
  openBlobStore(File) method.
 
 Generating Concepts
+-------------------
  
  Compatible class files can be created from RDFS/OWL files, for use with
  the ObjectRepository in Java, by using the provided owl-compiler.sh (or
@@ -489,7 +475,7 @@ Generating Concepts
  classes and properties needed and/or reference them using owl:imports
  statements within the file.
  
- <<Figure 13. Creating ObjectRepository from the Console>>
+Figure 13. Creating ObjectRepository from the Console
 
 +--
 Commands end with '.' at the end of a line

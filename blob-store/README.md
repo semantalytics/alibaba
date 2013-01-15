@@ -1,41 +1,32 @@
- ----------------------------------------
- Blob Store
- ----------------
- James Leigh
- ----------------
- Jan 2012
-
-
 Blob Store
+==========
  
  The Blob Store is a concurrent optimistic
  isolation key/value store for binary streams.
 
  The Blob Store can be used independently of an RDF store. To get started use the BlobStoreFactory to open a BlobStore for a given directory. The binary streams will be stored within this directory. Once a BlobStore is created use the BlobStore#open(String) method to obtain a BlobObject. Each BlobObject includes openInputStream() and openOutputStream() methods to read and write to the stream.
  
- <<Figure 1. Reading and writing Blob streams>>
+Figure 1. Reading and writing Blob streams
 
-+--
-  BlobStoreFactory factory = BlobStoreFactory.newInstance();
-  BlobStore store = factory.openBlobStore(new File("."));
-  
-  String key = "http://example.com/store1/key1";
-  BlobObject blob = store.open(key);
-  
-  OutputStream out = blob.openOutputStream();
-  try {
-    // write stream to out
-  } finally {
-    out.close();
-  }
-  
-  InputStream in = blob.openInputStream();
-  try {
-    // read stream from in
-  } finally {
-    in.close();
-  }
-+--
+    BlobStoreFactory factory = BlobStoreFactory.newInstance();
+    BlobStore store = factory.openBlobStore(new File("."));
+    
+    String key = "http://example.com/store1/key1";
+    BlobObject blob = store.open(key);
+    
+    OutputStream out = blob.openOutputStream();
+    try {
+        // write stream to out
+    } finally {
+        out.close();
+    }
+    
+    InputStream in = blob.openInputStream();
+    try {
+        // read stream from in
+    } finally {
+        in.close();
+    }
 
  Changes to a blob stream are not available for reading until the OutputStream is closed (committed). Any calls to openInputStream on a blob will read the complete committed version until an OutputStream is closed and committed.
 
