@@ -15,4 +15,4 @@ AliBaba
 
  AliBaba includes many features not found in Sesame core to facility building complex, modern RDF applications.
 
-<<file path/to/file>>
+[file](path/to/file)
