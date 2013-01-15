@@ -33,13 +33,10 @@ import org.openrdf.model.Resource;
 import org.openrdf.model.URI;
 import org.openrdf.model.Value;
 import org.openrdf.model.ValueFactory;
-import org.openrdf.query.BindingSet;
-import org.openrdf.query.Dataset;
-import org.openrdf.query.algebra.UpdateExpr;
 import org.openrdf.sail.SailConnection;
 import org.openrdf.sail.SailException;
+import org.openrdf.sail.UpdateContext;
 import org.openrdf.sail.helpers.SailConnectionWrapper;
-import org.openrdf.sail.helpers.SailUpdateExecutor;
 import org.openrdf.sail.inferencer.InferencerConnection;
 
 /**
@@ -79,26 +76,30 @@ public class KeywordConnection extends SailConnectionWrapper {
 	}
 
 	@Override
-	public void executeUpdate(UpdateExpr updateExpr, Dataset dataset,
-			BindingSet bindings, boolean includeInferred) throws SailException {
-		SailUpdateExecutor executor = new SailUpdateExecutor(this, sail.getValueFactory(), false);
-		executor.executeUpdate(updateExpr, dataset, bindings, includeInferred);
-	}
-
-	@Override
 	public void addStatement(Resource subj, URI pred, Value obj,
 			Resource... contexts) throws SailException {
 		super.addStatement(subj, pred, obj, contexts);
 		if (sail.isIndexedProperty(pred)) {
-			index(subj, obj);
+			index(null, subj, obj);
 		}
 	}
 
-	protected void index(Resource subj, Value obj) throws SailException {
+	@Override
+	public void addStatement(UpdateContext modify, Resource subj, URI pred,
+			Value obj, Resource... contexts) throws SailException {
+		super.addStatement(modify, subj, pred, obj, contexts);
+		if (sail.isIndexedProperty(pred)) {
+			index(modify, subj, obj);
+		}
+	}
+
+	protected void index(UpdateContext uc, Resource subj, Value obj) throws SailException {
 		for (String s : helper.phones(obj.stringValue())) {
 			Literal lit = vf.createLiteral(s);
-			if (infer == null) {
+			if (infer == null && uc == null) {
 				super.addStatement(subj, property, lit, graph);
+			} else if (infer == null) {
+				super.addStatement(uc, subj, property, lit, graph);
 			} else {
 				infer.addInferredStatement(subj, property, lit, graph);
 			}

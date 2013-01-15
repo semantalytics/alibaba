@@ -229,6 +229,7 @@ public class KeywordSail extends SailWrapper {
 			Resource context = graph == null ? null : vf.createURI(graph);
 			SailConnection con = super.getConnection();
 			try {
+				con.begin();
 				if (con instanceof InferencerConnection) {
 					InferencerConnection icon = (InferencerConnection) con;
 					icon.removeInferredStatement(null, pred, null, context);
@@ -245,13 +246,14 @@ public class KeywordSail extends SailWrapper {
 	private void reindex() throws SailException {
 		KeywordConnection con = getKeywordConnection();
 		try {
+			con.begin();
 			for (URI pred : labels) {
 				CloseableIteration<? extends Statement, SailException> stmts;
 				stmts = con.getStatements(null, pred, null, false);
 				try {
 					while (stmts.hasNext()) {
 						Statement st = stmts.next();
-						con.index(st.getSubject(), st.getObject());
+						con.index(null, st.getSubject(), st.getObject());
 					}
 				} finally {
 					stmts.close();
