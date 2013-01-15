@@ -2,18 +2,16 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>org.openrdf</groupId>
-		<artifactId>openrdf-root-pom</artifactId>
-		<version>5</version>
-		<relativePath>../../pom.xml</relativePath>
-	</parent>
+  <parent>
+    <groupId>org.sonatype.oss</groupId>
+    <artifactId>oss-parent</artifactId>
+    <version>7</version>
+  </parent>
 	<groupId>org.openrdf.alibaba</groupId>
 	<artifactId>alibaba</artifactId>
 	<version>2.0-SNAPSHOT</version>
 	<packaging>pom</packaging>
 	<modules>
-		<module>model</module>
 		<module>keyword-sail</module>
 		<module>auditing-sail</module>
 		<module>query-repository</module>
@@ -49,8 +47,8 @@ AliBaba is a collection of modules that provide simplified RDF store abstraction
 		</site>
 	</distributionManagement>
 	<properties>
-		<sesame.version>2.6.10</sesame.version>
-		<slf4j.version>1.5.10</slf4j.version>
+		<sesame.version>2.7.0-beta2-SNAPSHOT</sesame.version>
+		<slf4j.version>1.6.1</slf4j.version>
 		<javassist.version>3.11.0.GA</javassist.version>
 	</properties>
 	<dependencies>
@@ -76,11 +74,6 @@ AliBaba is a collection of modules that provide simplified RDF store abstraction
 	<dependencyManagement>
 		<dependencies>
 			<!-- AliBaba Dependencies -->
-			<dependency>
-				<groupId>org.openrdf.alibaba</groupId>
-				<artifactId>alibaba-model</artifactId>
-				<version>${project.version}</version>
-			</dependency>
 			<dependency>
 				<groupId>org.openrdf.alibaba</groupId>
 				<artifactId>alibaba-sail-auditing</artifactId>
@@ -214,28 +207,6 @@ AliBaba is a collection of modules that provide simplified RDF store abstraction
 	</issueManagement>
 	<repositories>
 		<repository>
-			<releases>
-				<enabled>true</enabled>
-			</releases>
-			<snapshots>
-				<enabled>false</enabled>
-			</snapshots>
-			<id>aduna-opensource.releases</id>
-			<name>Aduna Open Source - Maven releases</name>
-			<url>http://repo.aduna-software.org/maven2/releases</url>
-		</repository>
-		<repository>
-			<releases>
-				<enabled>false</enabled>
-			</releases>
-			<snapshots>
-				<enabled>true</enabled>
-			</snapshots>
-			<id>aduna-opensource.snapshots</id>
-			<name>Aduna Open Source - Maven snapshots</name>
-			<url>http://repo.aduna-software.org/maven2/snapshots</url>
-		</repository>
-		<repository>
 			<id>maven2-repository.dev.java.net</id>
 			<name>Java.net Repository for Maven</name>
 			<url>http://download.java.net/maven/2/</url>
@@ -255,13 +226,12 @@ AliBaba is a collection of modules that provide simplified RDF store abstraction
 	</repositories>
 	<scm>
 		<connection>
-			scm:svn:https://repo.aduna-software.org/svn/org.openrdf/alibaba/trunk/ 
+			scm:git:git@bitbucket.org:openrdf/alibaba.git
 		</connection>
 		<developerConnection>
-			scm:svn:https://repo.aduna-software.org/svn/org.openrdf/alibaba/trunk/ 
+			scm:git:git@bitbucket.org:openrdf/alibaba.git
 		</developerConnection>
-		<url> http://repo.aduna-software.org/viewvc/org.openrdf/alibaba/trunk/ 
-		</url>
+		<url>https://bitbucket.org/openrdf/alibaba/src</url>
 	</scm>
 	<build>
 		<plugins>
@@ -269,8 +239,8 @@ AliBaba is a collection of modules that provide simplified RDF store abstraction
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
-					<source>1.5</source>
-					<target>1.5</target>
+					<source>1.6</source>
+					<target>1.6</target>
 					<encoding>UTF-8</encoding>
 				</configuration>
 			</plugin>
@@ -304,25 +274,4 @@ AliBaba is a collection of modules that provide simplified RDF store abstraction
             </plugin>
 		</plugins>
 	</build>
-	<reporting>
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-javadoc-plugin</artifactId>
-				<configuration>
-					<aggregate>true</aggregate>
-					<source>1.5</source>
-					<links>
-						<link>http://java.sun.com/j2se/1.5.0/docs/api/</link>
-						<link>http://java.sun.com/javaee/5/docs/api/</link>
-						<link>http://jakarta.apache.org/commons/beanutils/apidocs/</link>
-						<link>http://static.springframework.org/spring/docs/2.0.x/api/</link>
-						<link>http://hivemind.apache.org/hivemind1/hivemind/apidocs/</link>
-						<link>http://repository.aduna-software.org/docs/info.aduna/api/</link>
-						<link>http://www.openrdf.org/doc/sesame2/api/</link>
-					</links>
-				</configuration>
-			</plugin>
-		</plugins>
-	</reporting>
 </project>
