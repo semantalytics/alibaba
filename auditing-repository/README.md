@@ -69,5 +69,5 @@ Auditing Repository
 
  Users are encouraged to add additional metadata of the activity into the RDF store using [The PROV Ontology](http://www.w3.org/TR/prov-o/). To ensure the purging of obsolete activity graphs function as expected, the PROV vocab should be used (all predicates must be in the "http://www.w3.org/ns/prov#" namespace or rdf:type) and/or a fragment identifier with the bundle used as the subject.
 
- The auditing repository should be used in conjunction with the auditing sail to track both added and removed triples. When the auditing repository is absent the [auditing sail](../alibaba-sail-auditing/) will track inserted triples using a legacy vocabulary for backwards compatibility.
+ The auditing repository should be used in conjunction with the auditing sail to track both added and removed triples. When the auditing repository is absent the [auditing sail](https://bitbucket.org/openrdf/alibaba/src/master/alibaba-sail-auditing/) will track inserted triples using a legacy vocabulary for backwards compatibility.
 
