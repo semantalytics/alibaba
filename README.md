@@ -14,3 +14,5 @@ AliBaba
  RDF is designed for metadata and is often accompanied by binary or text documents. Integrating binary and RDF store with consistent states is easier with [AliBaba's two phase commit BLOB store](./alibaba-store-blob/).
 
  AliBaba includes many features not found in Sesame core to facility building complex, modern RDF applications.
+
+<<file path/to/file>>
