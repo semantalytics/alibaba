@@ -25,10 +25,6 @@ The Optimistic Repository provides concurrent optimistic serializable transactio
 		</dependency>
 		<dependency>
 			<groupId>org.openrdf.alibaba</groupId>
-			<artifactId>alibaba-model</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.openrdf.alibaba</groupId>
 			<artifactId>alibaba-repository-query</artifactId>
 		</dependency>
 		<dependency>

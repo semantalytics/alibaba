@@ -57,9 +57,7 @@ import org.openrdf.model.URI;
 import org.openrdf.model.Value;
 import org.openrdf.model.ValueFactory;
 import org.openrdf.model.impl.ContextStatementImpl;
-import org.openrdf.model.impl.MemoryOverflowModel;
 import org.openrdf.model.impl.NamespaceImpl;
-import org.openrdf.model.impl.UnionModel;
 import org.openrdf.query.BindingSet;
 import org.openrdf.query.Dataset;
 import org.openrdf.query.QueryEvaluationException;
@@ -84,15 +82,17 @@ import org.openrdf.sail.NotifyingSailConnection;
 import org.openrdf.sail.SailConnection;
 import org.openrdf.sail.SailConnectionListener;
 import org.openrdf.sail.SailException;
+import org.openrdf.sail.UpdateContext;
 import org.openrdf.sail.helpers.SailConnectionWrapper;
-import org.openrdf.sail.helpers.SailUpdateExecutor;
 import org.openrdf.sail.optimistic.exceptions.ConcurrencyException;
 import org.openrdf.sail.optimistic.exceptions.ConcurrencySailException;
 import org.openrdf.sail.optimistic.helpers.DeltaMerger;
 import org.openrdf.sail.optimistic.helpers.EvaluateOperation;
 import org.openrdf.sail.optimistic.helpers.InconsistentChange;
 import org.openrdf.sail.optimistic.helpers.InvalidTripleSource;
+import org.openrdf.sail.optimistic.helpers.MemoryOverflowModel;
 import org.openrdf.sail.optimistic.helpers.NonExcludingFinder;
+import org.openrdf.sail.optimistic.helpers.UnionModel;
 
 /**
  * Optionally enforces snapshot and serializable isolation.
@@ -100,28 +100,30 @@ import org.openrdf.sail.optimistic.helpers.NonExcludingFinder;
  * @author James Leigh
  *
  */
-public class OptimisticConnection extends TransactionalSailConnectionWrapper implements
+public class OptimisticConnection extends SailConnectionWrapper implements
 		NotifyingSailConnection {
 	abstract static class Operation {
+		final UpdateContext update;
 		final UpdateExpr updateExpr;
 		final Dataset dataset;
 		final BindingSet bindings;
 
 		public Operation() {
+			this.update = null;
 			this.updateExpr = null;
 			this.dataset = null;
 			this.bindings = null;
 		}
 
-		public Operation(UpdateExpr updateExpr, Dataset dataset,
-				BindingSet bindings) {
-			this.updateExpr = updateExpr;
-			this.dataset = dataset;
-			this.bindings = bindings;
+		public Operation(UpdateContext update) {
+			this.update = update;
+			this.updateExpr = update.getUpdateExpr();
+			this.dataset = update.getDataset();
+			this.bindings = update.getBindingSet();
 		}
 
 		public boolean isUpdate() {
-			return updateExpr != null;
+			return update != null;
 		}
 
 		@Override
@@ -129,11 +131,7 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 			final int prime = 31;
 			int result = 1;
 			result = prime * result
-					+ ((bindings == null) ? 0 : bindings.hashCode());
-			result = prime * result
-					+ ((dataset == null) ? 0 : dataset.hashCode());
-			result = prime * result
-					+ ((updateExpr == null) ? 0 : updateExpr.hashCode());
+					+ ((update == null) ? 0 : updateExpr.hashCode());
 			return result;
 		}
 
@@ -146,33 +144,12 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 			if (getClass() != obj.getClass())
 				return false;
 			Operation other = (Operation) obj;
-			if (bindings == null) {
-				if (other.bindings != null)
+			if (update == null) {
+				if (other.update != null)
 					return false;
-			} else if (!bindings.equals(other.bindings))
-				return false;
-			if (dataset == null) {
-				if (other.dataset != null)
-					return false;
-			} else if (!dataset.equals(other.dataset))
-				return false;
-			if (updateExpr == null) {
-				if (other.updateExpr != null)
-					return false;
-			} else if (!updateExpr.equals(other.updateExpr))
+			} else if (!update.equals(other.update))
 				return false;
 			return true;
-		}
-	}
-	abstract static class AddOperation extends Operation {
-
-		public AddOperation() {
-			super();
-		}
-
-		public AddOperation(UpdateExpr updateExpr, Dataset dataset,
-				BindingSet bindings) {
-			super(updateExpr, dataset, bindings);
 		}
 
 		public abstract void addNow(Resource subj, URI pred, Value obj,
@@ -181,18 +158,6 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 		/** locked by this */
 		public abstract void addLater(Resource subj, URI pred, Value obj,
 				Resource... contexts);
-	}
-
-	abstract static class RemoveOperation extends Operation{
-
-		public RemoveOperation() {
-			super();
-		}
-
-		public RemoveOperation(UpdateExpr updateExpr, Dataset dataset,
-				BindingSet bindings) {
-			super(updateExpr, dataset, bindings);
-		}
 
 		public abstract void removeNow(Resource subj, URI pred, Value obj,
 				Resource... contexts) throws SailException;
@@ -207,9 +172,9 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 	private boolean serializable;
 	private volatile boolean active;
 	/** locked by this */
-	final Map<AddOperation,MemoryOverflowModel> added = new LinkedHashMap<AddOperation,MemoryOverflowModel>();
+	final Map<Operation,MemoryOverflowModel> added = new LinkedHashMap<Operation,MemoryOverflowModel>();
 	/** locked by this */
-	final Map<RemoveOperation,MemoryOverflowModel> removed = new LinkedHashMap<RemoveOperation,MemoryOverflowModel>();
+	final Map<Operation,MemoryOverflowModel> removed = new LinkedHashMap<Operation,MemoryOverflowModel>();
 	/** locked by this */
 	private Set<Resource> addedContexts = new HashSet<Resource>();
 	/** locked by this */
@@ -222,13 +187,11 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 	private final Set<EvaluateOperation> observations = new HashSet<EvaluateOperation>();
 	/** locked by observations */
 	private final LinkedList<InconsistentChange> changes = new LinkedList<InconsistentChange>();
-	/** If sail.getWriteLock() */
-	private volatile boolean prepared;
 	private volatile SailChangeSetEvent event;
 	private volatile boolean listenersIsEmpty = true;
 	private Set<SailConnectionListener> listeners = new HashSet<SailConnectionListener>();
 	SailConnection delegate;
-	private final AddOperation explicitAdd = new AddOperation() {
+	private final Operation explicit = new Operation() {
 
 		public void addLater(Resource subj, URI pred, Value obj,
 				Resource... contexts) {
@@ -245,8 +208,6 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 			delegate.addStatement(subj, pred, obj,
 					contexts);
 		}
-	};
-	private final RemoveOperation explicitRemove = new RemoveOperation() {
 
 		public void removeLater(Statement st) {
 			getAddedModel().remove(st);
@@ -313,10 +274,11 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 	}
 
 	public void close() throws SailException {
-		if (active) {
-			rollback();
+		try {
+			delegate.close();
+		} finally {
+			end(false);
 		}
-		delegate.close();
 	}
 
 	/** locked by this */
@@ -353,40 +315,60 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 	public void begin() throws SailException {
 		if (isActive())
 			throw new IllegalStateException("Transaction already started");
-		super.begin();
-		synchronized (this) {
-			assert active == false;
-			active = true;
-			event = new SailChangeSetEvent(sail);
-			releaseObservedChange();
-			resetChangeModel();
-		}
 		try {
+			synchronized (this) {
+				assert active == false;
+				active = true;
+				event = new SailChangeSetEvent(sail);
+				releaseObservedChange();
+				resetChangeModel();
+			}
 			sail.begin(this);
 			if (!isReadSnapshot()) {
 				sail.exclusive(this);
+				super.begin();
 			}
 		} catch (InterruptedException e) {
+			end(false);
 			Thread.currentThread().interrupt();
+		} catch (RuntimeException e) {
+			end(false);
+			throw e;
+		} catch (Error e) {
+			end(false);
+			throw e;
 		}
 	}
 
 	public synchronized void prepare() throws SailException {
-		super.prepare();
 		try {
 			sail.prepare(this);
-			prepared = true;
-		} catch (InterruptedException e) {
-			rollback();
-			throw new SailException(e);
-		}
-		ConcurrencyException conflict = getConcurrencyConflict();
-		if (conflict != null) {
-			try {
-				throw new ConcurrencySailException(conflict);
-			} finally {
-				rollback();
+			ConcurrencyException conflict = getConcurrencyConflict();
+			if (conflict != null) {
+				try {
+					throw new ConcurrencySailException(conflict);
+				} finally {
+					end(false);
+				}
 			}
+			if (!super.isActive()) {
+				super.begin();
+			}
+			if (isReadSnapshot() && sail.isListenerPresent()) {
+				event.unionAddedModel(getAddedModel());
+				event.unionRemovedModel(getRemovedModel());
+			}
+			flush();
+			super.prepare();
+		} catch (InterruptedException e) {
+			end(false);
+			throw new SailException(e);
+		} catch (RuntimeException e) {
+			end(false);
+			throw e;
+		} catch (Error e) {
+			end(false);
+			throw e;
 		}
 	}
 
@@ -397,53 +379,46 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 			try {
 				if (!isActive())
 					return;
-				if (!prepared) {
-					prepare();
-				}
-				if (isReadSnapshot() && sail.isListenerPresent()) {
-					event.setAddedModel(getAddedModel());
-					event.setRemovedModel(getRemovedModel());
-				}
-				flush();
+				prepare();
 				super.commit();
+				end(true);
 			} catch (SailException e) {
-				rollback();
+				end(false);
+				throw e;
+			} catch (RuntimeException e) {
+				end(false);
+				throw e;
+			} catch (Error e) {
+				end(false);
 				throw e;
 			}
 		}
 	}
 
-	public void executeUpdate(UpdateExpr updateExpr, Dataset dataset,
-			BindingSet bindings, boolean includeInferred) throws SailException {
-		checkForWriteConflict();
+	@Override
+	public void rollback() throws SailException {
+		try {
+			if (super.isActive()) {
+				super.rollback();
+			}
+		} finally {
+			end(false);
+		}
+	}
+
+	@Override
+	public void startUpdate(UpdateContext uc) throws SailException {
 		if (isReadSnapshot()) {
-			ValueFactory vf = sail.getValueFactory();
-			final AddOperation add = createInsertOperation(updateExpr, dataset,
-					bindings);
-			final RemoveOperation remove = createDeleteOperation(updateExpr,
-					dataset, bindings);
-			SailUpdateExecutor executor = new SailUpdateExecutor(
-					new SailConnectionWrapper(this) {
-
-						@Override
-						public void addStatement(Resource subj, URI pred,
-								Value obj, Resource... contexts)
-								throws SailException {
-							add(add, subj, pred, obj, contexts);
-						}
-
-						@Override
-						public void removeStatements(Resource subj, URI pred,
-								Value obj, Resource... contexts)
-								throws SailException {
-							remove(remove, subj, pred, obj, false, contexts);
-						}
-
-					}, vf, true);
-			executor.executeUpdate(updateExpr, dataset, bindings,
-					includeInferred);
+			createOperation(uc);
 		} else {
-			super.executeUpdate(updateExpr, dataset, bindings, includeInferred);
+			super.startUpdate(uc);
+		}
+	}
+
+	@Override
+	public void endUpdate(UpdateContext uc) throws SailException {
+		if (!isReadSnapshot()) {
+			super.endUpdate(uc);
 		}
 	}
 
@@ -634,35 +609,29 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 
 	public void addStatement(Resource subj, URI pred, Value obj,
 			Resource... contexts) throws SailException {
-		checkForWriteConflict();
-		add(explicitAdd, subj, pred, obj, contexts);
+		add(explicit, subj, pred, obj, contexts);
 	}
 
 	public void removeStatements(Resource subj, URI pred, Value obj,
 			Resource... contexts) throws SailException {
-		checkForWriteConflict();
-		remove(explicitRemove, subj, pred, obj, false, contexts);
+		remove(explicit, subj, pred, obj, false, contexts);
 	}
 
 	@Override
-	public void executeInsert(UpdateExpr updateExpr, Dataset dataset,
-			BindingSet bindings, Resource subj, URI pred, Value obj,
-			Resource... contexts) throws SailException {
-		AddOperation op = createInsertOperation(updateExpr, dataset, bindings);
+	public void addStatement(UpdateContext uc, Resource subj, URI pred,
+			Value obj, Resource... contexts) throws SailException {
+		Operation op = createOperation(uc);
 		add(op, subj, pred, obj, contexts);
 	}
 
 	@Override
-	public void executeDelete(UpdateExpr updateExpr, Dataset dataset,
-			BindingSet bindings, Resource subj, URI pred, Value obj,
-			Resource... contexts) throws SailException {
-		RemoveOperation op = createDeleteOperation(updateExpr, dataset,
-				bindings);
+	public void removeStatement(UpdateContext uc, Resource subj, URI pred,
+			Value obj, Resource... contexts) throws SailException {
+		Operation op = createOperation(uc);
 		remove(op, subj, pred, obj, false, contexts);
 	}
 
 	public long size(Resource... contexts) throws SailException {
-		checkForReadConflict();
 		long size = delegate.size(contexts);
 		if (!active || !isReadSnapshot())
 			return size;
@@ -682,7 +651,6 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 	public CloseableIteration<? extends Statement, SailException> getStatements(
 			Resource subj, URI pred, Value obj, boolean inf,
 			Resource... contexts) throws SailException {
-		checkForReadConflict();
 		CloseableIteration<? extends Statement, SailException> result;
 		result = delegate.getStatements(subj, pred, obj, inf, contexts);
 		if (!active || !isReadSnapshot())
@@ -729,7 +697,6 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 		try {
 			synchronized (this) {
 				active = false;
-				prepared = false;
 				addedContexts.clear();
 				removedContexts.clear();
 				releaseObservedChange();
@@ -751,7 +718,6 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 			SailConnection delegate, TupleExpr query, Dataset dataset,
 			BindingSet bindings, boolean inf) throws SailException {
 		CloseableIteration<? extends BindingSet, QueryEvaluationException> result;
-		checkForReadConflict();
 		if (!active || !isReadSnapshot())
 			return delegate.evaluate(query, dataset, bindings, inf);
 
@@ -786,16 +752,6 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 		return result;
 	}
 
-	void checkForReadConflict() throws SailException {
-		if (prepared)
-			throw new IllegalStateException();
-	}
-
-	void checkForWriteConflict() throws SailException {
-		if (prepared)
-			throw new IllegalStateException();
-	}
-
 	/** locked by this */
 	synchronized void flush() throws SailException {
 		for (String prefix : removedPrefixes) {
@@ -811,42 +767,38 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 			removedContexts.clear();
 		}
 		addedContexts.clear();
-		for (Map.Entry<RemoveOperation, MemoryOverflowModel> e : removed
-				.entrySet()) {
-			RemoveOperation op = e.getKey();
-			Model model = e.getValue();
+		for (Operation op : removed.keySet()) {
 			if (op.isUpdate()) {
-				for (Statement st : model) {
-					super.executeDelete(op.updateExpr, op.dataset, op.bindings,
-							st.getSubject(), st.getPredicate(), st.getObject(),
-							st.getContext());
+				super.startUpdate(op.update);
+				try {
+					for (Statement st : removed.get(op)) {
+						super.removeStatement(op.update,
+								st.getSubject(), st.getPredicate(), st.getObject(),
+								st.getContext());
+					}
+					for (Statement st : added.get(op)) {
+						super.addStatement(op.update,
+								st.getSubject(), st.getPredicate(), st.getObject(),
+								st.getContext());
+					}
+				} finally {
+					super.endUpdate(op.update);
 				}
 			} else {
-				for (Statement st : model) {
+				for (Statement st : removed.get(op)) {
 					super.removeStatements(st.getSubject(), st.getPredicate(),
 							st.getObject(), st.getContext());
 				}
-			}
-		}
-		for (Map.Entry<AddOperation, MemoryOverflowModel> e : added.entrySet()) {
-			AddOperation op = e.getKey();
-			Model model = e.getValue();
-			if (op.isUpdate()) {
-				for (Statement st : model) {
-					super.executeInsert(op.updateExpr, op.dataset, op.bindings,
-							st.getSubject(), st.getPredicate(), st.getObject(),
-							st.getContext());
-				}
-			} else {
-				for (Statement st : model) {
+				for (Statement st : added.get(op)) {
 					super.addStatement(st.getSubject(), st.getPredicate(),
 							st.getObject(), st.getContext());
 				}
 			}
 		}
+		resetChangeModel();
 	}
 
-	void add(AddOperation op, Resource subj, URI pred, Value obj,
+	void add(Operation op, Resource subj, URI pred, Value obj,
 			Resource... contexts) throws SailException {
 		if (isReadSnapshot()) {
 			synchronized (this) {
@@ -880,7 +832,7 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 	/**
 	 * @return If RemoveOperation was called
 	 */
-	boolean remove(RemoveOperation op, Resource subj, URI pred, Value obj,
+	boolean remove(Operation op, Resource subj, URI pred, Value obj,
 			boolean inf, Resource... contexts) throws SailException {
 		boolean called = false;
 		setStatementsRemoved();
@@ -939,9 +891,8 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 		}
 	}
 
-	private AddOperation createInsertOperation(UpdateExpr updateExpr,
-			Dataset dataset, BindingSet bindings) {
-		AddOperation op = new AddOperation(updateExpr, dataset, bindings) {
+	private Operation createOperation(final UpdateContext uc) {
+		Operation op = new Operation(uc) {
 	
 			public void addLater(Resource subj, URI pred, Value obj,
 					Resource... contexts) {
@@ -955,24 +906,9 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 	
 			public void addNow(Resource subj, URI pred, Value obj,
 					Resource... contexts) throws SailException {
-				delegate.addStatement(subj, pred, obj,
+				delegate.addStatement(uc, subj, pred, obj,
 						contexts);
 			}
-		};
-		if (added.containsKey(op)) {
-			for (AddOperation key : added.keySet()) {
-				if (key.equals(op))
-					return key;
-			}
-		} else {
-			added.put(op, new MemoryOverflowModel());
-		}
-		return op;
-	}
-
-	private RemoveOperation createDeleteOperation(UpdateExpr updateExpr,
-			Dataset dataset, BindingSet bindings) {
-		RemoveOperation op = new RemoveOperation(updateExpr, dataset, bindings) {
 	
 			public void removeLater(Statement st) {
 				getAddedModel().remove(st);
@@ -981,16 +917,17 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 	
 			public void removeNow(Resource subj, URI pred, Value obj,
 					Resource... contexts) throws SailException {
-				delegate.removeStatements(subj, pred, obj,
+				delegate.removeStatement(uc, subj, pred, obj,
 						contexts);
 			}
 		};
 		if (removed.containsKey(op)) {
-			for (RemoveOperation key : removed.keySet()) {
+			for (Operation key : removed.keySet()) {
 				if (key.equals(op))
 					return key;
 			}
 		} else {
+			added.put(op, new MemoryOverflowModel());
 			removed.put(op, new MemoryOverflowModel());
 		}
 		return op;
@@ -1037,8 +974,8 @@ public class OptimisticConnection extends TransactionalSailConnectionWrapper imp
 	private void resetChangeModel() {
 		added.clear();
 		removed.clear();
-		added.put(explicitAdd, new MemoryOverflowModel());
-		removed.put(explicitRemove, new MemoryOverflowModel());
+		added.put(explicit, new MemoryOverflowModel());
+		removed.put(explicit, new MemoryOverflowModel());
 	}
 
 	private void releaseObservedChange() {

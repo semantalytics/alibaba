@@ -30,7 +30,6 @@ package org.openrdf.sail.optimistic.helpers;
 
 import org.openrdf.model.Model;
 import org.openrdf.model.impl.LinkedHashModel;
-import org.openrdf.model.impl.MemoryOverflowModel;
 import org.openrdf.query.BindingSet;
 import org.openrdf.query.Dataset;
 import org.openrdf.query.algebra.Difference;

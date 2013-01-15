@@ -101,17 +101,17 @@ public class OptimisticRepository extends SailRepository implements NamedQueryRe
 		sail.setSerializable(serializable);
 	}
 
+	/* Methods supporting the NamedQueryRepository interface */
+
 	@Override
 	public SailRepositoryConnection getConnection() throws RepositoryException {
 		try {
-			OptimisticConnection con = sail.getConnection();
-			return new AutoCommitRepositoryConnection(this, con);
-		} catch (SailException e) {
+			return new OptimisticRepositoryConnection(this, sail.getConnection());
+		}
+		catch (SailException e) {
 			throw new RepositoryException(e);
 		}
 	}
-
-	/* Methods supporting the NamedQueryRepository interface */
 
 	public synchronized NamedQuery createNamedQuery(URI uri, QueryLanguage ql,
 			String queryString, String baseURI) throws RepositoryException {

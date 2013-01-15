@@ -11,6 +11,7 @@ import org.openrdf.model.Value;
 import org.openrdf.model.ValueFactory;
 import org.openrdf.model.vocabulary.RDF;
 import org.openrdf.query.QueryLanguage;
+import org.openrdf.query.QueryResults;
 import org.openrdf.query.TupleQueryResult;
 import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.sail.memory.MemoryStore;
@@ -528,7 +529,7 @@ public class SerializableTest extends TestCase {
 
 	private int size(RepositoryConnection con, Resource subj, URI pred,
 			Value obj, boolean inf, Resource... ctx) throws Exception {
-		return con.getStatements(subj, pred, obj, inf, ctx).asList().size();
+		return QueryResults.asList(con.getStatements(subj, pred, obj, inf, ctx)).size();
 	}
 
 	private List<Value> eval(String var, RepositoryConnection con, String qry)

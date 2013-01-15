@@ -24,10 +24,6 @@ Runtime dependencies for an OpenRDF application
 		</dependency>
 		<dependency>
 			<groupId>org.openrdf.alibaba</groupId>
-			<artifactId>alibaba-model</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.openrdf.alibaba</groupId>
 			<artifactId>alibaba-sail-auditing</artifactId>
 		</dependency>
 		<dependency>

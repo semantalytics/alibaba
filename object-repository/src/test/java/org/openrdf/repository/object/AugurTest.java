@@ -11,6 +11,7 @@ import org.openrdf.model.Statement;
 import org.openrdf.model.URI;
 import org.openrdf.model.ValueFactory;
 import org.openrdf.model.vocabulary.RDF;
+import org.openrdf.query.QueryResults;
 import org.openrdf.repository.RepositoryResult;
 import org.openrdf.repository.object.base.ObjectRepositoryTestCase;
 
@@ -125,15 +126,15 @@ public class AugurTest extends ObjectRepositoryTestCase {
 		while (beans.hasNext()) {
 			Statement st = beans.next();
 			Resource bean = st.getSubject();
-			con.getStatements(bean, name, null).asList();
+			QueryResults.asList(con.getStatements(bean, name, null));
 			RepositoryResult<Statement> match;
 			match = con.getStatements(bean, parent, null);
 			while (match.hasNext()) {
-				con.getStatements((Resource)match.next().getObject(), name, null).asList();
+				QueryResults.asList(con.getStatements((Resource)match.next().getObject(), name, null));
 			}
 			match = con.getStatements(bean, friend, null);
 			while (match.hasNext()) {
-				con.getStatements((Resource)match.next().getObject(), name, null).asList();
+				QueryResults.asList(con.getStatements((Resource)match.next().getObject(), name, null));
 			}
 		}
 		long end = System.currentTimeMillis();

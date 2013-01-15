@@ -6,6 +6,7 @@ import junit.framework.TestCase;
 
 import org.openrdf.model.Statement;
 import org.openrdf.model.ValueFactory;
+import org.openrdf.query.QueryResults;
 import org.openrdf.repository.Repository;
 import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.RepositoryResult;
@@ -31,7 +32,7 @@ public class RemoveIsolationTest extends TestCase {
 
 				RepositoryResult<Statement> stats = con.getStatements(null,
 						null, null, true);
-				assertEquals(Collections.emptyList(), stats.asList());
+				assertEquals(Collections.emptyList(), QueryResults.asList(stats));
 				con.rollback();
 			} finally {
 				con.close();
@@ -58,7 +59,7 @@ public class RemoveIsolationTest extends TestCase {
 
 				RepositoryResult<Statement> stats = con.getStatements(null,
 						null, null, true);
-				assertEquals(Collections.emptyList(), stats.asList());
+				assertEquals(Collections.emptyList(), QueryResults.asList(stats));
 				con.rollback();
 			} finally {
 				con.close();

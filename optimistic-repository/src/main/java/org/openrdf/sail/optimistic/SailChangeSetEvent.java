@@ -29,9 +29,13 @@
 
 package org.openrdf.sail.optimistic;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.openrdf.model.Model;
 import org.openrdf.sail.Sail;
 import org.openrdf.sail.helpers.DefaultSailChangedEvent;
+import org.openrdf.sail.optimistic.helpers.UnionModel;
 
 
 /**
@@ -42,7 +46,8 @@ import org.openrdf.sail.helpers.DefaultSailChangedEvent;
  */
 
 class SailChangeSetEvent extends DefaultSailChangedEvent {
-	private Model added, removed ;
+	private final List<Model> added = new ArrayList<Model>();
+	private final List<Model> removed = new ArrayList<Model>();
 	private long time ;
 
 	public SailChangeSetEvent(Sail sail) {
@@ -50,19 +55,19 @@ class SailChangeSetEvent extends DefaultSailChangedEvent {
 	}
 
 	public Model getAddedModel() {
-		return added;
+		return new UnionModel(added.toArray(new Model[added.size()]));
 	}
 
-	public void setAddedModel(Model added) {
-		this.added = added;
+	public void unionAddedModel(Model added) {
+		this.added.add(added);
 	}
 
 	public Model getRemovedModel() {
-		return removed;
+		return new UnionModel(removed.toArray(new Model[removed.size()]));
 	}
 
-	public void setRemovedModel(Model removed) {
-		this.removed = removed;
+	public void unionRemovedModel(Model removed) {
+		this.removed.add(removed);
 	}
 
 	public long getTime() {
