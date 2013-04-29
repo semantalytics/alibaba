@@ -55,6 +55,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import org.openrdf.annotations.Iri;
 import org.openrdf.model.Model;
+import org.openrdf.model.Namespace;
 import org.openrdf.model.Resource;
 import org.openrdf.model.URI;
 import org.openrdf.model.impl.URIImpl;
@@ -92,7 +93,7 @@ public class OWLCompiler {
 		private final List<String> content;
 		private final File target;
 
-		private AnnotationBuilder(File target, List<String> content,
+		AnnotationBuilder(File target, List<String> content,
 				RDFProperty bean) {
 			this.target = target;
 			this.content = content;
@@ -127,7 +128,7 @@ public class OWLCompiler {
 		private final List<String> content;
 		private final File target;
 
-		private ConceptBuilder(File target, List<String> content, RDFClass bean) {
+		ConceptBuilder(File target, List<String> content, RDFClass bean) {
 			this.target = target;
 			this.content = content;
 			this.bean = bean;
@@ -165,7 +166,7 @@ public class OWLCompiler {
 		private final List<String> content;
 		private final File target;
 
-		private DatatypeBuilder(List<String> content, RDFClass bean, File target) {
+		DatatypeBuilder(List<String> content, RDFClass bean, File target) {
 			this.content = content;
 			this.bean = bean;
 			this.target = target;
@@ -224,18 +225,18 @@ public class OWLCompiler {
 	final Logger logger = LoggerFactory.getLogger(OWLCompiler.class);
 	BlockingQueue<Runnable> queue = new LinkedBlockingQueue<Runnable>();
 	private String[] baseClasses = new String[0];
-	private Set<String> annotations = new TreeSet<String>();
-	private Set<String> concepts = new TreeSet<String>();
-	private Map<String, List<URI>> datatypes = new HashMap<String, List<URI>>();
-	private Exception exception;
-	private LiteralManager literals;
+	Set<String> annotations = new TreeSet<String>();
+	Set<String> concepts = new TreeSet<String>();
+	Map<String, List<URI>> datatypes = new HashMap<String, List<URI>>();
+	Exception exception;
+	LiteralManager literals;
 	private RoleMapper mapper;
 	private String memPrefix;
 	private Model model;
 	/** context -&gt; prefix -&gt; namespace */
 	private Map<URI, Map<String, String>> ns = new HashMap<URI, Map<String, String>>();
 	private String pkgPrefix = "";
-	private JavaNameResolver resolver;
+	JavaNameResolver resolver;
 	private Collection<URL> ontologies;
 	private JavaCompiler compiler = new JavaCompiler();
 	private ClassLoader cl = Thread.currentThread().getContextClassLoader();
@@ -639,8 +640,8 @@ public class OWLCompiler {
 		for (Map.Entry<String, String> e : packages.entrySet()) {
 			resolver.bindPackageToNamespace(e.getValue(), e.getKey());
 		}
-		for (Map.Entry<String, String> e : model.getNamespaces().entrySet()) {
-			resolver.bindPrefixToNamespace(e.getKey(), e.getValue());
+		for (Namespace e : model.getNamespaces()) {
+			resolver.bindPrefixToNamespace(e.getPrefix(), e.getName());
 		}
 		if (memberPrefix == null) {
 			for (Map<String, String> p : namespaces.values()) {
@@ -666,9 +667,9 @@ public class OWLCompiler {
 	}
 
 	private String findPrefix(String ns, Model model) {
-		for (Map.Entry<String, String> e : model.getNamespaces().entrySet()) {
-			if (ns.equals(e.getValue()) && e.getKey().length() > 0) {
-				return e.getKey();
+		for (Namespace e : model.getNamespaces()) {
+			if (ns.equals(e.getName()) && e.getPrefix().length() > 0) {
+				return e.getPrefix();
 			}
 		}
 		if (resolvingPrefix) {

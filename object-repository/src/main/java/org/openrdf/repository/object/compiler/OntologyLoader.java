@@ -66,9 +66,9 @@ import org.slf4j.LoggerFactory;
 public class OntologyLoader {
 
 	private Logger logger = LoggerFactory.getLogger(OntologyLoader.class);
-	private Model model;
+	Model model;
 	/** context -&gt; prefix -&gt; namespace */
-	private Map<URI, Map<String, String>> namespaces = new HashMap<URI, Map<String,String>>();
+	Map<URI, Map<String, String>> namespaces = new HashMap<URI, Map<String,String>>();
 	private List<URL> imported = new ArrayList<URL>();
 	private ValueFactory vf = ValueFactoryImpl.getInstance();
 
@@ -135,12 +135,10 @@ public class OntologyLoader {
 			if (override == null) {
 				format = RDFFormat.RDFXML;
 				format = RDFFormat.forFileName(url.toString(), format);
-				format = RDFFormat.forMIMEType(conn.getContentType(), format);
 			}
 			RDFParserRegistry registry = RDFParserRegistry.getInstance();
 			RDFParser parser = registry.get(format).getParser();
-			parser.setRDFHandler(new StatementCollector(model, model
-					.getNamespaces()) {
+			parser.setRDFHandler(new StatementCollector(model) {
 				@Override
 				public void handleStatement(Statement st) {
 					Resource s = st.getSubject();
@@ -160,7 +158,9 @@ public class OntologyLoader {
 								.put(uri, map = new HashMap<String, String>());
 					}
 					map.put(prefix, ns);
-					super.handleNamespace(prefix, ns);
+					if (model.getNamespace(prefix) == null) {
+						model.setNamespace(prefix, ns);
+					}
 				}
 			});
 			InputStream in = conn.getInputStream();

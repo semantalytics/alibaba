@@ -36,9 +36,10 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.Map;
+import java.util.Set;
 
 import org.openrdf.model.Model;
+import org.openrdf.model.Namespace;
 import org.openrdf.model.Resource;
 import org.openrdf.model.Statement;
 import org.openrdf.model.URI;
@@ -85,13 +86,13 @@ public class MemoryOverflowModel extends AbstractModel {
 		addAll(model);
 	}
 
-	public MemoryOverflowModel(Map<String, String> namespaces,
+	public MemoryOverflowModel(Set<Namespace> namespaces,
 			Collection<? extends Statement> c) {
 		this(namespaces);
 		addAll(c);
 	}
 
-	public MemoryOverflowModel(Map<String, String> namespaces) {
+	public MemoryOverflowModel(Set<Namespace> namespaces) {
 		memory = new TreeModel(namespaces);
 	}
 
@@ -103,24 +104,28 @@ public class MemoryOverflowModel extends AbstractModel {
 		}
 	}
 
-	public synchronized Map<String, String> getNamespaces() {
+	public synchronized Set<Namespace> getNamespaces() {
 		return memory.getNamespaces();
 	}
 
-	public synchronized String getNamespace(String prefix) {
+	public synchronized Namespace getNamespace(String prefix) {
 		return memory.getNamespace(prefix);
 	}
 
-	public synchronized String setNamespace(String prefix, String name) {
+	public synchronized Namespace setNamespace(String prefix, String name) {
 		return memory.setNamespace(prefix, name);
 	}
 
-	public synchronized String removeNamespace(String prefix) {
+	public void setNamespace(Namespace namespace) {
+		memory.setNamespace(namespace);
+	}
+
+	public synchronized Namespace removeNamespace(String prefix) {
 		return memory.removeNamespace(prefix);
 	}
 
-	public boolean contains(Value subj, Value pred, Value obj,
-			Value... contexts) {
+	public boolean contains(Resource subj, URI pred, Value obj,
+			Resource... contexts) {
 		return getDelegate().contains(subj, pred, obj, contexts);
 	}
 
@@ -129,8 +134,8 @@ public class MemoryOverflowModel extends AbstractModel {
 		return getDelegate().add(subj, pred, obj, contexts);
 	}
 
-	public boolean remove(Value subj, Value pred, Value obj,
-			Value... contexts) {
+	public boolean remove(Resource subj, URI pred, Value obj,
+			Resource... contexts) {
 		return getDelegate().remove(subj, pred, obj, contexts);
 	}
 
@@ -142,12 +147,12 @@ public class MemoryOverflowModel extends AbstractModel {
 		return getDelegate().iterator();
 	}
 
-	public boolean clear(Value... contexts) {
+	public boolean clear(Resource... contexts) {
 		return getDelegate().clear(contexts);
 	}
 
-	public Model filter(final Value subj, final Value pred, final Value obj,
-			final Value... contexts) {
+	public Model filter(final Resource subj, final URI pred, final Value obj,
+			final Resource... contexts) {
 		return new FilteredModel(this, subj, pred, obj, contexts) {
 			private static final long serialVersionUID = -475666402618133101L;
 
@@ -242,7 +247,7 @@ public class MemoryOverflowModel extends AbstractModel {
 			assert disk == null;
 			repository = createRepository();
 			connection = repository.getConnection();
-			connection.setAutoCommit(false);
+			connection.begin();
 			disk = new RepositoryModel(connection) {
 
 				@Override

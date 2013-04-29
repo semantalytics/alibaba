@@ -32,9 +32,11 @@ import info.aduna.iteration.CloseableIteration;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.openrdf.model.Model;
 import org.openrdf.model.Namespace;
@@ -45,6 +47,7 @@ import org.openrdf.model.Value;
 import org.openrdf.model.impl.AbstractModel;
 import org.openrdf.model.impl.EmptyModel;
 import org.openrdf.model.impl.FilteredModel;
+import org.openrdf.model.impl.NamespaceImpl;
 import org.openrdf.model.util.ModelException;
 import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.RepositoryException;
@@ -128,54 +131,58 @@ public class RepositoryModel extends AbstractModel {
 		return size;
 	}
 
-	public Map<String, String> getNamespaces() {
-		Map<String, String> map = new HashMap<String, String>();
+	public Set<Namespace> getNamespaces() {
+		Map<String, Namespace> map = new HashMap<String, Namespace>();
 		try {
 			RepositoryResult<Namespace> spaces = con.getNamespaces();
 			try {
 				while (spaces.hasNext()) {
 					Namespace ns = spaces.next();
-					map.put(ns.getPrefix(), ns.getName());
+					map.put(ns.getPrefix(), ns);
 				}
 			} finally {
 				spaces.close();
 			}
-			return map;
+			return new HashSet<Namespace>(map.values());
 		} catch (RepositoryException e) {
 			throw new ModelException(e);
 		}
 	}
 
-	public String getNamespace(String prefix) {
+	public Namespace getNamespace(String prefix) {
 		try {
-			return con.getNamespace(prefix);
+			return new NamespaceImpl(prefix, con.getNamespace(prefix));
 		} catch (RepositoryException e) {
 			throw new ModelException(e);
 		}
 	}
 
-	public String setNamespace(String prefix, String name) {
+	public Namespace setNamespace(String prefix, String name) {
 		try {
 			String ret = con.getNamespace(prefix);
 			con.setNamespace(prefix, name);
-			return ret;
+			return new NamespaceImpl(prefix, ret);
 		} catch (RepositoryException e) {
 			throw new ModelException(e);
 		}
 	}
 
-	public String removeNamespace(String prefix) {
+	public void setNamespace(Namespace namespace) {
+		setNamespace(namespace.getPrefix(), namespace.getName());
+	}
+
+	public Namespace removeNamespace(String prefix) {
 		try {
 			String ret = con.getNamespace(prefix);
 			con.removeNamespace(prefix);
-			return ret;
+			return new NamespaceImpl(prefix, ret);
 		} catch (RepositoryException e) {
 			throw new ModelException(e);
 		}
 	}
 
-	public boolean contains(Value subj, Value pred, Value obj,
-			Value... contexts) {
+	public boolean contains(Resource subj, URI pred, Value obj,
+			Resource... contexts) {
 		try {
 			if (!isResourceURI(subj, pred) || !isEmptyOrResourcePresent(contexts))
 				return false;
@@ -208,7 +215,7 @@ public class RepositoryModel extends AbstractModel {
 		}
 	}
 
-	public synchronized boolean clear(Value... contexts) {
+	public synchronized boolean clear(Resource... contexts) {
 		try {
 			if (contains(null, null, null, contexts)) {
 				con.clear(cast(contexts));
@@ -221,8 +228,8 @@ public class RepositoryModel extends AbstractModel {
 		return false;
 	}
 
-	public synchronized boolean remove(Value subj, Value pred, Value obj,
-			Value... contexts) {
+	public synchronized boolean remove(Resource subj, URI pred, Value obj,
+			Resource... contexts) {
 		try {
 			if (contains(subj, pred, obj, contexts)) {
 				size = -1;
@@ -245,8 +252,8 @@ public class RepositoryModel extends AbstractModel {
 		}
 	}
 
-	public Model filter(final Value subj, final Value pred, final Value obj,
-			final Value... contexts) {
+	public Model filter(final Resource subj, final URI pred, final Value obj,
+			final Resource... contexts) {
 		if (!isResourceURI(subj, pred) || !isEmptyOrResourcePresent(contexts))
 			return new EmptyModel(this);
 		return new FilteredModel(this, subj, pred, obj, contexts) {

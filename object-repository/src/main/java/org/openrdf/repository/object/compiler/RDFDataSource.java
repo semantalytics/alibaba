@@ -28,8 +28,6 @@
  */
 package org.openrdf.repository.object.compiler;
 
-import java.util.Map;
-
 import org.openrdf.model.Model;
 import org.openrdf.model.Resource;
 import org.openrdf.model.URI;
@@ -65,18 +63,6 @@ public class RDFDataSource {
 		if (subj == null || subj instanceof Resource)
 			return new LinkedHashModel(model.filter((Resource) subj, pred, obj, graph));
 		return new LinkedHashModel();
-	}
-
-	public Map<String, String> getNamespaces() {
-		return model.getNamespaces();
-	}
-
-	public String getNamespace(String prefix) {
-		return model.getNamespace(prefix);
-	}
-
-	public String setNamespace(String prefix, String name) {
-		return model.setNamespace(prefix, name);
 	}
 
 	public void add(Resource subj, URI pred, Value obj) {

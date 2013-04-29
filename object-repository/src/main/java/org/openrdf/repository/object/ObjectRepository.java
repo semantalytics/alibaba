@@ -135,7 +135,7 @@ public class ObjectRepository extends ContextAwareRepository implements NamedQue
 			+ WHERE_SCHEMA + "}";
 	private static final Pattern PATTERN = Pattern.compile("composed(\\d+)",
 			Pattern.CASE_INSENSITIVE);
-	private static final Collection<File> temporary = new ArrayList<File>();
+	static final Collection<File> temporary = new ArrayList<File>();
 
 	private static void deleteOnExit(File dir) {
 		synchronized (temporary) {
@@ -869,8 +869,8 @@ public class ObjectRepository extends ContextAwareRepository implements NamedQue
 		try {
 			RDFXMLWriter writer = new RDFXMLWriter(out);
 			writer.startRDF();
-			for (Map.Entry<String, String> e : schema.getNamespaces().entrySet()) {
-				writer.handleNamespace(e.getKey(), e.getValue());
+			for (Namespace e : schema.getNamespaces()) {
+				writer.handleNamespace(e.getPrefix(), e.getName());
 			}
 			for (Statement st : schema) {
 				writer.handleStatement(st);

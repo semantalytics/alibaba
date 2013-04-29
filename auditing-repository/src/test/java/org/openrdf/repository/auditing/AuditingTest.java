@@ -6,6 +6,7 @@ import info.aduna.iteration.CloseableIteration;
 
 import java.io.OutputStream;
 import java.util.Arrays;
+import java.util.List;
 
 import junit.framework.TestCase;
 
@@ -21,8 +22,12 @@ import org.openrdf.model.impl.TreeModel;
 import org.openrdf.model.impl.URIImpl;
 import org.openrdf.model.impl.ValueFactoryImpl;
 import org.openrdf.model.vocabulary.RDF;
+import org.openrdf.query.BindingSet;
 import org.openrdf.query.QueryLanguage;
+import org.openrdf.query.QueryResultHandlerException;
 import org.openrdf.query.QueryResults;
+import org.openrdf.query.TupleQueryResultHandler;
+import org.openrdf.query.TupleQueryResultHandlerException;
 import org.openrdf.repository.Repository;
 import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.RepositoryException;
@@ -38,7 +43,7 @@ public class AuditingTest extends TestCase {
 	private static final String PREFIX = "PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n" +
 			"PREFIX prov:<http://www.w3.org/ns/prov#>\n" +
 			"PREFIX foaf:<http://xmlns.com/foaf/0.1/>\n" +
-			"PREFIX audit:<http://www.openrdf.org/rdf/2012/auditing#>";
+			"PREFIX audit:<http://www.openrdf.org/rdf/2012/auditing#>\n";
 	/** Added by ActivityFactory on first change */
 	public static final URI BUNDLE = new URIImpl("http://www.w3.org/ns/prov#Bundle");
 	/** Added after activity is finished */

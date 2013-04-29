@@ -29,9 +29,10 @@
 package org.openrdf.sail.optimistic.helpers;
 
 import java.util.Iterator;
-import java.util.Map;
+import java.util.Set;
 
 import org.openrdf.model.Model;
+import org.openrdf.model.Namespace;
 import org.openrdf.model.Resource;
 import org.openrdf.model.Statement;
 import org.openrdf.model.URI;
@@ -94,28 +95,32 @@ public class UnionModel extends AbstractModel {
 		return new UnionModel(unmodifiables);
 	}
 
-	public Map<String, String> getNamespaces() {
+	public Set<Namespace> getNamespaces() {
 		return models[0].getNamespaces();
 	}
 
-	public String getNamespace(String prefix) {
+	public Namespace getNamespace(String prefix) {
 		return models[0].getNamespace(prefix);
 	}
 
-	public String setNamespace(String prefix, String name) {
+	public Namespace setNamespace(String prefix, String name) {
 		throw new UnsupportedOperationException();
 	}
 
-	public String removeNamespace(String prefix) {
-		String ret = null;
+	public void setNamespace(Namespace namespace) {
+		throw new UnsupportedOperationException();
+	}
+
+	public Namespace removeNamespace(String prefix) {
+		Namespace ret = null;
 		for (Model model : models) {
 			ret = model.removeNamespace(prefix);
 		}
 		return ret;
 	}
 
-	public boolean contains(Value subj, Value pred, Value obj,
-			Value... contexts) {
+	public boolean contains(Resource subj, URI pred, Value obj,
+			Resource... contexts) {
 		for (Model model : models) {
 			if (model.contains(subj, pred, obj, contexts))
 				return true;
@@ -127,8 +132,8 @@ public class UnionModel extends AbstractModel {
 		throw new UnsupportedOperationException();
 	}
 
-	public boolean remove(Value subj, Value pred, Value obj,
-			Value... contexts) {
+	public boolean remove(Resource subj, URI pred, Value obj,
+			Resource... contexts) {
 		boolean modified = false;
 		for (Model model : models) {
 			modified |= model.remove(subj, pred, obj, contexts);
@@ -136,8 +141,8 @@ public class UnionModel extends AbstractModel {
 		return modified;
 	}
 
-	public Model filter(Value subj, Value pred, Value obj,
-			Value... contexts) {
+	public Model filter(Resource subj, URI pred, Value obj,
+			Resource... contexts) {
 		final Model[] filter = new Model[models.length];
 		for (int i = 0; i < filter.length; i++) {
 			filter[i] = models[i].filter(subj, pred, obj, contexts);
