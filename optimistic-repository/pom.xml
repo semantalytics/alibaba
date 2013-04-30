@@ -35,6 +35,10 @@ The Optimistic Repository provides concurrent optimistic serializable transactio
 			<groupId>org.openrdf.sesame</groupId>
 			<artifactId>sesame-sail-inferencer</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.openrdf.sesame</groupId>
+			<artifactId>sesame-sail-nativerdf</artifactId>
+		</dependency>
 	</dependencies>
 
 </project>
