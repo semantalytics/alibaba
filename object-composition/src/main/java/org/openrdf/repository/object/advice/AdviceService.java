@@ -71,7 +71,9 @@ public class AdviceService {
 				factories.put(annotationType, factory);
 				return factory;
 			}
-			factory = getAdviceFactory(annotationType, installed);
+			synchronized (installed) {
+				factory = getAdviceFactory(annotationType, installed);
+			}
 			if (factory != null) {
 				factories.put(annotationType, factory);
 				return factory;

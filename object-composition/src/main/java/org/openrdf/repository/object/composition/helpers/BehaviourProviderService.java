@@ -60,11 +60,13 @@ public class BehaviourProviderService {
 			Collection<Class<?>> classes, Set<Class<?>> bases)
 			throws IOException {
 		List<BehaviourFactory> implementations = new ArrayList<BehaviourFactory>();
-		for (BehaviourProvider bf : loader) {
-			bf.setClassDefiner(cl);
-			bf.setPropertyMapper(mapper);
-			bf.setBaseClasses(bases);
-			implementations.addAll(bf.getBehaviourFactories(classes));
+		synchronized (loader) {
+			for (BehaviourProvider bf : loader) {
+				bf.setClassDefiner(cl);
+				bf.setPropertyMapper(mapper);
+				bf.setBaseClasses(bases);
+				implementations.addAll(bf.getBehaviourFactories(classes));
+			}
 		}
 		return implementations;
 	}

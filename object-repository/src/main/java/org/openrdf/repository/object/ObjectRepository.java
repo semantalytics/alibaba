@@ -176,7 +176,6 @@ public class ObjectRepository extends ContextAwareRepository implements NamedQue
 	private List<URL> imports = Collections.emptyList();
 	private URL[] cp;
 	private File libDir;
-	private volatile int revision;
 	private ClassLoader cl;
 	private RoleMapper mapper;
 	private LiteralManager literals;
@@ -712,7 +711,7 @@ public class ObjectRepository extends ContextAwareRepository implements NamedQue
 	private void compileSchema(Model schema) throws RepositoryException,
 			ObjectStoreConfigException, RDFParseException, IOException {
 		logger.info("Compiling schema");
-		incrementRevision();
+		int revision = incrementRevision(libDir);
 		ClassLoader cl = baseClassLoader;
 		RoleMapper mapper = baseRoleMapper.clone();
 		LiteralManager literals = baseLiteralManager.clone();
@@ -727,7 +726,10 @@ public class ObjectRepository extends ContextAwareRepository implements NamedQue
 		namespaces = getNamespaces(schema, ontologies.getNamespaces());
 		if (schema != null && !schema.isEmpty()) {
 			if (logger.isDebugEnabled()) {
-				logger.debug("Compiling schema: {}", saveSchema(schema));
+				File owl = new File(libDir, "schema" + revision + ".owl");
+				owl.deleteOnExit();
+				saveSchema(schema, owl);
+				logger.debug("Compiling schema: {}", owl);
 			}
 			OWLCompiler compiler = new OWLCompiler(mapper, literals);
 			compiler.setModel(schema);
@@ -766,7 +768,8 @@ public class ObjectRepository extends ContextAwareRepository implements NamedQue
 		}
 	}
 
-	private void incrementRevision() {
+	private static synchronized int incrementRevision(File libDir) {
+		int revision = 0;
 		File[] listFiles = libDir.listFiles();
 		if (listFiles != null) {
 			for (File file : listFiles) {
@@ -779,7 +782,9 @@ public class ObjectRepository extends ContextAwareRepository implements NamedQue
 				}
 			}
 		}
-		revision++;
+		revision += 1;
+		new File(libDir, "composed" + revision).mkdirs();
+		return revision;
 	}
 
 	private Map<URI, Map<String, String>> getNamespaces(Model schema,
@@ -861,10 +866,7 @@ public class ObjectRepository extends ContextAwareRepository implements NamedQue
 		}
 	}
 
-	private File saveSchema(Model schema)
-			throws IOException {
-		File owl = new File(libDir, "schema" + revision + ".owl");
-		owl.deleteOnExit();
+	private void saveSchema(Model schema, File owl) throws IOException {
 		FileOutputStream out = new FileOutputStream(owl);
 		try {
 			RDFXMLWriter writer = new RDFXMLWriter(out);
@@ -876,7 +878,6 @@ public class ObjectRepository extends ContextAwareRepository implements NamedQue
 				writer.handleStatement(st);
 			}
 			writer.endRDF();
-			return owl;
 		} catch (RDFHandlerException e) {
 			try {
 				throw e.getCause();
