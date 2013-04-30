@@ -255,6 +255,16 @@ public class ObjectRepository extends ContextAwareRepository implements NamedQue
 		}
 	}
 
+	public void removeSchemaGraph(URI graphURI) throws RepositoryException {
+		boolean changed;
+		synchronized (this) {
+			changed = schemaGraphs.remove(graphURI);
+		}
+		if (changed && isCompileRepository() && !isRecompileScheduled()) {
+			recompileWithNotification();
+		}
+	}
+
 	public void setSchemaGraph(URI graphURI) throws RepositoryException {
 		boolean changed = false;
 		synchronized (this) {
@@ -273,6 +283,16 @@ public class ObjectRepository extends ContextAwareRepository implements NamedQue
 		boolean changed;
 		synchronized (this) {
 			changed = schemaGraphTypes.add(rdfType);
+		}
+		if (changed && isCompileRepository() && !isRecompileScheduled()) {
+			recompileWithNotification();
+		}
+	}
+
+	public void removeSchemaGraphType(URI rdfType) throws RepositoryException {
+		boolean changed;
+		synchronized (this) {
+			changed = schemaGraphTypes.remove(rdfType);
 		}
 		if (changed && isCompileRepository() && !isRecompileScheduled()) {
 			recompileWithNotification();
