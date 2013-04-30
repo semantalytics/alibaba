@@ -1,11 +1,13 @@
 package org.openrdf.repository.auditing;
 
-
 import static org.openrdf.query.QueryLanguage.SPARQL;
 import info.aduna.iteration.CloseableIteration;
 
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 
 import junit.framework.TestCase;
 
@@ -22,7 +24,6 @@ import org.openrdf.model.impl.URIImpl;
 import org.openrdf.model.impl.ValueFactoryImpl;
 import org.openrdf.model.vocabulary.RDF;
 import org.openrdf.query.QueryLanguage;
-import org.openrdf.query.QueryResults;
 import org.openrdf.repository.Repository;
 import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.RepositoryException;
@@ -96,12 +97,12 @@ public class AuditingOptimisticTest extends TestCase {
 
 	private void begin(AuditingRepositoryConnection conn)
 			throws RepositoryException {
-		conn.setAutoCommit(false);
+		conn.begin();
 	}
 
 	private AuditingRepositoryConnection commit(AuditingRepository repo,AuditingRepositoryConnection conn)
 			throws Exception {
-		conn.setAutoCommit(true);
+		conn.commit();
 		conn.close();
 		return repo.getConnection();
 	}
@@ -135,8 +136,8 @@ public class AuditingOptimisticTest extends TestCase {
 
 		// Export statements
 
-		for (Resource ctx : QueryResults.asList(con.getContextIDs())) {
-			for (Resource subj : QueryResults.addAll(
+		for (Resource ctx : asList(con.getContextIDs())) {
+			for (Resource subj : addAll(
 					con.getStatements(null, null, null, false, ctx),
 					new TreeModel()).subjects()) {
 				RepositoryResult<Statement> stIter = con.getStatements(subj,
@@ -212,7 +213,7 @@ public class AuditingOptimisticTest extends TestCase {
 		assertTrue(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
 		assertFalse(con.hasStatement(null, null, null, false, new Resource[]{null}));
-		assertEquals(Arrays.asList(lastActivityGraph), QueryResults.asList(con.getContextIDs()));
+		assertEquals(Arrays.asList(lastActivityGraph), asList(con.getContextIDs()));
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -244,7 +245,7 @@ public class AuditingOptimisticTest extends TestCase {
 		assertTrue(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
 		assertFalse(con.hasStatement(null, null, null, false, new Resource[]{null}));
-		assertEquals(Arrays.asList(lastActivityGraph), QueryResults.asList(con.getContextIDs()));
+		assertEquals(Arrays.asList(lastActivityGraph), asList(con.getContextIDs()));
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -272,7 +273,7 @@ public class AuditingOptimisticTest extends TestCase {
 		assertTrue(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
 		assertFalse(con.hasStatement(null, null, null, false, new Resource[]{null}));
-		assertEquals(Arrays.asList(lastActivityGraph), QueryResults.asList(con.getContextIDs()));
+		assertEquals(Arrays.asList(lastActivityGraph), asList(con.getContextIDs()));
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -313,14 +314,14 @@ public class AuditingOptimisticTest extends TestCase {
 		assertTrue(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
 		assertFalse(con.hasStatement(null, null, null, false, new Resource[]{null}));
-		assertEquals(3, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(3, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
 		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
 		assertTrue(con.hasStatement(null, INFLUENCED_BY, null, false));
 		assertFalse(con.hasStatement(null, WITHOUT, null, false));
-		assertEquals(0, QueryResults.asList(con.getStatements(null, RDF.TYPE, RECENT, false)).size());
+		assertEquals(0, asList(con.getStatements(null, RDF.TYPE, RECENT, false)).size());
 		assertTrue(ask("FILTER NOT EXISTS {\n"
 				+ "    ?activity prov:generated [prov:specializationOf ?self]\n"
 				+ "    FILTER (strstarts(?self,?activity))\n" + "}\n"));
@@ -425,14 +426,14 @@ public class AuditingOptimisticTest extends TestCase {
 		assertTrue(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
 		assertFalse(con.hasStatement(null, null, null, false, new Resource[]{null}));
-		assertEquals(1, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(1, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
 		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
 		assertFalse(con.hasStatement(null, INFLUENCED_BY, null, false));
 		assertFalse(con.hasStatement(null, WITHOUT, null, false));
-		assertEquals(0, QueryResults.asList(con.getStatements(null, RDF.TYPE, RECENT, false)).size());
+		assertEquals(0, asList(con.getStatements(null, RDF.TYPE, RECENT, false)).size());
 		assertTrue(ask("FILTER NOT EXISTS {\n"
 				+ "    ?activity prov:generated [prov:specializationOf ?self]\n"
 				+ "    FILTER (strstarts(?self,?activity))\n" + "}\n"));
@@ -491,7 +492,7 @@ public class AuditingOptimisticTest extends TestCase {
 		con = commit(repo, con);
 		assertFalse(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(2, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(2, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -547,7 +548,7 @@ public class AuditingOptimisticTest extends TestCase {
 		assertFalse(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, knows, jackson, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(2, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(2, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -601,7 +602,7 @@ public class AuditingOptimisticTest extends TestCase {
 		con = commit(repo, con);
 		assertFalse(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(1, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(1, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -634,7 +635,7 @@ public class AuditingOptimisticTest extends TestCase {
 		con = commit(repo, con);
 		assertFalse(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(1, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(1, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -670,14 +671,14 @@ public class AuditingOptimisticTest extends TestCase {
 		assertFalse(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
 		assertFalse(con.hasStatement(null, null, null, false, new Resource[]{null}));
-		assertEquals(2, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(2, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
 		assertTrue(con.hasStatement(null, ENDED_AT, null, false));
 		assertTrue(con.hasStatement(null, INFLUENCED_BY, null, false));
 		assertFalse(con.hasStatement(null, WITHOUT, null, false));
-		assertEquals(0, QueryResults.asList(con.getStatements(null, RDF.TYPE, RECENT, false)).size());
+		assertEquals(0, asList(con.getStatements(null, RDF.TYPE, RECENT, false)).size());
 		assertTrue(ask("GRAPH ?activity1 {",
 				"    ?activity1 a prov:Bundle ;",
 				"        prov:wasGeneratedBy ?provenance1 .",
@@ -717,7 +718,7 @@ public class AuditingOptimisticTest extends TestCase {
 		assertFalse(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, knows, jackson, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(3, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(3, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -775,7 +776,7 @@ public class AuditingOptimisticTest extends TestCase {
 		assertFalse(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, knows, jackson, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(2, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(2, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -826,7 +827,7 @@ public class AuditingOptimisticTest extends TestCase {
 		stmts.close();
 		con = commit(repo, con);
 		assertFalse(con.hasStatement(carmichael, null, null, false));
-		assertEquals(2, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(2, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -867,7 +868,7 @@ public class AuditingOptimisticTest extends TestCase {
 		con = commit(repo, con);
 		assertTrue(con.hasStatement(carmichael, knows, harris, false));
 		assertFalse(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(2, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(2, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -911,7 +912,7 @@ public class AuditingOptimisticTest extends TestCase {
 		con = commit(repo, con);
 		assertTrue(con.hasStatement(carmichael, knows, harris, false));
 		assertFalse(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(2, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(2, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -956,7 +957,7 @@ public class AuditingOptimisticTest extends TestCase {
 		con = commit(repo, con);
 		assertTrue(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(3, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(3, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1013,7 +1014,7 @@ public class AuditingOptimisticTest extends TestCase {
 		con = commit(repo, con);
 		assertTrue(con.hasStatement(carmichael, knows, johnston, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(3, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(3, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1075,7 +1076,7 @@ public class AuditingOptimisticTest extends TestCase {
 		con.remove(carmichael, null, null);
 		con = commit(repo, con);
 		assertFalse(con.hasStatement(carmichael, null, null, false));
-		assertEquals(2, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(2, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1119,7 +1120,7 @@ public class AuditingOptimisticTest extends TestCase {
 		assertTrue(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
 		assertFalse(con.hasStatement(null, null, null, false, new Resource[]{null}));
-		assertEquals(Arrays.asList(lastActivityGraph), QueryResults.asList(con.getContextIDs()));
+		assertEquals(Arrays.asList(lastActivityGraph), asList(con.getContextIDs()));
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1152,7 +1153,7 @@ public class AuditingOptimisticTest extends TestCase {
 		con = commit(repo, con);
 		assertFalse(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(2, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(2, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1203,7 +1204,7 @@ public class AuditingOptimisticTest extends TestCase {
 				"WHERE { <carmichael> ?p ?o } ", "http://example.com/").execute();
 		con = commit(repo, con);
 		assertFalse(con.hasStatement(carmichael, null, null, false));
-		assertEquals(2, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(2, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1251,7 +1252,7 @@ public class AuditingOptimisticTest extends TestCase {
 		assertFalse(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, knows, jackson, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(2, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(2, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1299,13 +1300,12 @@ public class AuditingOptimisticTest extends TestCase {
 				"INSERT { <carmichael> <http://xmlns.com/foaf/0.1/knows> <jackson> }\n" +
 				"WHERE { <carmichael> ?p ?o } ", "http://example.com/").execute();
 		con.rollback();
-		con.setAutoCommit(true);
 		con.close();
 		con = repo.getConnection();
 		assertTrue(con.hasStatement(carmichael, knows, harris, false));
 		assertFalse(con.hasStatement(carmichael, knows, jackson, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(1, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(1, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1337,7 +1337,7 @@ public class AuditingOptimisticTest extends TestCase {
 		assertTrue(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
 		assertFalse(con.hasStatement(null, null, null, false, new Resource[]{null}));
-		assertEquals(Arrays.asList(lastActivityGraph), QueryResults.asList(con.getContextIDs()));
+		assertEquals(Arrays.asList(lastActivityGraph), asList(con.getContextIDs()));
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1369,7 +1369,7 @@ public class AuditingOptimisticTest extends TestCase {
 		assertTrue(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
 		assertFalse(con.hasStatement(null, null, null, false, new Resource[]{null}));
-		assertEquals(2, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(2, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1408,7 +1408,7 @@ public class AuditingOptimisticTest extends TestCase {
 		assertTrue(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
 		assertFalse(con.hasStatement(null, null, null, false, new Resource[]{null}));
-		assertEquals(Arrays.asList(graph), QueryResults.asList(con.getContextIDs()));
+		assertEquals(Arrays.asList(graph), asList(con.getContextIDs()));
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1442,7 +1442,7 @@ public class AuditingOptimisticTest extends TestCase {
 		assertTrue(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
 		assertFalse(con.hasStatement(null, null, null, false, new Resource[]{null}));
-		assertEquals(2, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(2, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1480,7 +1480,7 @@ public class AuditingOptimisticTest extends TestCase {
 		assertTrue(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
 		assertFalse(con.hasStatement(null, null, null, false, new Resource[]{null}));
-		assertEquals(2, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(2, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1517,7 +1517,7 @@ public class AuditingOptimisticTest extends TestCase {
 		assertTrue(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
 		assertFalse(con.hasStatement(null, null, null, false, new Resource[]{null}));
-		assertEquals(2, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(2, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1555,7 +1555,7 @@ public class AuditingOptimisticTest extends TestCase {
 		con = commit(repo, con);
 		assertFalse(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(3, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(3, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1616,7 +1616,7 @@ public class AuditingOptimisticTest extends TestCase {
 		con = commit(repo, con);
 		assertFalse(con.hasStatement(carmichael, knows, harris, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(2, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(2, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1671,7 +1671,7 @@ public class AuditingOptimisticTest extends TestCase {
 		assertTrue(con.hasStatement(carmichael, knows, harris, false));
 		assertFalse(con.hasStatement(harris, knows, jackson, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(2, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(2, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1712,7 +1712,7 @@ public class AuditingOptimisticTest extends TestCase {
 		assertFalse(con.hasStatement(carmichael, knows, harris, false));
 		assertFalse(con.hasStatement(harris, knows, jackson, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(2, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(2, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1765,7 +1765,7 @@ public class AuditingOptimisticTest extends TestCase {
 		assertFalse(con.hasStatement(carmichael, knows, harris, false));
 		assertFalse(con.hasStatement(harris, knows, jackson, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(2, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(2, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1817,7 +1817,7 @@ public class AuditingOptimisticTest extends TestCase {
 		assertFalse(con.hasStatement(carmichael, knows, harris, false));
 		assertFalse(con.hasStatement(harris, knows, jackson, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(3, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(3, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1883,7 +1883,7 @@ public class AuditingOptimisticTest extends TestCase {
 		assertFalse(con.hasStatement(carmichael, knows, harris, false));
 		assertFalse(con.hasStatement(harris, knows, jackson, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(3, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(3, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -1951,7 +1951,7 @@ public class AuditingOptimisticTest extends TestCase {
 		assertFalse(con.hasStatement(carmichael, knows, harris, false));
 		assertFalse(con.hasStatement(harris, knows, jackson, false));
 		assertTrue(con.hasStatement(carmichael, GENERATED_BY, null, false));
-		assertEquals(4, QueryResults.asList(con.getContextIDs()).size());
+		assertEquals(4, asList(con.getContextIDs()).size());
 		assertTrue(con.hasStatement(null, RDF.TYPE, BUNDLE, false));
 		assertFalse(con.hasStatement(null, RDF.TYPE, RECENT, false));
 		assertTrue(con.hasStatement(null, RDF.TYPE, OBSOLETE, false));
@@ -2014,5 +2014,49 @@ public class AuditingOptimisticTest extends TestCase {
 				"        rdf:object <jackson> .",
 				"    }",
 				"}"));
+	}
+
+	/**
+	 * Get a List containing all elements obtained from the specified Iteration.
+	 * 
+	 * @param iter
+	 *            the Iteration to get the elements from
+	 * @return a List containing all elements obtained from the specified
+	 *         Iteration.
+	 * @throws RepositoryException
+	 */
+	private static <E> List<E> asList(RepositoryResult<E> iter)
+			throws RepositoryException {
+		List<E> result = new ArrayList<E>();
+		addAll(iter, result);
+		return result;
+	}
+
+	/**
+	 * Adds all elements from the supplied Iteration to the specified
+	 * collection. If the supplied Iteration is an instance of
+	 * {@link CloseableIteration} it is automatically closed after consumption.
+	 * 
+	 * @param iter
+	 *            An Iteration containing elements to add to the container. If
+	 *            the Iteration is an instance of {@link CloseableIteration} it
+	 *            is automatically closed after consumption.
+	 * @param collection
+	 *            The collection to add the elements to.
+	 * @return The <tt>collection</tt> object that was supplied to this method.
+	 * @throws RepositoryException
+	 */
+	private static <E, C extends Collection<E>> C addAll(
+			RepositoryResult<? extends E> iter, C collection)
+			throws RepositoryException {
+		try {
+			while (iter.hasNext()) {
+				collection.add(iter.next());
+			}
+		} finally {
+			iter.close();
+		}
+
+		return collection;
 	}
 }
