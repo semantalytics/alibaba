@@ -100,6 +100,8 @@ import org.openrdf.result.MultipleResultException;
 import org.openrdf.result.Result;
 import org.openrdf.rio.helpers.StatementCollector;
 import org.openrdf.rio.rdfxml.RDFXMLWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.DocumentFragment;
 import org.w3c.dom.Element;
@@ -666,6 +668,7 @@ public class SparqlEvaluator {
 			"\\bLIMIT\\b|\\bOFFSET\\b", Pattern.CASE_INSENSITIVE);
 
 	private class SPARQLQuery {
+		private final Logger logger = LoggerFactory.getLogger(SPARQLQuery.class);
 		private String sparql;
 		private String base;
 		private Class<?> concept;
@@ -693,7 +696,7 @@ public class SparqlEvaluator {
 					}
 				}
 			} catch (MalformedQueryException e) {
-				throw new MalformedQueryException(base + " " + e.getMessage(), e);
+				logger.warn(base + " " + e.getMessage(), e);
 			} finally {
 				in.close();
 			}
