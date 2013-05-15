@@ -14,7 +14,6 @@
 	<modules>
 		<module>keyword-sail</module>
 		<module>auditing-sail</module>
-		<module>query-repository</module>
 		<module>optimistic-sail</module>
 		<module>auditing-repository</module>
 		<module>object-composition</module>
@@ -77,11 +76,6 @@ AliBaba is a collection of modules that provide simplified RDF store abstraction
 			<dependency>
 				<groupId>org.openrdf.alibaba</groupId>
 				<artifactId>alibaba-sail-auditing</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>org.openrdf.alibaba</groupId>
-				<artifactId>alibaba-repository-query</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>

@@ -11,7 +11,6 @@ import org.openrdf.model.ValueFactory;
 import org.openrdf.repository.object.config.ObjectRepositoryConfig;
 import org.openrdf.repository.object.config.ObjectRepositoryFactory;
 import org.openrdf.repository.object.traits.ObjectMessage;
-import org.openrdf.repository.query.NamedQuery;
 import org.openrdf.repository.sail.SailRepository;
 import org.openrdf.result.Result;
 import org.openrdf.sail.memory.MemoryStore;
@@ -158,35 +157,6 @@ public class SmokeTest extends TestCase {
 		while (result.hasNext()) {
 			assertEquals("Getting Started", result.next().getTitle());
 		}
-	}
-
-	public void testNamedQuery() throws Exception {
-		// create a Document
-		Document doc = new Document();
-		doc.setTitle("Getting Started");
-
-		// add a Document to the repository
-		ValueFactory vf = con.getValueFactory();
-		URI id = vf
-				.createURI("http://meta.leighnet.ca/data/2009/getting-started");
-		con.addObject(id, doc);
-
-		// retrieve a Document by id
-		doc = con.getObject(Document.class, id);
-		assertEquals("Getting Started", doc.getTitle());
-
-		// retrieve a Document by title using a named query
-		URI myQueryID = vf
-				.createURI("http://meta.leighnet.ca/rdf/2011/my-query");
-		NamedQuery named = con.getRepository().createNamedQuery(
-				myQueryID,
-				"PREFIX gs:<http://meta.leighnet.ca/rdf/2009/gs#>\n"
-						+ "SELECT ?doc WHERE {?doc gs:title ?title}");
-
-		ObjectQuery query = con.prepareObjectQuery(named.getQueryString());
-		query.setObject("title", "Getting Started");
-		doc = query.evaluate(Document.class).singleResult();
-		assertEquals("Getting Started", doc.getTitle());
 	}
 
 	public void testDynamicQuery() throws Exception {

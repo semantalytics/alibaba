@@ -68,14 +68,11 @@ import org.openrdf.query.GraphQuery;
 import org.openrdf.query.GraphQueryResult;
 import org.openrdf.query.MalformedQueryException;
 import org.openrdf.query.QueryEvaluationException;
-import org.openrdf.query.QueryLanguage;
 import org.openrdf.query.TupleQuery;
 import org.openrdf.query.TupleQueryResult;
-import org.openrdf.repository.Repository;
 import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.RepositoryException;
 import org.openrdf.repository.RepositoryResult;
-import org.openrdf.repository.config.RepositoryConfigException;
 import org.openrdf.repository.contextaware.ContextAwareConnection;
 import org.openrdf.repository.contextaware.ContextAwareRepository;
 import org.openrdf.repository.object.compiler.OWLCompiler;
@@ -90,9 +87,6 @@ import org.openrdf.repository.object.managers.RoleMapper;
 import org.openrdf.repository.object.managers.TypeManager;
 import org.openrdf.repository.object.managers.helpers.RoleClassLoader;
 import org.openrdf.repository.object.vocabulary.MSG;
-import org.openrdf.repository.query.NamedQuery;
-import org.openrdf.repository.query.NamedQueryRepository;
-import org.openrdf.repository.query.config.NamedQueryRepositoryFactory;
 import org.openrdf.rio.RDFHandlerException;
 import org.openrdf.rio.RDFParseException;
 import org.openrdf.rio.rdfxml.RDFXMLWriter;
@@ -109,7 +103,7 @@ import org.slf4j.LoggerFactory;
  * @author Steve Battle
  * 
  */
-public class ObjectRepository extends ContextAwareRepository implements NamedQueryRepository {
+public class ObjectRepository extends ContextAwareRepository {
 	private static final String SELECT_GRAPH_BY_TYPE = "SELECT ?graph ?subject ?predicate ?object\n"
 			+ "WHERE { ?graph a $type GRAPH ?graph { ?subject ?predicate ?object } }";
 	private static final URI[] LIST_PROPERTIES = new URI[] { RDF.REST,
@@ -189,8 +183,6 @@ public class ObjectRepository extends ContextAwareRepository implements NamedQue
 	private final Set<URI> schemaGraphs = new LinkedHashSet<URI>();
 	private final Set<URI> schemaGraphTypes = new LinkedHashSet<URI>();
 	private long schemaHash;
-	/** Support for NamedQueryRepository */
-	private NamedQueryRepository delegate ;
 	private String blobStoreUrl;
 	private Map<String, String> blobStoreParameters;
 	private BlobStore blobs;
@@ -451,50 +443,6 @@ public class ObjectRepository extends ContextAwareRepository implements NamedQue
 		con.setRemoveContexts(getRemoveContexts());
 		con.setArchiveContexts(getArchiveContexts());
 		return con;
-	}
-	
-	@Override
-	public void setDelegate(Repository delegate) {
-		try {
-			// if the delegate is an extant NamedQueryRepository the factory returns it directly
-			// otherwise it is wrapped
-			this.delegate = new NamedQueryRepositoryFactory().createRepository(delegate) ;
-			super.setDelegate(this.delegate);
-		} catch (RepositoryConfigException e) {
-			logger.error(e.toString(), e) ;
-		} catch (RepositoryException e) {
-			logger.error(e.toString(), e) ;
-		}
-	}
-
-	public NamedQuery createNamedQuery(URI uri, String queryString)
-			throws RepositoryException {
-		return createNamedQuery(uri, getQueryLanguage(), queryString,
-				uri.stringValue());
-	}
-
-	public NamedQuery createNamedQuery(URI uri, QueryLanguage ql,
-			String queryString) throws RepositoryException {
-		return createNamedQuery(uri, ql, queryString, uri.stringValue());
-	}
-	
-	/* Delegate support for the NamedQueryRepository interface */
-
-	public NamedQuery createNamedQuery(URI uri, QueryLanguage ql,
-			String queryString, String baseURI) throws RepositoryException {
-		return delegate.createNamedQuery(uri, ql, queryString, baseURI);
-	}
-
-	public void removeNamedQuery(URI uri) throws RepositoryException {
-		delegate.removeNamedQuery(uri) ;
-	}
-
-	public URI[] getNamedQueryIDs() throws RepositoryException {
-		return delegate.getNamedQueryIDs() ;
-	}
-
-	public NamedQuery getNamedQuery(URI uri) throws RepositoryException {
-		return delegate.getNamedQuery(uri) ;
 	}
 
 	protected void compileAfter(ObjectConnection con) {
