@@ -257,40 +257,44 @@ public class JavaCompiler {
 		wd.delete();
 		wd = wd.getParentFile();
 		final Process exec = Runtime.getRuntime().exec(cmdArray, null, wd);
-		Thread gobbler = new Thread() {
-			@Override
-			public void run() {
-				try {
-					InputStream in = exec.getInputStream();
-					try {
-						InputStreamReader isr = new InputStreamReader(in);
-						BufferedReader br = new BufferedReader(isr);
-						String line = null;
-						while ((line = br.readLine()) != null) {
-							System.out.println(line);
-						}
-					} finally {
-						in.close();
-					}
-				} catch (IOException ioe) {
-					logger.error(ioe.getMessage(), ioe);
-				}
-			}
-		};
-		gobbler.start();
-		InputStream stderr = exec.getErrorStream();
 		try {
-			exec.getOutputStream().close();
-			InputStreamReader isr = new InputStreamReader(stderr);
-			BufferedReader br = new BufferedReader(isr);
-			String line = null;
-			while ((line = br.readLine()) != null) {
-				System.err.println(line);
+			Thread gobbler = new Thread() {
+				@Override
+				public void run() {
+					try {
+						InputStream in = exec.getInputStream();
+						try {
+							InputStreamReader isr = new InputStreamReader(in);
+							BufferedReader br = new BufferedReader(isr);
+							String line = null;
+							while ((line = br.readLine()) != null) {
+								System.out.println(line);
+							}
+						} finally {
+							in.close();
+						}
+					} catch (IOException ioe) {
+						logger.error(ioe.getMessage(), ioe);
+					}
+				}
+			};
+			gobbler.start();
+			InputStream stderr = exec.getErrorStream();
+			try {
+				exec.getOutputStream().close();
+				InputStreamReader isr = new InputStreamReader(stderr);
+				BufferedReader br = new BufferedReader(isr);
+				String line = null;
+				while ((line = br.readLine()) != null) {
+					System.err.println(line);
+				}
+			} finally {
+				stderr.close();
 			}
+			return exec.waitFor();
 		} finally {
-			stderr.close();
+			exec.destroy();
 		}
-		return exec.waitFor();
 	}
 
 	private File buildJavacArgfile(List<File> sources, List<File> classpath) throws IOException {
