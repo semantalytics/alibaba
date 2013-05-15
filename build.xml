@@ -101,10 +101,8 @@
 			</manifest>
 			<zipfileset dir="target/services/META-INF" prefix="META-INF" />
 			<zipfileset src="keyword-sail/target/alibaba-sail-keyword-${project.version}.jar" excludes="${excludes}" />
-			<zipfileset src="auditing-sail/target/alibaba-sail-auditing-${project.version}.jar" excludes="${excludes}" />
 			<zipfileset src="blob-store/target/alibaba-store-blob-${project.version}.jar" excludes="${excludes}" />
 			<zipfileset src="optimistic-sail/target/alibaba-sail-optimistic-${project.version}.jar" excludes="${excludes}" />
-			<zipfileset src="auditing-repository/target/alibaba-repository-auditing-${project.version}.jar" excludes="${excludes}" />
 			<zipfileset src="object-composition/target/alibaba-composition-object-${project.version}.jar" excludes="${excludes}" />
 			<zipfileset src="object-repository/target/alibaba-repository-object-${project.version}.jar" excludes="${excludes}" />
 			<zipfileset src="runtime/target/alibaba-runtime-${project.version}.jar" excludes="${excludes}" />
@@ -117,10 +115,8 @@
 			<zipfileset dir="src/dist/bin" prefix="bin" />
 			<zipfileset dir="target/services/META-INF" prefix="src/META-INF" />
 			<zipfileset src="keyword-sail/target/alibaba-sail-keyword-${project.version}-sources.jar" prefix="src" excludes="${excludes}" />
-			<zipfileset src="auditing-sail/target/alibaba-sail-auditing-${project.version}-sources.jar" prefix="src" excludes="${excludes}" />
 			<zipfileset src="blob-store/target/alibaba-store-blob-${project.version}-sources.jar" prefix="src" excludes="${excludes}" />
 			<zipfileset src="optimistic-sail/target/alibaba-sail-optimistic-${project.version}-sources.jar" prefix="src" excludes="${excludes}" />
-			<zipfileset src="auditing-repository/target/alibaba-repository-auditing-${project.version}-sources.jar" prefix="src" excludes="${excludes}" />
 			<zipfileset src="object-composition/target/alibaba-composition-object-${project.version}-sources.jar" prefix="src" excludes="${excludes}" />
 			<zipfileset src="object-repository/target/alibaba-repository-object-${project.version}-sources.jar" prefix="src" excludes="${excludes}" />
 			<zipfileset src="runtime/target/alibaba-runtime-${project.version}-sources.jar" prefix="src" excludes="${excludes}" />
