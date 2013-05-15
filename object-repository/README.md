@@ -84,6 +84,14 @@ Figure 5. A Class Compatible with the ObjectRepository
 
 Figure 6. Using an ObjectConnection
 
+    // create a repository
+    Repository store = new SailRepository(new MemoryStore());
+    store.initialize();
+    
+    // wrap in an object repository
+    ObjectRepositoryFactory factory = new ObjectRepositoryFactory();
+    ObjectRepository repository = factory.createRepository(store);
+    
     // create a Document
     Document doc = new Document();
     doc.setTitle("Getting Started");
@@ -101,6 +109,10 @@ Figure 6. Using an ObjectConnection
     Document doc = con.getObject(Document.class, id);
     doc.setTitle(null);
     con.removeDesignation(doc, Document.class);
+    
+    // close everything down
+    con.close();
+    repository.shutDown();
  
  Objects can also be retrieved by their type using the getObjects(Class)
  method, which includes subclasses. More fine grained queries can be
