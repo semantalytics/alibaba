@@ -30,13 +30,13 @@ Optimistic SAIL
  at the time the update is executed, when using the OptimisticSail. When
  read snapshot is disabled, OptimisticSail behaves just like the underlying store.
 
- When snapshot is enabled the SailConnection#commit() methods way throw a
- ConcurrencyException if the transaction read a state of the store, that was not
+ When snapshot is enabled the SailConnection#commit() methods may throw a
+ SailConflictException if the transaction read a state of the store, that was not
  present when the transaction started, which can lead to a phantom read. A
  phantom read is when two read operations in the same transaction observe
  different states of the store.
 
- When serializable is enabled a ConcurrencyException may also be thrown if the
+ When serializable is enabled a SailConflictException may also be thrown if the
  observed state of a transaction changes before it is committed, possibly
  leaving the state of the store inconsistent. The observed state is any graph
  pattern read during the transaction.
