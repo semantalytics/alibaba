@@ -40,6 +40,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -544,22 +545,51 @@ public class ClassComposer {
 
 	private Method findInterfaceMethod(Class<?>[] interfaces, String name,
 			Class<?> type, Class<?>[] types) {
-		Method best = null;
-		for (Class face : interfaces) {
-			if (best != null) {
-				Annotation[][] anns = best.getParameterAnnotations();
-				for (int i = 0; i < anns.length; i++) {
-					for (int j = 0; j < anns[i].length; j++) {
-						if (anns[i][j].annotationType().equals(Iri.class)) {
-							return best; // parameter IRI present
-						}
+		Collection<Method> methods = findInterfaceMethods(interfaces, name, type, types);
+		Collection<Method> withIdentifiers = new LinkedHashSet<Method>();
+		for (Method m : methods) {
+			Annotation[][] anns = m.getParameterAnnotations();
+			for (int i = 0; i < anns.length; i++) {
+				for (int j = 0; j < anns[i].length; j++) {
+					if (anns[i][j].annotationType().equals(Iri.class)) {
+						withIdentifiers.add(m); // parameter IRI present
 					}
 				}
 			}
+		}
+		if (withIdentifiers.isEmpty())
+			return findSubMethod(methods);
+		return findSubMethod(withIdentifiers);
+	}
+
+	private Method findSubMethod(Collection<Method> methods) {
+		if (methods.isEmpty())
+			return null;
+		Iterator<Method> iter = methods.iterator();
+		if (methods.size() == 1)
+			return iter.next();
+		while (iter.hasNext()) {
+			Method m1 = iter.next();
+			Class<?> c1 = m1.getDeclaringClass();
+			for (Method m2 : methods) {
+				Class<?> c2 = m2.getDeclaringClass();
+				if (!c1.equals(c2) && c1.isAssignableFrom(c2)) {
+					iter.remove();
+					break;
+				}
+			}
+		}
+		return methods.iterator().next();
+	}
+
+	private Collection<Method> findInterfaceMethods(Class<?>[] interfaces, String name,
+			Class<?> type, Class<?>[] types) {
+		Collection<Method> methods = new LinkedHashSet<Method>();
+		for (Class face : interfaces) {
 			try {
 				Method m = face.getDeclaredMethod(name, types);
 				if (m.getReturnType().equals(type)) {
-					best = m;
+					methods.add(m);
 					continue;
 				}
 			} catch (NoSuchMethodException e) {
@@ -568,10 +598,10 @@ public class ClassComposer {
 			Class[] faces = face.getInterfaces();
 			Method m = findInterfaceMethod(faces, name, type, types);
 			if (m != null) {
-				best = m;
+				methods.add(m);
 			}
 		}
-		return best;
+		return methods;
 	}
 
 	private Method findSuperMethod(Class<?> base, String name, Class<?> type,
