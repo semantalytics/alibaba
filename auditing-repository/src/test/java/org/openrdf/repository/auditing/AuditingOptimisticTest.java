@@ -28,12 +28,13 @@ import org.openrdf.repository.Repository;
 import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.RepositoryException;
 import org.openrdf.repository.RepositoryResult;
+import org.openrdf.repository.sail.SailRepository;
 import org.openrdf.rio.RDFHandlerException;
 import org.openrdf.rio.trig.TriGWriter;
 import org.openrdf.sail.Sail;
 import org.openrdf.sail.auditing.AuditingSail;
 import org.openrdf.sail.memory.MemoryStore;
-import org.openrdf.sail.optimistic.OptimisticRepository;
+import org.openrdf.sail.optimistic.OptimisticSail;
 
 public class AuditingOptimisticTest extends TestCase {
 	private static final String PREFIX = "PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n" +
@@ -159,7 +160,7 @@ public class AuditingOptimisticTest extends TestCase {
 	public void setUp() throws Exception {
 		Sail sail = new MemoryStore();
 		sail = new AuditingSail(sail);
-		Repository r = new OptimisticRepository(sail);
+		Repository r = new SailRepository(new OptimisticSail(sail));
 		repo = new AuditingRepository(r);
 		repo.initialize();
 		vf = repo.getValueFactory();

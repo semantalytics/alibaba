@@ -9,17 +9,17 @@
 @prefix obj:  <http://www.openrdf.org/config/repository/object#>.
 
 [] a rep:Repository ;
-   rep:repositoryID "{%Local repository ID|SYSTEM@localhost%}" ;
-   rdfs:label "{%Repository title|SYSTEM repository @localhost%}" ;
-   rep:repositoryImpl [
-      rep:repositoryType "openrdf:ObjectRepository" ;
-      rep:delegate [
-         rep:repositoryType "openrdf:SPARQLRepository" ;
-         sparql:endpoint <{%SPARQL end-point|http://localhost:8080/openrdf-sesame/repositories/SYSTEM%}>
-      ] ;
-      ctx:maxQueryTime "{%Max Query Time|0%}"^^xsd:int ;
-      ctx:queryLanguage "{%Default Query Language|SPARQL%}" ;
-      obj:imports <{%Ontology|http://www.w3.org/2002/07/owl%}> ;
-      obj:compileRepository {%Read Schema from Repository|false%} ;
-      obj:blobStore "blobs"
-   ].
+    rep:repositoryID "{%Local repository ID|SYSTEM@localhost%}" ;
+    rdfs:label "{%Repository title|SYSTEM repository @localhost%}" ;
+    rep:repositoryImpl [
+        rep:repositoryType "openrdf:ObjectRepository" ;
+        rep:delegate [
+            rep:repositoryType "openrdf:SPARQLRepository" ;
+            sparql:endpoint <{%SPARQL end-point|http://localhost:8080/openrdf-sesame/repositories/SYSTEM%}>
+        ] ;
+        ctx:maxQueryTime "{%Max Query Time|0%}"^^xsd:int ;
+        ctx:queryLanguage "{%Default Query Language|SPARQL%}" ;
+        obj:imports <{%Ontology|http://www.w3.org/2002/07/owl%}> ;
+        obj:compileRepository {%Read Schema from Repository|false%} ;
+        obj:blobStore "blobs"
+    ].

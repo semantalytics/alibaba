@@ -32,7 +32,7 @@ Runtime dependencies for an OpenRDF application
 		</dependency>
 		<dependency>
 			<groupId>org.openrdf.alibaba</groupId>
-			<artifactId>alibaba-repository-optimistic</artifactId>
+			<artifactId>alibaba-sail-optimistic</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.openrdf.alibaba</groupId>

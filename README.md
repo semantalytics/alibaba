@@ -7,7 +7,7 @@ AliBaba
 
  Provenance is too often overlooked in new deployments and often too expensive to integrate into existing systems. To address this, AliBaba includes an [auditing repository](https://bitbucket.org/openrdf/alibaba/src/master/auditing-repository/). The auditing repository is a repository wrapper to track and record changes to the triple store.
 
- Most RDF stores are optimized for read and bulk load operations, optimizing small concurrent write operations and data consistency is often overlooked. The [optimistic repository of AliBaba](https://bitbucket.org/openrdf/alibaba/src/master/optimistic-repository/) is designed to improve the performance of small write operations by supporting concurrent write transactions and protects your data from data inconsistency issues when snapshot and serializable transactions are enabled.
+ Most RDF stores are optimized for read and bulk load operations, optimizing small concurrent write operations and data consistency is often overlooked. The [Optimistic SAIL of AliBaba](https://bitbucket.org/openrdf/alibaba/src/master/optimistic-sail/) is designed to improve the performance of small write operations by supporting concurrent write transactions and protects your data from data inconsistency issues when snapshot and serializable transactions are enabled.
 
  Today most people expect to be able to search their data using keywords. However, modern full text indexing has lots of overhead with large indexes and offline indexing. [AliBaba's keyword SAIL](https://bitbucket.org/openrdf/alibaba/src/master/keyword-sail/) allows quick and easy indexing of keywords for RDF resources.
 

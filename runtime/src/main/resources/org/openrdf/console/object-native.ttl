@@ -9,42 +9,34 @@
 @prefix ctx: <http://www.openrdf.org/config/repository/contextaware#>.
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
 @prefix obj:  <http://www.openrdf.org/config/repository/object#>.
-@prefix audit: <http://www.openrdf.org/config/repository/auditing#>.
-@prefix opt: <http://www.openrdf.org/config/repository/optimistic#>.
+@prefix opt: <http://www.openrdf.org/config/sail/optimistic#>.
 @prefix keyword: <http://www.openrdf.org/config/sail/keyword#>.
 
 [] a rep:Repository ;
-   rep:repositoryID "{%Repository ID|native%}" ;
-   rdfs:label "{%Repository title|Native store%}" ;
-   rep:repositoryImpl [
-      rep:repositoryType "openrdf:ObjectRepository" ;
-      rep:delegate [
-	     rep:repositoryType "openrdf:AuditingRepository" ;
-         audit:activityNamespace "{%Activity namespace|%}" ;
-	     audit:purgeObsoleteActivitiesAfter "P{%Purge obsolete transactions after this many days|30%}D" ;
-	     audit:minimumRecentActivities {%Minimum recent transactions|100%} ;
-	     audit:maximumRecentActivities {%Maximum recent transactions|1000%} ;
-	     audit:isTransactional true ;
-	     rep:delegate [
-	         rep:repositoryType "openrdf:OptimisticRepository" ;
-	         opt:snapshot {%Rollback if multiple states observed (enforce snapshot)?|false|true%} ;
-	         opt:serializable {%Rollback if outdated state observed (enforce serializable)?|false|true%} ;
-	         sr:sailImpl [
-	            sail:sailType "openrdf:AuditingSail" ;
-	            sail:delegate [
-	              sail:sailType "openrdf:KeywordSail" ;
-	              keyword:enabled {%Index label keywords?|true|false%} ;
-	              sail:delegate [
-	                sail:sailType "openrdf:NativeStore" ;
-	                ns:tripleIndexes "{%Triple indexes|spoc,posc%}"
-	              ]
-	           ]
-	         ]
-         ]
-      ] ;
-      ctx:maxQueryTime "{%Max Query Time|0%}"^^xsd:int ;
-      ctx:queryLanguage "{%Default Query Language|SPARQL%}" ;
-      obj:imports <{%Ontology|http://www.w3.org/2002/07/owl%}> ;
-      obj:compileRepository {%Read Schema from Repository|false%} ;
-      obj:blobStore "blobs"
-   ].
+    rep:repositoryID "{%Repository ID|native%}" ;
+    rdfs:label "{%Repository title|Native store%}" ;
+    rep:repositoryImpl [
+        rep:repositoryType "openrdf:ObjectRepository" ;
+        rep:delegate [
+            rep:repositoryType "openrdf:SailRepository" ;
+            sr:sailImpl [
+                sail:sailType "openrdf:OptimisticSail" ;
+                opt:readSnapshot {%Allow concurrent uncomitted transactions?|false|true%} ;
+                opt:snapshot {%Rollback if multiple states observed (enforce snapshot)?|false|true%} ;
+                opt:serializable {%Rollback if outdated state observed (enforce serializable)?|false|true%} ;
+                sail:delegate [
+                    sail:sailType "openrdf:KeywordSail" ;
+                    keyword:enabled {%Index label keywords?|true|false%} ;
+                    sail:delegate [
+                        sail:sailType "openrdf:NativeStore" ;
+                        ns:tripleIndexes "{%Triple indexes|spoc,posc%}"
+                    ]
+                ]
+            ]
+        ] ;
+        ctx:maxQueryTime "{%Max Query Time|0%}"^^xsd:int ;
+        ctx:queryLanguage "{%Default Query Language|SPARQL%}" ;
+        obj:imports <{%Ontology|http://www.w3.org/2002/07/owl%}> ;
+        obj:compileRepository {%Read Schema from Repository|false%} ;
+        obj:blobStore "blobs"
+    ].

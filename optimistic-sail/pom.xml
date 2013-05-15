@@ -10,21 +10,19 @@
 		<version>2.0-SNAPSHOT</version>
 	</parent>
 
-	<artifactId>alibaba-sail-auditing</artifactId>
+	<artifactId>alibaba-sail-optimistic</artifactId>
 
-	<name>Auditing SAIL</name>
+	<name>Optimistic SAIL</name>
 	<description><![CDATA[
+The Optimistic SAIL provides concurrent optimistic serializable transactions for embedded Sesame Sails.
 ]]>
 	</description>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>
-			<artifactId>sesame-runtime</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.openrdf.sesame</groupId>
-			<artifactId>sesame-rio-turtle</artifactId>
+	        <artifactId>sesame-runtime</artifactId>
+			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>
@@ -36,15 +34,7 @@
 		</dependency>
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>
-			<artifactId>sesame-store-testsuite</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.openrdf.sesame</groupId>
-			<artifactId>sesame-sparql-testsuite</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.openrdf.alibaba</groupId>
-			<artifactId>alibaba-sail-optimistic</artifactId>
+			<artifactId>sesame-sail-nativerdf</artifactId>
 		</dependency>
 	</dependencies>
 
