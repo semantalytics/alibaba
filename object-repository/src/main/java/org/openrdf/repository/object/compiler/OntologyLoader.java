@@ -140,9 +140,10 @@ public class OntologyLoader {
 			if (format == null) {
 				String path = conn.getURL().toExternalForm();
 				String contentType = conn.getContentType();
-				format = RDFFormat.forFileName(path, RDFFormat.RDFXML);
-				if (contentType != null) {
-					format = RDFFormat.forMIMEType(contentType, format);
+				format = forFileName(path, RDFFormat.RDFXML);
+				String scheme = java.net.URI.create(conn.getURL().toExternalForm()).getScheme();
+				if (contentType != null && !"file".equals(scheme)) {
+					format = forMIMEType(contentType, format);
 				}
 			}
 			RDFParserRegistry registry = RDFParserRegistry.getInstance();
@@ -197,6 +198,22 @@ public class OntologyLoader {
 			logger.warn("Could not load {} {}", url, e.getMessage());
 			return null;
 		}
+	}
+
+	private RDFFormat forFileName(String path, RDFFormat fallback) {
+		RDFFormat format = RDFFormat.forFileName(path);
+		RDFParserRegistry registry = RDFParserRegistry.getInstance();
+		if (format != null && registry.has(format))
+			return format;
+		return fallback;
+	}
+
+	private RDFFormat forMIMEType(String contentType, RDFFormat fallback) {
+		RDFFormat format = RDFFormat.forMIMEType(contentType);
+		RDFParserRegistry registry = RDFParserRegistry.getInstance();
+		if (format != null && registry.has(format))
+			return format;
+		return fallback;
 	}
 
 	private String getAcceptHeader() {
