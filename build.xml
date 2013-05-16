@@ -3,6 +3,8 @@
 
 	<property name="docs" value="src/doc" />
 	<property name="xdocs" value="target/site" />
+    <property name="lib" location="lib" />
+    <property name="downloads" location="downloads" />
 
 	<target name="help" description="Usage information">
 		<echo message="AliBaba Release Builder" />
@@ -53,7 +55,105 @@
 		</antcall>
 	</target>
 
-	<target name="build-sdk">
+    <target name="dependencies">
+        <available file="${lib}" property="lib.present" />
+        <property file="dependencies.properties" />
+        <basename file="${commons-cli.url}" property="commons-cli.zip" />
+        <basename file="${commons-codec.url}" property="commons-codec.zip" />
+        <basename file="${commons-httpclient.url}" property="commons-httpclient.zip" />
+        <basename file="${commons-io.url}" property="commons-io.zip" />
+        <basename file="${commons-logging.url}" property="commons-logging.zip" />
+        <basename file="${jackson-core.url}" property="jackson-core.jar" />
+        <basename file="${javassist.url}" property="javassist-3.11.GA.zip" />
+        <basename file="${opencsv.url}" property="opencsv.jar" />
+        <basename file="${slf4j.url}" property="slf4j.zip" />
+        <basename file="${openrdf-sesame.url}" property="openrdf-sesame.jar" />
+        <mkdir dir="${downloads}" />
+        <get usetimestamp="true" skipexisting="${lib.present}" dest="${downloads}">
+            <url url="${commons-cli.url}" />
+            <url url="${commons-codec.url}" />
+            <url url="${commons-httpclient.url}" />
+            <url url="${commons-io.url}" />
+            <url url="${commons-logging.url}" />
+            <url url="${jackson-core.url}" />
+            <url url="${javassist.url}" />
+            <url url="${opencsv.url}" />
+            <url url="${slf4j.url}" />
+            <url url="${openrdf-sesame.url}" />
+        </get>
+        <mkdir dir="${lib}" />
+        <unzip overwrite="false" src="${downloads}/${commons-cli.zip}" dest="${lib}">
+            <patternset>
+                <include name="**/*.jar" />
+                <exclude name="**/*-javadoc.jar" />
+                <exclude name="**/*-sources.jar" />
+                <exclude name="**/*-tests.jar" />
+            </patternset>
+            <mapper type="flatten" />
+        </unzip>
+        <unzip overwrite="false" src="${downloads}/${commons-codec.zip}" dest="${lib}">
+            <patternset>
+                <include name="**/*.jar" />
+                <exclude name="**/*-javadoc.jar" />
+                <exclude name="**/*-sources.jar" />
+                <exclude name="**/*-tests.jar" />
+            </patternset>
+            <mapper type="flatten" />
+        </unzip>
+        <unzip overwrite="false" src="${downloads}/${commons-httpclient.zip}" dest="${lib}">
+            <patternset>
+                <include name="**/*.jar" />
+                <exclude name="**/*-javadoc.jar" />
+                <exclude name="**/*-sources.jar" />
+                <exclude name="**/*-tests.jar" />
+            </patternset>
+            <mapper type="flatten" />
+        </unzip>
+        <unzip overwrite="false" src="${downloads}/${commons-io.zip}" dest="${lib}">
+            <patternset>
+                <include name="**/*.jar" />
+                <exclude name="**/*-javadoc.jar" />
+                <exclude name="**/*-sources.jar" />
+                <exclude name="**/*-tests.jar" />
+            </patternset>
+            <mapper type="flatten" />
+        </unzip>
+        <unzip overwrite="false" src="${downloads}/${commons-logging.zip}" dest="${lib}">
+            <patternset>
+                <include name="**/*.jar" />
+                <exclude name="**/*-javadoc.jar" />
+                <exclude name="**/*-sources.jar" />
+                <exclude name="**/*-tests.jar" />
+                <exclude name="**/*-adapters-*.jar" />
+                <exclude name="**/*-api-*.jar" />
+            </patternset>
+            <mapper type="flatten" />
+        </unzip>
+        <copy file="${downloads}/${jackson-core.jar}" tofile="${lib}/${jackson-core.jar}" />
+        <unzip overwrite="false" src="${downloads}/${javassist-3.11.GA.zip}" dest="${lib}">
+            <patternset>
+                <include name="**/*.jar" />
+                <exclude name="**/*-javadoc.jar" />
+                <exclude name="**/*-sources.jar" />
+                <exclude name="**/*-tests.jar" />
+            </patternset>
+            <mapper type="flatten" />
+        </unzip>
+        <copy file="${downloads}/${opencsv.jar}" tofile="${lib}/${opencsv.jar}" />
+        <unzip overwrite="false" src="${downloads}/${slf4j.zip}" dest="${lib}">
+            <patternset>
+                <include name="*/slf4j-api*.jar" />
+                <include name="*/slf4j-jdk*.jar" />
+                <exclude name="**/*-javadoc.jar" />
+                <exclude name="**/*-sources.jar" />
+                <exclude name="**/*-tests.jar" />
+            </patternset>
+            <mapper type="flatten" />
+        </unzip>
+        <copy file="${downloads}/${openrdf-sesame.jar}" tofile="${lib}/${openrdf-sesame.jar}" />
+    </target>
+
+	<target name="build-sdk" depends="dependencies">
 		<xmlproperty file="pom.xml" />
 		<mkdir dir="target" />
 		<mkdir dir="lib" />
