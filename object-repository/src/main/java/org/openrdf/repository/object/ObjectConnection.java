@@ -243,7 +243,6 @@ public class ObjectConnection extends ContextAwareConnection {
 	/**
 	 * Assigns a language to this connection.
 	 * @param lang such as "en"
-	 * @see localized
 	 */
 	public void setLanguage(String lang) {
 		this.language = lang;

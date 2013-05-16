@@ -180,17 +180,17 @@ public class LangString implements CharSequence, Serializable,
 
 	/**
 	 * Compares this string to the specified object. The result is {@code true}
-	 * if and only if the argument is not {@code null} and is a {@code String}
+	 * if and only if the argument is not {@code null} and is a {@code LangString}
 	 * object that represents the same sequence of characters as this object.
 	 * 
-	 * @param anObject
-	 *            The object to compare this {@code String} against
+	 * @param o
+	 *            The object to compare this {@code LangString} against
 	 * 
-	 * @return {@code true} if the given object represents a {@code String}
+	 * @return {@code true} if the given object represents a {@code LangString}
 	 *         equivalent to this string, {@code false} otherwise
 	 * 
-	 * @see #compareTo(String)
-	 * @see #equalsIgnoreCase(String)
+	 * @see #compareTo(LangString)
+	 * @see #equalsIgnoreCase(Object)
 	 */
 	@Override
 	public boolean equals(Object o) {
@@ -208,7 +208,7 @@ public class LangString implements CharSequence, Serializable,
 	}
 
 	/**
-	 * Compares this {@code String} to another {@code String}, ignoring case
+	 * Compares this {@code LangString} to another {@code LangString}, ignoring case
 	 * considerations. Two strings are considered equal ignoring case if they
 	 * are of the same length and corresponding characters in the two strings
 	 * are equal ignoring case.
@@ -225,11 +225,11 @@ public class LangString implements CharSequence, Serializable,
 	 * each character produces the same result
 	 * </ul>
 	 * 
-	 * @param anotherString
-	 *            The {@code String} to compare this {@code String} against
+	 * @param o
+	 *            The {@code LangString} to compare this {@code LangString} against
 	 * 
 	 * @return {@code true} if the argument is not {@code null} and it
-	 *         represents an equivalent {@code String} ignoring case;
+	 *         represents an equivalent {@code LangString} ignoring case;
 	 *         {@code false} otherwise
 	 * 
 	 * @see #equals(Object)
@@ -286,7 +286,7 @@ public class LangString implements CharSequence, Serializable,
 	 * 
 	 * </blockquote>
 	 * 
-	 * @param anotherString
+	 * @param o
 	 *            the <code>String</code> to be compared.
 	 * @return the value <code>0</code> if the argument string is equal to this
 	 *         string; a value less than <code>0</code> if this string is
@@ -318,8 +318,8 @@ public class LangString implements CharSequence, Serializable,
 	 * java.text package provides <em>collators</em> to allow locale-sensitive
 	 * ordering.
 	 * 
-	 * @param str
-	 *            the <code>String</code> to be compared.
+	 * @param o
+	 *            the <code>LangString</code> to be compared.
 	 * @return a negative integer, zero, or a positive integer as the specified
 	 *         String is greater than, equal to, or less than this String,
 	 *         ignoring case considerations.
@@ -345,7 +345,7 @@ public class LangString implements CharSequence, Serializable,
 	 * Two subtags match if either they are the same when compared
 	 * case-insensitively or the language range's subtag is the wildcard '*'.
 	 * 
-	 * @see RFC 4647 Matching of Language Tags
+	 * See http://tools.ietf.org/html/rfc4647
 	 * 
 	 * @param range
 	 *            In a language range, each subtag MUST either be a sequence of
@@ -524,9 +524,9 @@ public class LangString implements CharSequence, Serializable,
 	 * the {@link CharSequence} interface.
 	 * </p>
 	 * 
-	 * @param beginIndex
+	 * @param start
 	 *            the begin index, inclusive.
-	 * @param endIndex
+	 * @param end
 	 *            the end index, exclusive.
 	 * @return the specified subsequence.
 	 * 
@@ -937,8 +937,6 @@ public class LangString implements CharSequence, Serializable,
 	 * </tr>
 	 * </table>
 	 * 
-	 * @param locale
-	 *            use the case transformation rules for this locale
 	 * @return the <code>String</code>, converted to lowercase.
 	 * @see java.lang.String#toLowerCase()
 	 * @see java.lang.String#toUpperCase()
@@ -992,8 +990,6 @@ public class LangString implements CharSequence, Serializable,
 	 * </tr>
 	 * </table>
 	 * 
-	 * @param locale
-	 *            use the case transformation rules for this locale
 	 * @return the <code>String</code>, converted to uppercase.
 	 * @see java.lang.String#toUpperCase()
 	 * @see java.lang.String#toLowerCase()
@@ -1084,13 +1080,13 @@ public class LangString implements CharSequence, Serializable,
 
     /**
      * Compares this string to the specified {@code CharSequence}.  The result
-     * is {@code true} if and only if this {@code String} represents the same
+     * is {@code true} if and only if this {@code LangString} represents the same
      * sequence of char values as the specified sequence.
      *
      * @param  cs
-     *         The sequence to compare this {@code String} against
+     *         The sequence to compare this {@code LangString} against
      *
-     * @return  {@code true} if this {@code String} represents the same
+     * @return  {@code true} if this {@code LangString} represents the same
      *          sequence of char values as the specified sequence, {@code
      *          false} otherwise
      */

@@ -28,9 +28,9 @@
  */
 package org.openrdf.repository.object.traits;
 
-
 /**
- * Implemented by behaviours to allow detection by the {@link ObjectConnection}.
+ * Implemented by behaviours to allow detection by the
+ * {@link org.openrdf.repository.object.ObjectConnection}.
  * 
  * @author James Leigh
  * 

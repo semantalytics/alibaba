@@ -100,7 +100,7 @@ public class HierarchicalRoleMapper implements Cloneable {
 	/**
 	 * Finds the rdf:Class<?> for this Java Class<?>.
 	 * 
-	 * @param javaClass
+	 * @param role
 	 * @return URI of the rdf:Class<?> for this Java Class<?> or null.
 	 */
 	public URI findType(Class<?> role) {

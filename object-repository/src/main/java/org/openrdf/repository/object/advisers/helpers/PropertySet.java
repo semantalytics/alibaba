@@ -38,9 +38,6 @@ import org.openrdf.repository.object.traits.Refreshable;
  * Set or as a single value.
  * 
  * @author James Leigh
- * 
- * @param <E>
- *            property type
  */
 public interface PropertySet extends Refreshable {
 

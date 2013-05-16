@@ -57,8 +57,6 @@ import org.openrdf.repository.object.traits.PropertyConsumer;
  * A set for a given getResource(), predicate.
  * 
  * @author James Leigh
- * 
- * @param <E>
  */
 public class CachedPropertySet extends RemotePropertySet implements
 		PropertyConsumer {

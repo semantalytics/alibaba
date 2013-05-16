@@ -456,13 +456,6 @@ public class ObjectRepositoryConfig extends ContextAwareConfig implements
 		}
 	}
 
-	/**
-	 * Include all the information from the given module in this module.
-	 * 
-	 * @param module
-	 *            to be included
-	 * @return this
-	 */
 	public ObjectRepositoryConfig clone() {
 		try {
 			Object o = super.clone();

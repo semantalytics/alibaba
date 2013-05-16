@@ -34,9 +34,6 @@ import java.lang.reflect.Method;
  * Behaviour mixin constructor.
  * 
  * @author James Leigh
- * 
- * @param <B>
- *            behaviour class
  */
 public interface BehaviourFactory {
 
@@ -110,8 +107,7 @@ public interface BehaviourFactory {
 	/**
 	 * New behaviour implementation for the given proxy object.
 	 * 
-	 * @param composed
-	 * @return
+	 * @param proxy
 	 * @throws Throwable
 	 */
 	Object newInstance(Object proxy) throws Throwable;

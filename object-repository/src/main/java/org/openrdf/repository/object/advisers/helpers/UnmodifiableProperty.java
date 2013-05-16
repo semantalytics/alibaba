@@ -37,9 +37,6 @@ import java.util.Set;
  * Property used when only a getter method exists for the Bean property.
  * 
  * @author James Leigh
- * 
- * @param <E>
- *            property type
  */
 public class UnmodifiableProperty implements PropertySet {
 	private PropertySet delegate;

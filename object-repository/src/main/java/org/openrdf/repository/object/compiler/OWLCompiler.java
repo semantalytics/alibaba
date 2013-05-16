@@ -294,7 +294,6 @@ public class OWLCompiler {
 
 	/**
 	 * All Java classes created will use prepend this to their package name.
-	 * Must be called before {@link #init()}.
 	 */
 	public void setPackagePrefix(String prefix) {
 		if (prefix == null) {
@@ -305,8 +304,7 @@ public class OWLCompiler {
 	}
 
 	/**
-	 * Override all the prefixes used in the model namespaces to this one. Must be
-	 * called before {@link #init()}.
+	 * Override all the prefixes used in the model namespaces to this one.
 	 */
 	public void setMemberPrefix(String prefix) {
 		this.memPrefix = prefix;
@@ -498,9 +496,7 @@ public class OWLCompiler {
 
 	/**
 	 * Save META-INF resource for concepts in this parent directory. This method
-	 * must be called after {@link #buildConcepts(File)}.
-	 * 
-	 * @return <code>true</code> if any resources were created
+	 * must be called after {@link #buildJavaFiles(File)}.
 	 */
 	public void saveConceptResources(File dir) throws IOException {
 		if (!annotations.isEmpty()) {

@@ -57,8 +57,6 @@ import org.openrdf.repository.object.traits.Refreshable;
  * A set for a given getResource(), predicate.
  * 
  * @author James Leigh
- * 
- * @param <E>
  */
 public class RemotePropertySet implements PropertySet, Set<Object> {
 	private final ManagedRDFObject bean;

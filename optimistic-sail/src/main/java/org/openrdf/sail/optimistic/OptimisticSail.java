@@ -58,8 +58,7 @@ import org.openrdf.sail.optimistic.helpers.DeltaMerger;
 import org.openrdf.sail.optimistic.helpers.EvaluateOperation;
 
 /**
- * When used with the {@link OptimisticRepository}, transactions are concurrent
- * and may enforce snapshot and/or serializable isolation.
+ * Transactions are concurrent and may enforce snapshot and/or serializable isolation.
  * 
  * @author James Leigh
  * @author Steve Battle

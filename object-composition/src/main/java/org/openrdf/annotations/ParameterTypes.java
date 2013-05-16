@@ -35,7 +35,15 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import org.openrdf.repository.object.traits.BooleanMessage;
+import org.openrdf.repository.object.traits.ByteMessage;
+import org.openrdf.repository.object.traits.CharacterMessage;
+import org.openrdf.repository.object.traits.DoubleMessage;
+import org.openrdf.repository.object.traits.FloatMessage;
+import org.openrdf.repository.object.traits.IntegerMessage;
+import org.openrdf.repository.object.traits.LongMessage;
 import org.openrdf.repository.object.traits.ObjectMessage;
+import org.openrdf.repository.object.traits.ShortMessage;
+import org.openrdf.repository.object.traits.VoidMessage;
 
 /**
  * Overrides the parameter types this method intersects. This allows methods to

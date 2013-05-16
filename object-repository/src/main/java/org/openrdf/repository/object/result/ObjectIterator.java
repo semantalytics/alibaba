@@ -42,10 +42,11 @@ import org.openrdf.repository.object.exceptions.MultipleObjectResultException;
 import org.openrdf.repository.object.exceptions.NoObjectResultException;
 import org.openrdf.repository.object.exceptions.ObjectPersistException;
 import org.openrdf.repository.object.exceptions.ObjectStoreException;
+import org.openrdf.repository.object.exceptions.RDFObjectException;
 
 /**
  * A general purpose iteration wrapping Sesame's iterations. This class converts
- * the results, converts the Exceptions into {@link RDFObjectRuntimeExeption}s,
+ * the results, converts the Exceptions into {@link RDFObjectException}s,
  * and ensures that the iteration is closed when all values have been read (on {
  * {@link #next()}).
  * 
