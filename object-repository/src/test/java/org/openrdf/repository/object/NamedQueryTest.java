@@ -15,6 +15,7 @@ import org.openrdf.annotations.Iri;
 import org.openrdf.annotations.Sparql;
 import org.openrdf.model.Model;
 import org.openrdf.model.Statement;
+import org.openrdf.model.URI;
 import org.openrdf.model.ValueFactory;
 import org.openrdf.query.BindingSet;
 import org.openrdf.query.GraphQueryResult;
@@ -114,6 +115,9 @@ public class NamedQueryTest extends ObjectRepositoryTestCase {
 
 		@Sparql(PREFIX + "SELECT ?nothing WHERE { $this :age $bool }")
 		Object findNull(@Bind("bool") boolean bool);
+
+		@Sparql(PREFIX + "SELECT ?person WHERE { ?person a :Person }")
+		Set<URI> findFriendURIs();
 	}
 
 	@Iri(NS + "Employee")
@@ -175,7 +179,7 @@ public class NamedQueryTest extends ObjectRepositoryTestCase {
 
 	public void testFriendsByNamesAndAge() throws Exception {
 		assertEquals(Collections.singleton(john), me.findFriendsByNamesAndAge(
-				new HashSet(Arrays.asList("john", "james")), new HashSet(Arrays.asList(101, 102))));
+				new HashSet<String>(Arrays.asList("john", "james")), new HashSet<Integer>(Arrays.asList(101, 102))));
 	}
 
 	public void testBindingSetByName() throws Exception {
@@ -235,6 +239,14 @@ public class NamedQueryTest extends ObjectRepositoryTestCase {
 		assertEquals(3, set.size());
 		assertTrue(set.contains(me));
 		assertTrue(set.contains(john));
+	}
+
+	public void testSetOfURI() throws Exception {
+		Set<URI> set = me.findFriendURIs();
+		assertEquals(3, set.size());
+		ValueFactory vf = con.getValueFactory();
+		assertTrue(set.contains(vf.createURI(NS + "me")));
+		assertTrue(set.contains(vf.createURI(NS + "john")));
 	}
 
 	public void testList() throws Exception {

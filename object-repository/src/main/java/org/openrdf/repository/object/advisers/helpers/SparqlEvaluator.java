@@ -49,6 +49,7 @@ import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -359,6 +360,22 @@ public class SparqlEvaluator {
 			return null;
 		}
 
+		public Set<? extends Value> asSetOfValues() throws OpenRDFException {
+			Set<Value> set = new LinkedHashSet<Value>();
+			TupleQueryResult result = asTupleQueryResult();
+			try {
+				if (result.getBindingNames().isEmpty())
+					return null;
+				String name = result.getBindingNames().iterator().next();
+				while (result.hasNext()) {
+					set.add(result.next().getValue(name));
+				}
+				return set;
+			} finally {
+				result.close();
+			}
+		}
+
 		public Set asSet() throws OpenRDFException {
 			return asResult().asSet();
 		}
@@ -390,6 +407,8 @@ public class SparqlEvaluator {
 					result.close();
 				}
 			}
+			if (Value.class.isAssignableFrom(of))
+				return (Set<T>) asSetOfValues();
 			if (Statement.class.equals(of))
 				return (Set<T>) asModel();
 			return asResult(of).asSet();
