@@ -131,7 +131,7 @@
 
 	<target name="javadocs">
 		<antcall target="mvn">
-			<param name="args" value="-Dmaven.test.skip=true compile javadoc:javadoc" />
+			<param name="args" value="-Dmaven.test.skip=true compile javadoc:aggregate" />
 		</antcall>
 	</target>
 
@@ -219,7 +219,7 @@
 
 	<target name="site">
 		<xmlproperty file="pom.xml" />
-		<zip destfile="target/alibaba-site-${project.version}.zip" basedir="target/website" />
+		<zip destfile="target/alibaba-site-${project.version}.zip" basedir="target/site" />
 	</target>
 
 	<target name="docbook" if="sgmltools">
