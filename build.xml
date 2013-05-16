@@ -15,7 +15,7 @@
 		<echo message="  clean                          : cleans targets" />
 		<echo message="  build                          : compiles classes" />
 		<echo message="  package                        : package for release" />
-		<echo message="  -Dsgmltools=sgmltools docs     : create documentation" />
+		<echo message="  docs     : create documentation" />
 		<echo message="  -Declipse.workspace=.. eclipse : create eclipse projects" />
 	</target>
 
@@ -138,26 +138,34 @@
 	</target>
 
 	<target name="owldocs">
-		<xslt includes="*/src/main/owl/*.owl" destdir="target/site/owldocs/" extension=".html" style="ns-schema.xsl" filenameparameter="htmlfile"/>
+		<xslt includes="*/src/main/owl/*.owl" destdir="target/site/owldocs/" extension=".xhtml" style="ns-schema.xsl" filenameparameter="htmlfile"/>
 		<move todir="target/site/owldocs/" flatten="true">
 			<fileset dir="target/site/owldocs/">
-				<include name="**/*.html"/>
-				<exclude name="index.html"/>
+				<include name="**/*.xhtml"/>
+				<exclude name="index.xhtml"/>
 			</fileset>
 		</move>
-		<replaceregexp match="\s*(&lt;a )(href=&quot;[^:]*)\.owl(\#?[^&gt;]*&gt;)([^&lt;]*)(&lt;/a&gt;)" replace="&lt;!-- \4 --&gt;\1\2.html\3\4\5" byline="true">
+		<delete includeemptydirs="true">
+            <fileset dir="target/site/owldocs/"  >
+                <and>
+                    <size value="0"/>
+                    <type type="dir"/>
+                </and>
+            </fileset>
+        </delete>
+		<replaceregexp match="\s*(&lt;a )(href=&quot;[^:]*)\.owl(\#?[^&gt;]*&gt;)([^&lt;]*)(&lt;/a&gt;)" replace="&lt;!-- \4 --&gt;\1\2.xhtml\3\4\5" byline="true">
 			<fileset dir="target/site/owldocs/">
-				<include name="*.html"/>
-				<exclude name="index.html"/>
+				<include name="*.xhtml"/>
+				<exclude name="index.xhtml"/>
 			</fileset>
 		</replaceregexp>
-		<concat destfile="target/site/owldocs/index.html" append="false">
+		<concat destfile="target/site/owldocs/index.xhtml" append="false">
 		  <union>
 			<sort>
 			  <tokens>
 					<fileset dir="target/site/owldocs/">
-						<include name="*.html"/>
-						<exclude name="index.html"/>
+						<include name="*.xhtml"/>
+						<exclude name="index.xhtml"/>
 					</fileset>
 				<linetokenizer includedelims="true" />
 			  </tokens>
@@ -169,11 +177,11 @@
 				</linecontainsregexp>
 				<tokenfilter>
 					<linetokenizer/>
-					<replaceregex pattern="&lt;link[^&gt;]*href=&quot;([^&quot;]*)\.owl&quot;[^&gt;]*title=&quot;([^&quot;]*)&quot;[^&gt;]*&gt;" replace="&lt;br /&gt;&lt;a href='\1.html' target='content'&gt;\2&lt;/a&gt;"/>
+					<replaceregex pattern="&lt;link[^&gt;]*href=&quot;([^&quot;]*)\.owl&quot;[^&gt;]*title=&quot;([^&quot;]*)&quot;[^&gt;]*&gt;" replace="&lt;br /&gt;&lt;a href='\1.xhtml' target='content'&gt;\2&lt;/a&gt;"/>
 				</tokenfilter>
 			</filterchain>
 			<header filtering="no" trimleading="yes"><![CDATA[
-				<html><head><title>AliBaba OWL Documentation</title></head><body style="margin:0px">
+				<html xmlns="http://www.w3.org/1999/xhtml"><head><title>AliBaba OWL Documentation</title></head><body style="margin:0px">
 				<iframe name="content" width="80%" height="100%" style="float:right;border-width:0px"></iframe>
 				<div style="width:20%">
 				<div style="height:20%;overflow:auto">
@@ -189,13 +197,13 @@
 			]]>
 			</footer>
 		</concat>
-		<concat destfile="target/site/owldocs/index.html" append="true">
+		<concat destfile="target/site/owldocs/index.xhtml" append="true">
 		  <union>
 			<sort>
 			  <tokens>
 					<fileset dir="target/site/owldocs/">
-						<include name="*.html"/>
-						<exclude name="index.html"/>
+						<include name="*.xhtml"/>
+						<exclude name="index.xhtml"/>
 					</fileset>
 				<linetokenizer includedelims="true" />
 			  </tokens>
@@ -203,7 +211,7 @@
 		  </union>
 			<filterchain>
 				<linecontainsregexp>
-					<regexp pattern="&lt;a href=&quot;[^:]*\.html\#[^&quot;]"/>
+					<regexp pattern="&lt;a href=&quot;[^:]*\.xhtml\#[^&quot;]"/>
 				</linecontainsregexp>
 				<filterreader classname="org.apache.tools.ant.filters.ReplaceTokens">
 					<param type="tokenchar" name="begintoken" value="&lt;" />
@@ -221,19 +229,8 @@
 
 	<target name="site">
 		<xmlproperty file="pom.xml" />
-		<zip destfile="target/alibaba-site-${project.version}.zip" basedir="target/site" />
-	</target>
-
-	<target name="docbook" if="sgmltools">
-		<replaceregexp match="&gt;&lt;dummy" replace="" flags="gm" file="${docs}/user-guide.sgml" />
-		<replaceregexp match="&lt;dummy&gt;" replace="" flags="gm" file="${docs}/user-guide.sgml" />
-		<replaceregexp match="&lt;/dummy&gt;" replace="" flags="gm" file="${docs}/user-guide.sgml" />
-		<echo>${sgmltools} --backend=onehtml getting-started.sgml</echo>
-		<exec dir="${docs}" executable="${sgmltools}" failonerror="true">
-			<arg value="--backend=onehtml" />
-			<arg value="user-guide.sgml" />
-		</exec>
-		<move file="${docs}/user-guide.html" tofile="${xdocs}/user-guide.html" />
+		<zip destfile="target/alibaba-apidocs-${project.version}.zip" basedir="target/site/apidocs" />
+		<zip destfile="target/alibaba-owldocs-${project.version}.zip" basedir="target/site/owldocs" />
 	</target>
 
 	<target name="mvn">
