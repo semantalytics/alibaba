@@ -81,7 +81,7 @@ public final class FieldBehaviour implements Advice, Mergeable,
 	public void usePropertyBindings(String binding, List<BindingSet> results) {
 		if (property instanceof PropertyConsumer) {
 			String var = binding + "_" + field.getName();
-			if (results.get(0).hasBinding(var)) {
+			if (results.get(0).getBindingNames().contains(var)) {
 				PropertyConsumer pc = (PropertyConsumer) property;
 				pc.usePropertyBindings(var, results);
 			}
