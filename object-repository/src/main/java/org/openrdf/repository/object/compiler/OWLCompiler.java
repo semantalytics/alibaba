@@ -42,6 +42,7 @@ import java.lang.reflect.Method;
 import java.net.ConnectException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -72,6 +73,7 @@ import org.openrdf.repository.object.exceptions.ObjectStoreConfigException;
 import org.openrdf.repository.object.managers.LiteralManager;
 import org.openrdf.repository.object.managers.RoleMapper;
 import org.openrdf.repository.object.vocabulary.MSG;
+import org.openrdf.rio.RDFFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -237,7 +239,7 @@ public class OWLCompiler {
 	private Map<URI, Map<String, String>> ns = new HashMap<URI, Map<String, String>>();
 	private String pkgPrefix = "";
 	JavaNameResolver resolver;
-	private Collection<URL> ontologies;
+	private Map<URL, RDFFormat> ontologies;
 	private JavaCompiler compiler = new JavaCompiler();
 	private ClassLoader cl = Thread.currentThread().getContextClassLoader();
 	private OwlNormalizer normalizer;
@@ -336,7 +338,7 @@ public class OWLCompiler {
 	 * The given ontologies will be downloaded and included in the concept jar
 	 * as resources.
 	 */
-	public void setOntologies(Collection<URL> ontologies) {
+	public void setOntologies(Map<URL, RDFFormat> ontologies) {
 		this.ontologies = ontologies;
 	}
 
@@ -738,19 +740,29 @@ public class OWLCompiler {
 		}
 	}
 
-	private void packOntologies(Collection<URL> rdfSources, File dir, String META_INF_ONTOLOGIES)
+	private void packOntologies(Map<URL, RDFFormat> rdfSources, File dir, String META_INF_ONTOLOGIES)
 			throws IOException {
 		File list = new File(dir, META_INF_ONTOLOGIES);
 		list.getParentFile().mkdirs();
 		PrintStream inf = new PrintStream(new FileOutputStream(list));
 		try {
-			for (URL rdf : rdfSources) {
+			for (URL rdf : rdfSources.keySet()) {
 				try {
+					RDFFormat format = rdfSources.get(rdf);
 					String path = "META-INF/ontologies/";
-					path += getLocalName(rdf.toExternalForm());
-					InputStream in = rdf.openStream();
+					URLConnection conn = rdf.openConnection();
+					if (format != null) {
+						for (String type : format.getMIMETypes()) {
+							conn.addRequestProperty("Accept", type);
+						}
+					}
+					InputStream in = conn.getInputStream();
 					try {
-						File file = new File(dir, path);
+						String name = getLocalName(rdf.toExternalForm());
+						if (format != null && !format.equals(RDFFormat.forFileName(name))) {
+							name += "." + format.getDefaultFileExtension();
+						}
+						File file = new File(dir, path + name);
 						file.getParentFile().mkdirs();
 						OutputStream out = new FileOutputStream(file);
 						try {
@@ -762,10 +774,10 @@ public class OWLCompiler {
 						} finally {
 							out.close();
 						}
+						inf.println(path + name);
 					} finally {
 						in.close();
 					}
-					inf.println(path);
 				} catch (ConnectException exc) {
 					throw new IOException("Cannot connect to " + rdf, exc);
 				}

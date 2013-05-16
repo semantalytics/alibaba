@@ -161,7 +161,7 @@ public abstract class Compiler {
 				converter.setBaseClasses(line.getOptionValues('e'));
 			}
 			urls.addAll(loader.getImported());
-			converter.setOntologies(urls);
+			converter.setOntologies(loader.getImportedFormats());
 			converter.setClassLoader(cl);
 			converter.setPrefixNamespaces(loader.getNamespaces());
 			converter.createJar(jar);

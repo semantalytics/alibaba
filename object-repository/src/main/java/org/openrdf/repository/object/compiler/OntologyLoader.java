@@ -33,7 +33,9 @@ import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -69,14 +71,18 @@ public class OntologyLoader {
 	Model model;
 	/** context -&gt; prefix -&gt; namespace */
 	Map<URI, Map<String, String>> namespaces = new HashMap<URI, Map<String,String>>();
-	private List<URL> imported = new ArrayList<URL>();
+	private Map<URL, RDFFormat> imported = new LinkedHashMap<URL, RDFFormat>();
 	private ValueFactory vf = ValueFactoryImpl.getInstance();
 
 	public OntologyLoader(Model model) {
 		this.model = model;
 	}
 
-	public List<URL> getImported() {
+	public Collection<URL> getImported() {
+		return imported.keySet();
+	}
+
+	public Map<URL, RDFFormat> getImportedFormats() {
 		return imported;
 	}
 
@@ -92,7 +98,8 @@ public class OntologyLoader {
 	public void loadOntologies(List<URL> urls) throws RDFParseException,
 			IOException {
 		for (URL url : urls) {
-			loadOntology(url, null, vf.createURI(url.toExternalForm()));
+			RDFFormat format = loadOntology(url, null, vf.createURI(url.toExternalForm()));
+			imported.put(url, format);
 		}
 	}
 
@@ -104,37 +111,39 @@ public class OntologyLoader {
 				if (!model.contains(null, null, null, uri)
 						&& !model.contains(uri, RDF.TYPE, OWL.ONTOLOGY)) {
 					URL url = new URL(uri.stringValue());
-					if (!imported.contains(url)) {
+					if (!imported.containsKey(url)) {
 						urls.add(url);
 					}
 				}
 			}
 		}
 		if (!urls.isEmpty()) {
-			imported.addAll(urls);
 			for (URL url : urls) {
 				String uri = url.toExternalForm();
-				loadOntology(url, null, vf.createURI(uri));
+				RDFFormat format = loadOntology(url, null, vf.createURI(uri));
+				imported.put(url, format);
 			}
 			followImports();
 		}
 	}
 
-	private void loadOntology(URL url, RDFFormat override, final URI uri)
+	private RDFFormat loadOntology(URL url, RDFFormat override, final URI uri)
 			throws IOException, RDFParseException {
 		try {
 			URLConnection conn = url.openConnection();
 			if (override == null) {
 				conn.setRequestProperty("Accept", getAcceptHeader());
 			} else {
-				conn
-						.setRequestProperty("Accept", override
-								.getDefaultMIMEType());
+				conn.setRequestProperty("Accept", override.getDefaultMIMEType());
 			}
 			RDFFormat format = override;
-			if (override == null) {
-				format = RDFFormat.RDFXML;
-				format = RDFFormat.forFileName(url.toString(), format);
+			if (format == null) {
+				String path = conn.getURL().toExternalForm();
+				String contentType = conn.getContentType();
+				format = RDFFormat.forFileName(path, RDFFormat.RDFXML);
+				if (contentType != null) {
+					format = RDFFormat.forMIMEType(contentType, format);
+				}
 			}
 			RDFParserRegistry registry = RDFParserRegistry.getInstance();
 			RDFParser parser = registry.get(format).getParser();
@@ -144,9 +153,7 @@ public class OntologyLoader {
 					Resource s = st.getSubject();
 					URI p = st.getPredicate();
 					Value o = st.getObject();
-					super
-							.handleStatement(new ContextStatementImpl(s, p, o,
-									uri));
+					super.handleStatement(new ContextStatementImpl(s, p, o, uri));
 				}
 
 				@Override
@@ -166,12 +173,13 @@ public class OntologyLoader {
 			InputStream in = conn.getInputStream();
 			try {
 				parser.parse(in, url.toExternalForm());
+				return format;
 			} catch (RDFHandlerException e) {
 				throw new AssertionError(e);
 			} catch (RDFParseException e) {
 				if (override == null && format.equals(RDFFormat.NTRIPLES)) {
 					// sometimes text/plain is used for rdf+xml
-					loadOntology(url, RDFFormat.RDFXML, uri);
+					return loadOntology(url, RDFFormat.RDFXML, uri);
 				} else {
 					throw e;
 				}
@@ -184,8 +192,10 @@ public class OntologyLoader {
 			throw new RDFParseException(msg, e.getLineNumber(), e.getColumnNumber());
 		} catch (IOException e) {
 			logger.warn("Could not load {} {}", url, e.getMessage());
+			return null;
 		} catch (SecurityException e) {
 			logger.warn("Could not load {} {}", url, e.getMessage());
+			return null;
 		}
 	}
 
