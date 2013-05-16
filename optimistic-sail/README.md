@@ -16,7 +16,7 @@ Optimistic SAIL
  transaction cannot be committed, due to state changes within the
  SAIL. Applications that utilize the optimistic SAIL in serializable
  or snapshot mode must be
- prepared for a ConcurrencyException when a transaction is committed.
+ prepared for a SailConflictException when a transaction is committed.
 
  Sesame 2.x does not support transaction isolation across HTTP and
  therefore the optimistic SAIL has no effect on remote clients and
