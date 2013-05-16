@@ -261,6 +261,7 @@ AliBaba is a collection of modules that provide simplified RDF store abstraction
 					<encoding>utf8</encoding>
 					<quiet>true</quiet>
 					<detectLinks>true</detectLinks>
+					<additionalparam>-link http://openrdf.callimachus.net/sesame/2.7/apidocs/</additionalparam>
 				</configuration>
 			</plugin>
 		</plugins>

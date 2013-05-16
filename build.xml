@@ -130,11 +130,9 @@
 	</target>
 
 	<target name="javadocs">
-		<get src="http://openrdf.callimachus.net/sesame/2.7/apidocs/package-list" dest="${java.io.tmpdir}/package-list" />
 		<antcall target="mvn">
-			<param name="args" value='-Dmaven.test.skip=true compile javadoc:aggregate -Dadditionalparam="-linkoffline http://openrdf.callimachus.net/sesame/2.7/apidocs ${java.io.tmpdir}"' />
+			<param name="args" value="-Dmaven.test.skip=true compile javadoc:aggregate" />
 		</antcall>
-		<delete file="${java.io.tmpdir}/package-list" />
 	</target>
 
 	<target name="owldocs">
