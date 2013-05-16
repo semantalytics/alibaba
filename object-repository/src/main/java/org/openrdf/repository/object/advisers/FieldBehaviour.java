@@ -145,13 +145,21 @@ public final class FieldBehaviour implements Advice, Mergeable,
 	private void populateFields(Object fieldValue)
 			throws IllegalAccessException {
 		if (concept.isAssignableFrom(proxy.getClass())) {
-			field.set(proxy, fieldValue);
+			if (fieldValue != null && String.class.equals(type)) {
+				field.set(proxy, fieldValue.toString());
+			} else {
+				field.set(proxy, fieldValue);
+			}
 		}
 		for (Field f : proxy.getClass().getDeclaredFields()) {
 			if (concept.isAssignableFrom(f.getType())) {
 				Object behaviour = f.get(proxy);
 				if (behaviour != null) {
-					field.set(behaviour, fieldValue);
+					if (fieldValue != null && String.class.equals(type)) {
+						field.set(behaviour, fieldValue.toString());
+					} else {
+						field.set(behaviour, fieldValue);
+					}
 				}
 			}
 		}

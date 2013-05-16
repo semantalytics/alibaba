@@ -131,6 +131,11 @@ public final class PropertyBehaviour implements Advice, Mergeable,
 			if (result == null)
 				return message.proceed();
 			return result;
+		} else if (String.class.equals(type)) {
+			Object result = property.getSingle();
+			if (result == null)
+				return message.proceed();
+			return result.toString();
 		} else {
 			try {
 				Object result = type.cast(property.getSingle());

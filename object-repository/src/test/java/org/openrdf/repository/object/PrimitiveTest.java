@@ -288,21 +288,35 @@ public class PrimitiveTest extends ObjectRepositoryTestCase {
 		@Iri("urn:string")
 		public String getString();
 
+		@Iri("urn:string")
+		public LangString getLangString();
+
+		@Iri("urn:boolean")
 		public void setBoolean(boolean value);
 
+		@Iri("urn:byte")
 		public void setByte(byte value);
 
+		@Iri("urn:char")
 		public void setChar(char value);
 
+		@Iri("urn:double")
 		public void setDouble(double value);
 
+		@Iri("urn:float")
 		public void setFloat(float value);
 
+		@Iri("urn:int")
 		public void setInt(int value);
 
+		@Iri("urn:short")
 		public void setShort(short value);
 
+		@Iri("urn:string")
 		public void setString(String value);
+
+		@Iri("urn:string")
+		public void setLangString(LangString value);
 	}
 
 	@Iri("urn:PrimitiveClass")
@@ -330,6 +344,9 @@ public class PrimitiveTest extends ObjectRepositoryTestCase {
 
 		@Iri("urn:string")
 		private String string;
+
+		@Iri("urn:string")
+		private LangString langString;
 
 		public boolean isBool() {
 			return bool;
@@ -393,6 +410,14 @@ public class PrimitiveTest extends ObjectRepositoryTestCase {
 
 		public void setString(String string) {
 			this.string = string;
+		}
+
+		public LangString getLangString() {
+			return langString;
+		}
+
+		public void setLangString(LangString string) {
+			this.langString = string;
 		}
 	}
 
@@ -543,5 +568,23 @@ public class PrimitiveTest extends ObjectRepositoryTestCase {
 		assertEquals(null, behaviour.getString());
 		behaviour.setString(stringValue);
 		assertEquals(stringValue, behaviour.getString());
+	}
+
+	public void testLangString() {
+		assertEquals(null, conceptClass.getLangString());
+		conceptClass.setLangString(new LangString(stringValue));
+		assertEquals(new LangString(stringValue), conceptClass.getLangString());
+
+		assertEquals(null, concept.getLangString());
+		concept.setLangString(new LangString(stringValue));
+		assertEquals(new LangString(stringValue), concept.getLangString());
+	}
+
+	public void testLangStringAsString() {
+		conceptClass.setLangString(new LangString(stringValue));
+		assertEquals(stringValue, conceptClass.getString());
+
+		concept.setLangString(new LangString(stringValue));
+		assertEquals(stringValue, concept.getString());
 	}
 }
