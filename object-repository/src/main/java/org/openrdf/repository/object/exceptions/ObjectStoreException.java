@@ -54,9 +54,4 @@ public class ObjectStoreException extends RDFObjectException {
 		return super.initCause(cause);
 	}
 
-	@Override
-	public RepositoryException getCause() {
-		return (RepositoryException)super.getCause();
-	}
-
 }
