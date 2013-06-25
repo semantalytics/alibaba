@@ -489,82 +489,78 @@ Generating Concepts
  
 Figure 13. Creating ObjectRepository from the Console
 
-+--
-Commands end with '.' at the end of a line
-Type 'help.' for help
-> connect data.
-Disconnecting from default data directory
-Connected to data
-> create object-native.
-Please specify values for the following variables:
-Repository ID [native]: foaf
-Repository title [Native store]: FOAF Store
-Rollback if multiple states observed (enforce snapshot)? (false|true) [false]: 
-Rollback if outdated state observed (enforce serializable)? (false|true) [false]: 
-Changeset namespace [urn:trx:localhost:]: 
-Archive all removed data (false|true) [false]: 
-If not, archive transactions with removed triples less than [100]: 
-Minimum recent transactions [100]: 
-Maximum recent transactions [1000]: 
-Triple indexes [spoc,posc]: 
-Max Query Time [0]: 
-Default Query Language [SPARQL]: 
-Ontology [http://www.w3.org/2002/07/owl]: http://xmlns.com/foaf/spec/index.rdf
-Read Schema from Repository [false]: 
-Repository created
+    Commands end with '.' at the end of a line
+    Type 'help.' for help
+    > connect data.
+    Disconnecting from default data directory
+    Connected to data
+    > create object-native.
+    Please specify values for the following variables:
+    Repository ID [native]: foaf
+    Repository title [Native store]: FOAF Store
+    Rollback if multiple states observed (enforce snapshot)? (false|true) [false]: 
+    Rollback if outdated state observed (enforce serializable)? (false|true) [false]: 
+    Changeset namespace [urn:trx:localhost:]: 
+    Archive all removed data (false|true) [false]: 
+    If not, archive transactions with removed triples less than [100]: 
+    Minimum recent transactions [100]: 
+    Maximum recent transactions [1000]: 
+    Triple indexes [spoc,posc]: 
+    Max Query Time [0]: 
+    Default Query Language [SPARQL]: 
+    Ontology [http://www.w3.org/2002/07/owl]: http://xmlns.com/foaf/spec/index.rdf
+    Read Schema from Repository [false]: 
+    Repository created
 
-> quit.
-Disconnecting from data
-Bye 
-+--
+    > quit.
+    Disconnecting from data
+    Bye
  
  Scripts can be streamlined by allowing the ObjectRepository to compile
  the ontology. Shown in Figure 14 is jrunscript (in
  JavaScript) that outputs a new FOAF file, demonstrating how RDF/Objects
  can be used without compiling Java files.
  
- <<Figure 14. JRunScript and ObjectRepository>>
+Figure 14. JRunScript and ObjectRepository
 
-+--
-$ jrunscript -J-Djava.ext.dirs=lib:dist
-js> var rm = org.openrdf.repository.manager.RepositoryProvider.getRepositoryManager("data")
-js> var repo = rm.getRepository("foaf")
-js> var con = repo.getConnection()
-js> con.setAutoCommit(false)
-js> var Person = "http://xmlns.com/foaf/0.1/Person"
-js> var base = "http://example.com/person/"
-js> var james = con.addDesignation(con.getObject(base+"james"), Person)
-js>
-js> james.foafFirstName.add("James")
-js> james.foafSurname.add("Leigh")
-js> james.foafInterest.add("RDF")
-js> var arjohn = con.addDesignation(con.getObject(base+"arjohn"), Person)
-js> arjohn.foafFirstName.add("Arjohn")
-js> james.foafKnows.add(arjohn)
-js>
-js> con.setNamespace("foaf", "http://xmlns.com/foaf/0.1/")
-js> con['export'](new org.openrdf.rio.rdfxml.RDFXMLWriter(java.lang.System.out), [])
-<?xml version="1.0" encoding="UTF-8"?>
-<rdf:RDF
-	xmlns:foaf="http://xmlns.com/foaf/0.1/"
-	xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+    $ jrunscript -J-Djava.ext.dirs=lib:dist
+    js> var rm = org.openrdf.repository.manager.RepositoryProvider.getRepositoryManager("data")
+    js> var repo = rm.getRepository("foaf")
+    js> var con = repo.getConnection()
+    js> con.setAutoCommit(false)
+    js> var Person = "http://xmlns.com/foaf/0.1/Person"
+    js> var base = "http://example.com/person/"
+    js> var james = con.addDesignation(con.getObject(base+"james"), Person)
+    js>
+    js> james.foafFirstName.add("James")
+    js> james.foafSurname.add("Leigh")
+    js> james.foafInterest.add("RDF")
+    js> var arjohn = con.addDesignation(con.getObject(base+"arjohn"), Person)
+    js> arjohn.foafFirstName.add("Arjohn")
+    js> james.foafKnows.add(arjohn)
+    js>
+    js> con.setNamespace("foaf", "http://xmlns.com/foaf/0.1/")
+    js> con['export'](new org.openrdf.rio.rdfxml.RDFXMLWriter(java.lang.System.out), [])
+    <?xml version="1.0" encoding="UTF-8"?>
+    <rdf:RDF
+	    xmlns:foaf="http://xmlns.com/foaf/0.1/"
+	    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
 
-<rdf:Description rdf:about="http://meta.leighnet.ca/data/rdf/2009/foaf/james">
-	<rdf:type rdf:resource="http://xmlns.com/foaf/0.1/Person"/>
-	<foaf:firstName>James</foaf:firstName>
-	<foaf:surname>Leigh</foaf:surname>
-	<foaf:interest>RDF</foaf:interest>
-	<foaf:knows rdf:resource="http://meta.leighnet.ca/data/rdf/2009/foaf/arjohn"/>
-</rdf:Description>
+    <rdf:Description rdf:about="http://meta.leighnet.ca/data/rdf/2009/foaf/james">
+	    <rdf:type rdf:resource="http://xmlns.com/foaf/0.1/Person"/>
+	    <foaf:firstName>James</foaf:firstName>
+	    <foaf:surname>Leigh</foaf:surname>
+	    <foaf:interest>RDF</foaf:interest>
+	    <foaf:knows rdf:resource="http://meta.leighnet.ca/data/rdf/2009/foaf/arjohn"/>
+    </rdf:Description>
 
-<rdf:Description rdf:about="http://meta.leighnet.ca/data/rdf/2009/foaf/arjohn">
-	<rdf:type rdf:resource="http://xmlns.com/foaf/0.1/Person"/>
-	<foaf:firstName>Arjohn</foaf:firstName>
-</rdf:Description>
+    <rdf:Description rdf:about="http://meta.leighnet.ca/data/rdf/2009/foaf/arjohn">
+	    <rdf:type rdf:resource="http://xmlns.com/foaf/0.1/Person"/>
+	    <foaf:firstName>Arjohn</foaf:firstName>
+    </rdf:Description>
 
-</rdf:RDF>
-js> con.close()
-+--
+    </rdf:RDF>
+    js> con.close()
 
 Message Vocabulary
 
