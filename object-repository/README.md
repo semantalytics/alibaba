@@ -333,6 +333,7 @@ Figure 9. Unordered Collection with element index
     }
 
 Aspect Behaviours
+-----------------
 
  AliBaba allows any method call (including getters and setters) to be used as
  join-points. Figure 11 show the Concept interface
@@ -393,7 +394,6 @@ Figure 11. Intercept method call
         System.out.println("setDepiction called with: " + depiction);
       }
     }
-+--
 
 Advice
 ------
@@ -585,66 +585,64 @@ Message Vocabulary
  Show in
  Figure 15 is a sample of what a message might look like in turtle.
  
- <<Figure 15. Sample Usage of Message Vocabulary>>
+Figure 15. Sample Usage of Message Vocabulary
 
-+--
-@prefix xsd:<http://www.w3.org/2001/XMLSchema#>.
-@prefix rdfs:<http://www.w3.org/2000/01/rdf-schema#>.
-@prefix owl:<http://www.w3.org/2002/07/owl#>.
-@prefix msg:<http://www.openrdf.org/rdf/2011/messaging#>.
-@prefix :<http://example.com/rdf/2012/example#>.
+    @prefix xsd:<http://www.w3.org/2001/XMLSchema#>.
+    @prefix rdfs:<http://www.w3.org/2000/01/rdf-schema#>.
+    @prefix owl:<http://www.w3.org/2002/07/owl#>.
+    @prefix msg:<http://www.openrdf.org/rdf/2011/messaging#>.
+    @prefix :<http://example.com/rdf/2012/example#>.
 
-# Declare classes and properties for this example
-:Mammal rdfs:subClassOf owl:Thing.
-:Person rdfs:subClassOf :Mammal.
-:Dog rdfs:subClassOf :Mammal.
+    # Declare classes and properties for this example
+    :Mammal rdfs:subClassOf owl:Thing.
+    :Person rdfs:subClassOf :Mammal.
+    :Dog rdfs:subClassOf :Mammal.
 
-:dateOfBirth a owl:FunctionalProperty, owl:DatatypeProperty;
-	rdfs:domain :Mammal;
-	rdfs:range xsd:date.
+    :dateOfBirth a owl:FunctionalProperty, owl:DatatypeProperty;
+	    rdfs:domain :Mammal;
+	    rdfs:range xsd:date.
 
-# Common message that responds with the current date time
-:GetCurrentTime rdfs:subClassOf msg:Message;
-	rdfs:subClassOf [owl:onProperty msg:target; owl:allValuesFrom :Mammal];
-	rdfs:subClassOf [owl:onProperty msg:literal; owl:allValuesFrom xsd:dateTime];
-	msg:sparql "SELECT (now() AS ?now) {}".
+    # Common message that responds with the current date time
+    :GetCurrentTime rdfs:subClassOf msg:Message;
+	    rdfs:subClassOf [owl:onProperty msg:target; owl:allValuesFrom :Mammal];
+	    rdfs:subClassOf [owl:onProperty msg:literal; owl:allValuesFrom xsd:dateTime];
+	    msg:sparql "SELECT (now() AS ?now) {}".
 
-# Declare method that take a date time and responds with the mammal's age at that time
-# This message uses the parameter "when" as a query parameter
-:GetAgeAt rdfs:subClassOf msg:Message;
-	rdfs:subClassOf [owl:onProperty msg:target; owl:allValuesFrom :Mammal];
-	rdfs:subClassOf [owl:onProperty msg:literal; owl:allValuesFrom xsd:integer];
-	msg:sparql """
-		PREFIX :<http://example.com/rdf/2012/example#>
-		SELECT DISTINCT ((year($when) - year(?birth)) AS ?age) {
-			$this :dateOfBirth ?birth
-		}
-	""".
+    # Declare method that take a date time and responds with the mammal's age at that time
+    # This message uses the parameter "when" as a query parameter
+    :GetAgeAt rdfs:subClassOf msg:Message;
+	    rdfs:subClassOf [owl:onProperty msg:target; owl:allValuesFrom :Mammal];
+	    rdfs:subClassOf [owl:onProperty msg:literal; owl:allValuesFrom xsd:integer];
+	    msg:sparql """
+		    PREFIX :<http://example.com/rdf/2012/example#>
+		    SELECT DISTINCT ((year($when) - year(?birth)) AS ?age) {
+			    $this :dateOfBirth ?birth
+		    }
+	    """.
 
-:when a owl:FunctionalProperty, owl:DatatypeProperty;
-	rdfs:domain :GetAgeAt;
-	rdfs:range xsd:dateTime.
+    :when a owl:FunctionalProperty, owl:DatatypeProperty;
+	    rdfs:domain :GetAgeAt;
+	    rdfs:range xsd:dateTime.
 
-# Dog's age is calculated differently than other mammals
-# This message is a specialization of the previous and overrides it for all dogs
-:GetDogAgeAt owl:intersectionOf (:GetAgeAt [owl:onProperty msg:target; owl:allValuesFrom :Dog]);
-	msg:sparql """
-		PREFIX :<http://example.com/rdf/2012/example#>
-		SELECT DISTINCT ((year($when) * 7 - year(?birth) * 7) AS ?age) {
-			$this :dateOfBirth ?birth
-		}
-	""".
+    # Dog's age is calculated differently than other mammals
+    # This message is a specialization of the previous and overrides it for all dogs
+    :GetDogAgeAt owl:intersectionOf (:GetAgeAt [owl:onProperty msg:target; owl:allValuesFrom :Dog]);
+	    msg:sparql """
+		    PREFIX :<http://example.com/rdf/2012/example#>
+		    SELECT DISTINCT ((year($when) * 7 - year(?birth) * 7) AS ?age) {
+			    $this :dateOfBirth ?birth
+		    }
+	    """.
 
-# Some sample data to test with
-:jack a :Dog;
-	:dateOfBirth "2005-02-18"^^xsd:date.
+    # Some sample data to test with
+    :jack a :Dog;
+	    :dateOfBirth "2005-02-18"^^xsd:date.
 
-:mel a :Person;
-	:dateOfBirth "1956-01-03"^^xsd:date.
+    :mel a :Person;
+	    :dateOfBirth "1956-01-03"^^xsd:date.
 
-:lucia a :Person;
-	:dateOfBirth "2009-10-30"^^xsd:date.
-+--
+    :lucia a :Person;
+	    :dateOfBirth "2009-10-30"^^xsd:date.
 
  When an object repository is set to use the Ontology in Figure 15, the
  repository in Figure 16 can be used to evaluate the messages and calculate the
@@ -653,62 +651,58 @@ Message Vocabulary
  ObjectConnection#recompileSchemaOnClose() should be called to compile the
  changes within the ObjectConnection#close() method.
  
- <<Figure 16. Creating ObjectRepository from the Console>>
+Figure 16. Creating ObjectRepository from the Console
 
-+--
-Commands end with '.' at the end of a line
-Type 'help.' for help
-> connect data.
-Disconnecting from default data directory
-Connected to data
-> create object-native.
-Please specify values for the following variables:
-Repository ID [native]: mammals
-Repository title [Native store]: Mammal Store
-Rollback if multiple states observed (enforce snapshot)? (false|true) [false]: 
-Rollback if outdated state observed (enforce serializable)? (false|true) [false]: 
-Changeset namespace [urn:trx:localhost:]: 
-Archive all removed data (false|true) [false]: 
-If not, archive transactions with removed triples less than [100]: 
-Minimum recent transactions [100]: 
-Maximum recent transactions [1000]: 
-Triple indexes [spoc,posc]: 
-Max Query Time [0]: 
-Default Query Language [SPARQL]: 
-Ontology [http://www.w3.org/2002/07/owl]: 
-Read Schema from Repository [false]: true
-Repository created
+    Commands end with '.' at the end of a line
+    Type 'help.' for help
+    > connect data.
+    Disconnecting from default data directory
+    Connected to data
+    > create object-native.
+    Please specify values for the following variables:
+    Repository ID [native]: mammals
+    Repository title [Native store]: Mammal Store
+    Rollback if multiple states observed (enforce snapshot)? (false|true) [false]: 
+    Rollback if outdated state observed (enforce serializable)? (false|true) [false]: 
+    Changeset namespace [urn:trx:localhost:]: 
+    Archive all removed data (false|true) [false]: 
+    If not, archive transactions with removed triples less than [100]: 
+    Minimum recent transactions [100]: 
+    Maximum recent transactions [1000]: 
+    Triple indexes [spoc,posc]: 
+    Max Query Time [0]: 
+    Default Query Language [SPARQL]: 
+    Ontology [http://www.w3.org/2002/07/owl]: 
+    Read Schema from Repository [false]: true
+    Repository created
 
-> open mammals.
-Opened repository 'mammals'
-mammals> load mammal.ttl.
-Loading data...
-Data has been added to the repository (3048 ms)
-mammals> quit.
-Closing repository 'mammals'...
-Disconnecting from data
-Bye 
-+--
+    > open mammals.
+    Opened repository 'mammals'
+    mammals> load mammal.ttl.
+    Loading data...
+    Data has been added to the repository (3048 ms)
+    mammals> quit.
+    Closing repository 'mammals'...
+    Disconnecting from data
+    Bye 
  
- <<Figure 17. Calling Object Messages from JavaScript>>
+Figure 17. Calling Object Messages from JavaScript
 
-+--
-$ jrunscript -J-Djava.ext.dirs=lib:dist
-js> var rm = org.openrdf.repository.manager.RepositoryProvider.getRepositoryManager("data")
-js> var repo = rm.getRepository("mammals")
-js> var con = repo.getConnection()
-js> var jack = con.getObject("http://example.com/rdf/2012/example#jack")
-js> var mel = con.getObject("http://example.com/rdf/2012/example#mel")
-js> var lucia = con.getObject("http://example.com/rdf/2012/example#lucia")
-js> var now = jack.GetCurrentTime()
-js> jack.GetAgeAt(now)
-49
-js> mel.GetAgeAt(now)
-56
-js> lucia.GetAgeAt(now)
-3
-js> con.close()
-+--
+    $ jrunscript -J-Djava.ext.dirs=lib:dist
+    js> var rm = org.openrdf.repository.manager.RepositoryProvider.getRepositoryManager("data")
+    js> var repo = rm.getRepository("mammals")
+    js> var con = repo.getConnection()
+    js> var jack = con.getObject("http://example.com/rdf/2012/example#jack")
+    js> var mel = con.getObject("http://example.com/rdf/2012/example#mel")
+    js> var lucia = con.getObject("http://example.com/rdf/2012/example#lucia")
+    js> var now = jack.GetCurrentTime()
+    js> jack.GetAgeAt(now)
+    49
+    js> mel.GetAgeAt(now)
+    56
+    js> lucia.GetAgeAt(now)
+    3
+    js> con.close()
 
  The ObjectRepository simplifies interacting with RDF resources in OO
  languages on the JVM. By bridging RDF properties and object properties,
