@@ -83,8 +83,6 @@
       </foaf:Person>
     </foaf:knows>
     <foaf:knows>
-    </foaf:knows>
-    <foaf:knows>
       <foaf:Person>
 	<foaf:name>Joost Schildwacht</foaf:name>
 	<foaf:mbox_sha1sum>d8a1123ede4b55e05a14cad5ea9587cfbb1efcfd</foaf:mbox_sha1sum>
