@@ -97,6 +97,7 @@ public class ObjectConnection extends ContextAwareConnection {
 	private final BlobStore blobs;
 	private URI versionBundle;
 	private BlobVersion blobVersion;
+    private final Map<Value, Object> cachedObjects = new HashMap<Value, Object>();
 
 	protected ObjectConnection(ObjectRepository repository,
 			RepositoryConnection connection, ObjectFactory factory,
@@ -154,6 +155,7 @@ public class ObjectConnection extends ContextAwareConnection {
 		try {
 			super.close();
 		} finally {
+            cachedObjects.clear();
 			repository.closed(this);
 		}
 	}
@@ -514,10 +516,15 @@ public class ObjectConnection extends ContextAwareConnection {
 	 */
 	public Object getObject(Value value) throws RepositoryException {
 		assert value != null;
-		if (value instanceof Literal)
-			return of.createObject((Literal) value);
-		Resource resource = (Resource) value;
-		return of.createObject(resource, types.getTypes(resource));
+        Object resultObject = cachedObjects.get(value);
+        if (resultObject == null) {
+            if (value instanceof Literal)
+                return of.createObject((Literal) value);
+                Resource resource = (Resource) value;
+                resultObject = of.createObject(resource, types.getTypes(resource));
+                cachedObjects.put(value, resultObject);
+        }
+        return resultObject;
 	}
 
 	/**
@@ -534,7 +541,12 @@ public class ObjectConnection extends ContextAwareConnection {
 	 */
 	public <T> T getObject(Class<T> concept, Resource resource)
 			throws RepositoryException, QueryEvaluationException {
-		return getObjects(concept, resource).singleResult();
+        T resultObject = (T) cachedObjects.get(resource);
+        if(resultObject==null){
+            resultObject=getObjects(concept, resource).singleResult();
+            cachedObjects.put(resource,resultObject);
+        }
+        return resultObject;
 	}
 
 	/**
