@@ -72,14 +72,14 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Primary interface for object retrieval and persistence.
- * 
+ *
  * @author James Leigh
  *
  */
 public class ObjectConnection extends ContextAwareConnection {
 	/**
 	 * Closes open iterators.
-	 * 
+	 *
 	 * @param iter
 	 */
 	public static void close(Iterator<?> iter) {
@@ -97,6 +97,7 @@ public class ObjectConnection extends ContextAwareConnection {
 	private final BlobStore blobs;
 	private URI versionBundle;
 	private BlobVersion blobVersion;
+    private final Map<Value, Object> cachedObjects = new HashMap<Value, Object>();
 
 	protected ObjectConnection(ObjectRepository repository,
 			RepositoryConnection connection, ObjectFactory factory,
@@ -117,7 +118,7 @@ public class ObjectConnection extends ContextAwareConnection {
 
 	/**
 	 * An identifier for this connection if assigned, or null.
-	 * 
+	 *
 	 * @return a {@link URI} representing the current connection or null
 	 */
 	public URI getVersionBundle() {
@@ -127,7 +128,7 @@ public class ObjectConnection extends ContextAwareConnection {
 	/**
 	 * Assigns a URI to this connection to be used for new blob versions and the
 	 * default insert graph.
-	 * 
+	 *
 	 * @param bundle
 	 *            a unique URI
 	 */
@@ -146,6 +147,15 @@ public class ObjectConnection extends ContextAwareConnection {
 	}
 
 	@Override
+	public void close() throws RepositoryException {
+		try {
+			super.close();
+		} finally {
+            cachedObjects.clear();
+		}
+	}
+
+	@Override
 	public synchronized void rollback() throws RepositoryException {
 		if (blobVersion != null) {
 			try {
@@ -155,6 +165,7 @@ public class ObjectConnection extends ContextAwareConnection {
 			}
 		}
 		super.rollback();
+        cachedObjects.clear();
 	}
 
 	@Override
@@ -216,7 +227,7 @@ public class ObjectConnection extends ContextAwareConnection {
 
 	/**
 	 * The assign language for this connection, if any.
-	 * 
+	 *
 	 * @return language tag ("en") or null
 	 */
 	public String getLanguage() {
@@ -233,7 +244,7 @@ public class ObjectConnection extends ContextAwareConnection {
 
 	/**
 	 * Access to the ObjectFactory used with this connection.
-	 * 
+	 *
 	 * @return ObjectFactory bound to this connection.
 	 */
 	public ObjectFactory getObjectFactory() {
@@ -245,7 +256,7 @@ public class ObjectConnection extends ContextAwareConnection {
 	 * object with the same Resource identifier has already been imported into
 	 * the store during through this connection, the Resource identifier is
 	 * returned and the object is not imported.
-	 * 
+	 *
 	 * @see #addObject(Resource, Object)
 	 * @return the given instance's {@link Resource} identifier or {@link Literal}
 	 *         representation
@@ -326,7 +337,7 @@ public class ObjectConnection extends ContextAwareConnection {
 
 	/**
 	 * Explicitly adds the concept to the entity.
-	 * 
+	 *
 	 * @return the entity with new composed concept
 	 */
 	public <T> T addDesignation(Object entity, Class<T> concept) throws RepositoryException {
@@ -338,6 +349,7 @@ public class ObjectConnection extends ContextAwareConnection {
 			}
 		}
 		Resource resource = findResource(entity);
+        cachedObjects.remove(resource);
 		Set<URI> types = new HashSet<URI>(4);
 		getTypes(entity.getClass(), types);
 		addConcept(resource, concept, types);
@@ -348,7 +360,7 @@ public class ObjectConnection extends ContextAwareConnection {
 
 	/**
 	 * Explicitly adds the type to the entity.
-	 * 
+	 *
 	 * @return the entity with new composed types
 	 */
 	public Object addDesignation(Object entity, String uri) throws RepositoryException {
@@ -357,7 +369,7 @@ public class ObjectConnection extends ContextAwareConnection {
 
 	/**
 	 * Explicitly adds the type to the entity.
-	 * 
+	 *
 	 * @return the entity with new composed type
 	 */
 	public Object addDesignation(Object entity, URI type)
@@ -367,7 +379,7 @@ public class ObjectConnection extends ContextAwareConnection {
 
 	/**
 	 * Explicitly adds the types to the entity.
-	 * 
+	 *
 	 * @return the entity with new composed types
 	 */
 	public Object addDesignations(Object entity, String... uris) throws RepositoryException {
@@ -380,7 +392,7 @@ public class ObjectConnection extends ContextAwareConnection {
 
 	/**
 	 * Explicitly adds the types to the entity.
-	 * 
+	 *
 	 * @return the entity with new composed types
 	 */
 	public Object addDesignations(Object entity, URI... types)
@@ -430,6 +442,7 @@ public class ObjectConnection extends ContextAwareConnection {
 							+ concept.getSimpleName());
 		}
 		types.removeTypeStatement(resource, type);
+        cachedObjects.remove(resource);
 	}
 
 	/**
@@ -473,6 +486,7 @@ public class ObjectConnection extends ContextAwareConnection {
 			for (URI type : types) {
 				this.types.removeTypeStatement(resource, type);
 			}
+            cachedObjects.remove(resource);
 			if (autoCommit) {
 				setAutoCommit(true);
 			}
@@ -497,10 +511,15 @@ public class ObjectConnection extends ContextAwareConnection {
 	 */
 	public Object getObject(Value value) throws RepositoryException {
 		assert value != null;
-		if (value instanceof Literal)
-			return of.createObject((Literal) value);
-		Resource resource = (Resource) value;
-		return of.createObject(resource, types.getTypes(resource));
+        Object resultObject = cachedObjects.get(value);
+        if (resultObject == null) {
+            if (value instanceof Literal)
+                return of.createObject((Literal) value);
+                Resource resource = (Resource) value;
+                resultObject = of.createObject(resource, types.getTypes(resource));
+                cachedObjects.put(value, resultObject);
+        }
+        return resultObject;
 	}
 
 	/**
@@ -517,7 +536,12 @@ public class ObjectConnection extends ContextAwareConnection {
 	 */
 	public <T> T getObject(Class<T> concept, Resource resource)
 			throws RepositoryException, QueryEvaluationException {
-		return getObjects(concept, resource).singleResult();
+        T resultObject = (T) cachedObjects.get(resource);
+        if(resultObject==null){
+            resultObject=getObjects(concept, resource).singleResult();
+            cachedObjects.put(resource,resultObject);
+        }
+        return resultObject;
 	}
 
 	/**
@@ -527,7 +551,7 @@ public class ObjectConnection extends ContextAwareConnection {
 	 * rdfs:Resource. The result of this method is not guaranteed to be unique
 	 * and may continue duplicates. Use the {@link Result#asSet()} method to
 	 * ensure uniqueness.
-	 * 
+	 *
 	 * @see #addDesignation(Object, Class)
 	 */
 	public synchronized <T> Result<T> getObjects(Class<T> concept)
@@ -740,4 +764,18 @@ public class ObjectConnection extends ContextAwareConnection {
 		return set;
 	}
 
+    @Override
+    public void remove(final Resource subject, final URI predicate, final Value object, final Resource... contexts) throws RepositoryException {
+        super.remove(subject, predicate, object, contexts);
+        cachedObjects.remove(subject);
+    }
+
+
+    //Used to invalidate the object cache, e.g. when it is necessary to re-read properties to resolve changed inverse relations
+    public void refresh(final Object object) {
+        if(object instanceof RDFObject){
+            cachedObjects.remove(findResource(object));
+        }
+
+    }
 }
