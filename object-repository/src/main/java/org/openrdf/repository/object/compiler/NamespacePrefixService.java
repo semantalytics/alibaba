@@ -50,11 +50,15 @@ import org.slf4j.LoggerFactory;
  * Looks up a default prefix for a namespace using the prefix.cc service.
  */
 public class NamespacePrefixService {
-	private static final NamespacePrefixService INSTANCE = new NamespacePrefixService();
+	private static NamespacePrefixService instance = new NamespacePrefixService();
 	private static final String PREFIX_LOOKUP = "http://prefix.cc/reverse?format=ttl&uri=";
 
-	public static NamespacePrefixService getInstance() {
-		return INSTANCE;
+	public static synchronized NamespacePrefixService getInstance() {
+		return instance;
+	}
+
+	public static synchronized void setInstance(NamespacePrefixService service) {
+		instance = service;
 	}
 
 	private final Logger logger = LoggerFactory
