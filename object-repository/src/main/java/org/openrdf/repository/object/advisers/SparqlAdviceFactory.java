@@ -29,6 +29,7 @@
 package org.openrdf.repository.object.advisers;
 
 import java.io.IOException;
+import java.io.Reader;
 import java.io.StringReader;
 import java.lang.reflect.Method;
 import java.net.URI;
@@ -49,6 +50,8 @@ import org.openrdf.repository.object.advisers.helpers.SparqlEvaluator;
 public class SparqlAdviceFactory implements AdviceFactory, AdviceProvider {
 	private static final Pattern NOT_URI = Pattern.compile("\\s|\\}|\\]|\\>|\"");
 
+	private SparqlQueryResolver resolver = SparqlQueryResolver.getInstance();
+
 	public AdviceFactory getAdviserFactory(Class<?> annotationType) {
 		if (Sparql.class.equals(annotationType))
 			return this;
@@ -65,19 +68,34 @@ public class SparqlAdviceFactory implements AdviceFactory, AdviceProvider {
 		String sparql = getSparqlQuery(m);
 		try {
 			if (NOT_URI.matcher(sparql).find())
-				return new SparqlEvaluator(new StringReader(sparql), systemId, true);
+				return create(new StringReader(sparql), systemId);
 			if (URI.create(sparql).isAbsolute())
-				return new SparqlEvaluator(sparql, true);
+				return create(sparql);
 			URL url = m.getDeclaringClass().getResource(sparql);
 			if (url != null)
-				return new SparqlEvaluator(url.toExternalForm(), true);
+				return create(url.toExternalForm());
 			String uri = URI.create(systemId).resolve(sparql).toASCIIString();
-			return new SparqlEvaluator(uri, true);
+			return create(uri);
 		} catch (IOException e) {
 			throw new ExceptionInInitializerError(e);
 		} catch (MalformedQueryException e) {
 			throw new ExceptionInInitializerError(e);
 		}
+	}
+
+	private SparqlEvaluator create(Reader reader, String systemId)
+			throws MalformedQueryException, IOException {
+		try {
+			SparqlQuery query = new SparqlQuery(reader, systemId);
+			return new SparqlEvaluator(query);
+		} finally {
+			reader.close();
+		}
+	}
+
+	private SparqlEvaluator create(String systemId)
+			throws MalformedQueryException, IOException {
+		return new SparqlEvaluator(resolver.resolve(systemId));
 	}
 
 	private String getSparqlQuery(Method m) {

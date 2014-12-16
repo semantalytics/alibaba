@@ -36,15 +36,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.CharArrayWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.io.StringReader;
-import java.io.StringWriter;
 import java.io.Writer;
 import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLConnection;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.util.ArrayList;
@@ -53,9 +49,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.zip.GZIPInputStream;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -86,23 +80,16 @@ import org.openrdf.query.TupleQuery;
 import org.openrdf.query.TupleQueryResult;
 import org.openrdf.query.TupleQueryResultHandlerException;
 import org.openrdf.query.Update;
-import org.openrdf.query.parser.ParsedBooleanQuery;
-import org.openrdf.query.parser.ParsedGraphQuery;
-import org.openrdf.query.parser.ParsedOperation;
-import org.openrdf.query.parser.ParsedTupleQuery;
-import org.openrdf.query.parser.sparql.SPARQLParser;
 import org.openrdf.query.resultio.sparqlxml.SPARQLBooleanXMLWriter;
 import org.openrdf.query.resultio.sparqlxml.SPARQLResultsXMLWriter;
 import org.openrdf.repository.RepositoryException;
 import org.openrdf.repository.object.ObjectConnection;
 import org.openrdf.repository.object.ObjectQuery;
-import org.openrdf.repository.object.managers.PropertyMapper;
+import org.openrdf.repository.object.advisers.SparqlQuery;
 import org.openrdf.result.MultipleResultException;
 import org.openrdf.result.Result;
 import org.openrdf.rio.helpers.StatementCollector;
 import org.openrdf.rio.rdfxml.RDFXMLWriter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.DocumentFragment;
 import org.w3c.dom.Element;
@@ -130,13 +117,13 @@ public class SparqlEvaluator {
 
 	public class SparqlBuilder {
 		private ObjectConnection con;
-		private SPARQLQuery query;
+		private SparqlQuery query;
 		private Map<String, Value> bindings = new HashMap<String, Value>();
 		private List<String> bindingNames = new ArrayList<String>();
 		private List<List<Value>> bindingValues = new ArrayList<List<Value>>();
 		private org.openrdf.repository.object.ObjectFactory of;
 
-		public SparqlBuilder(ObjectConnection con, SPARQLQuery query) {
+		public SparqlBuilder(ObjectConnection con, SparqlQuery query) {
 			assert con != null;
 			assert query != null;
 			this.con = con;
@@ -680,142 +667,13 @@ public class SparqlEvaluator {
 		}
 	}
 
-	private static final Pattern selectWhere = Pattern.compile(
-			"\\sSELECT\\s+([\\?\\$]\\w+)\\s+WHERE\\s*\\{",
-			Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-	private static final Pattern limitOffset = Pattern.compile(
-			"\\bLIMIT\\b|\\bOFFSET\\b", Pattern.CASE_INSENSITIVE);
-
-	private class SPARQLQuery {
-		private final Logger logger = LoggerFactory.getLogger(SPARQLQuery.class);
-		private String sparql;
-		private String base;
-		private Class<?> concept;
-		private String object;
-		private ParsedOperation query;
-
-		public SPARQLQuery(Reader in, String base) throws IOException,
-				MalformedQueryException {
-			try {
-				StringWriter sw = new StringWriter();
-				int read;
-				char[] cbuf = new char[1024];
-				while ((read = in.read(cbuf)) >= 0) {
-					sw.write(cbuf, 0, read);
-				}
-				sparql = sw.toString();
-				this.base = base;
-				try {
-					query = new SPARQLParser().parseQuery(sparql, base);
-				} catch (MalformedQueryException e) {
-					try {
-						query = new SPARQLParser().parseUpdate(sparql, base);
-					} catch (MalformedQueryException u) {
-						throw e;
-					}
-				}
-			} catch (MalformedQueryException e) {
-				logger.warn(base + " " + e.getMessage(), e);
-			} finally {
-				in.close();
-			}
-		}
-
-		public String getBaseURI() {
-			return base;
-		}
-
-		public boolean isBooleanQuery() {
-			return query instanceof ParsedBooleanQuery;
-		}
-
-		public boolean isGraphQuery() {
-			return query instanceof ParsedGraphQuery;
-		}
-
-		public boolean isTupleQuery() {
-			return query instanceof ParsedTupleQuery;
-		}
-
-		public synchronized String toObjectString(Class<?> concept) {
-			if (concept.equals(this.concept))
-				return object;
-			if (isTupleQuery()) {
-				this.concept = concept;
-				ClassLoader cl = concept.getClassLoader();
-				if (cl == null) {
-					cl = SparqlEvaluator.class.getClassLoader();
-				}
-				PropertyMapper pm = new PropertyMapper(cl, readTypes);
-				Map<String, String> eager = pm.findEagerProperties(concept);
-				object = optimizeQueryString(sparql, eager);
-			} else {
-				this.concept = concept;
-				object = sparql;
-			}
-			return object;
-		}
-
-		public String toString() {
-			return sparql;
-		}
-
-		/**
-		 * @param map
-		 *            property name to predicate uri or null for datatype
-		 */
-		private String optimizeQueryString(String sparql,
-				Map<String, String> map) {
-			Matcher matcher = selectWhere.matcher(sparql);
-			if (map != null && matcher.find()
-					&& !limitOffset.matcher(sparql).find()) {
-				String var = matcher.group(1);
-				int idx = sparql.lastIndexOf('}');
-				StringBuilder sb = new StringBuilder(256 + sparql.length());
-				sb.append(sparql, 0, matcher.start(1));
-				sb.append(var).append(" ");
-				sb.append(var).append("_class").append(" ");
-				for (Map.Entry<String, String> e : map.entrySet()) {
-					String name = e.getKey();
-					if (name.equals("class"))
-						continue;
-					sb.append(var).append("_").append(name).append(" ");
-				}
-				sb.append(sparql, matcher.end(1), idx);
-				sb.append(" OPTIONAL { ").append(var);
-				sb.append(" a ").append(var).append("_class}");
-				for (Map.Entry<String, String> e : map.entrySet()) {
-					String pred = e.getValue();
-					String name = e.getKey();
-					if (name.equals("class"))
-						continue;
-					sb.append(" OPTIONAL { ").append(var).append(" <");
-					sb.append(pred).append("> ");
-					sb.append(var).append("_").append(name).append("}");
-				}
-				sb.append(sparql, idx, sparql.length());
-				return sb.toString();
-			}
-			return sparql;
-		}
-	}
-
-	private final SPARQLQuery sparql;
+	private final SparqlQuery sparql;
 	private final String systemId;
-	private final boolean readTypes;
 
-	public SparqlEvaluator(String systemId, boolean readTypes)
-			throws MalformedURLException, MalformedQueryException, IOException {
-		this.systemId = systemId;
-		this.readTypes = readTypes;
-		sparql = resolve(systemId);
-	}
-
-	public SparqlEvaluator(Reader reader, String systemId, boolean readTypes)
-			throws MalformedQueryException, IOException {
-		this.systemId = systemId;
-		this.readTypes = readTypes;
-		sparql = create(systemId, reader);
+	public SparqlEvaluator(SparqlQuery query) throws MalformedURLException,
+			MalformedQueryException, IOException {
+		this.systemId = query.getBaseURI();
+		sparql = query;
 	}
 
 	@Override
@@ -827,27 +685,8 @@ public class SparqlEvaluator {
 		return new SparqlBuilder(con, getSparqlQuery());
 	}
 
-	private SPARQLQuery getSparqlQuery() {
+	private SparqlQuery getSparqlQuery() {
 		return sparql;
-	}
-
-	private SPARQLQuery resolve(String systemId) throws MalformedURLException,
-			IOException, MalformedQueryException {
-		URLConnection con = new URL(systemId).openConnection();
-		con.addRequestProperty("Accept", "application/sparql-query");
-		con.addRequestProperty("Accept-Encoding", "gzip");
-		String base = con.getURL().toExternalForm();
-		String encoding = con.getHeaderField("Content-Encoding");
-		InputStream in = con.getInputStream();
-		if (encoding != null && encoding.contains("gzip")) {
-			in = new GZIPInputStream(in);
-		}
-		return create(base, new InputStreamReader(in, "UTF-8"));
-	}
-
-	private SPARQLQuery create(String systemId, Reader in)
-			throws MalformedQueryException, IOException {
-		return new SPARQLQuery(in, systemId);
 	}
 
 }
