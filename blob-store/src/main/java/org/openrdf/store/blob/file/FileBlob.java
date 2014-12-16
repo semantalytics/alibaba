@@ -187,7 +187,7 @@ public class FileBlob extends BlobObject implements FileListener {
 		File dir = writeFile.getParentFile();
 		dir.mkdirs();
 		if (!dir.canWrite() || writeFile.exists() && !writeFile.canWrite())
-			throw new IOException("Cannot open blob file for writting");
+			throw new IOException("Cannot open blob file for writing");
 		final OutputStream fout = new FileOutputStream(writeFile);
 		return new FilterOutputStream(fout) {
 			private IOException fatal;

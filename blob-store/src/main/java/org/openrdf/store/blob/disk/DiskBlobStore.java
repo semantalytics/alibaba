@@ -237,7 +237,7 @@ public class DiskBlobStore implements BlobStore {
 		File dir = file.getParentFile();
 		mkdirs(dir);
 		if (!dir.canWrite() || file.exists() && !file.canWrite())
-			throw new IOException("Cannot open blob file for writting");
+			throw new IOException("Cannot open blob file for writing");
 		file.createNewFile();
 		file.setReadable(false, false);
 		file.setReadable(true);
@@ -250,7 +250,7 @@ public class DiskBlobStore implements BlobStore {
 		File dir = file.getParentFile();
 		mkdirs(dir);
 		if (!dir.canWrite() || file.exists() && !file.canWrite())
-			throw new IOException("Cannot open file for writting");
+			throw new IOException("Cannot open file for writing");
 		file.createNewFile();
 		file.setReadable(false, false);
 		file.setReadable(true);
