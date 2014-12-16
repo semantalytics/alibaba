@@ -165,11 +165,23 @@ public class ObjectFactory {
 	 * Creates an object with an assumed rdf:type.
 	 */
 	public <T> T createObject(Resource resource, Class<T> type) {
+		RDFObject obj;
 		URI rdftype = getNameOf(type);
-		if (rdftype == null)
-			return type.cast(createObject(resource));
-		Set<URI> types = Collections.singleton(rdftype);
-		return type.cast(createObject(resource, types));
+		if (rdftype == null) {
+			obj = createObject(resource);
+		} else {
+			Set<URI> types = Collections.singleton(rdftype);
+			obj = createObject(resource, types);
+		}
+		try {
+			return type.cast(obj);
+		} catch (ClassCastException e) {
+			String msg = "Cannot cast resource " + obj + " to a "
+					+ type.getName();
+			ClassCastException cce = new ClassCastException(msg);
+			cce.initCause(e);
+			throw cce;
+		}
 	}
 
 	/**
