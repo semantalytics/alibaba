@@ -46,18 +46,6 @@ public class ObjectRepositorySchema {
 	 */
 	public static final String NAMESPACE = "http://www.openrdf.org/config/repository/object#";
 
-	/** <tt>http://www.openrdf.org/config/repository/object#dataDir</tt> */
-	public final static URI DATA_DIR;
-
-	/** <tt>http://www.openrdf.org/config/repository/object#compileRepository</tt> */
-	public final static URI COMPILE_REPOSITORY;
-
-	/** <tt>http://www.openrdf.org/config/repository/object#packgaePrefix</tt> */
-	public final static URI PACKAGE_PREFIX;
-
-	/** <tt>http://www.openrdf.org/config/repository/object#memberPrefix</tt> */
-	public final static URI MEMBER_PREFIX;
-
 	/** <tt>http://www.openrdf.org/config/repository/object#datatype</tt> */
 	public final static URI DATATYPE;
 
@@ -76,12 +64,6 @@ public class ObjectRepositorySchema {
 	/** <tt>http://www.openrdf.org/config/repository/object#behaviourJar</tt> */
 	public final static URI BEHAVIOUR_JAR;
 
-	/** <tt>http://www.openrdf.org/config/repository/object#imports</tt> */
-	public final static URI IMPORTS;
-
-	/** <tt>http://www.openrdf.org/config/repository/object#followImports</tt> */
-	public final static URI FOLLOW_IMPORTS;
-
 	/** <tt>http://www.openrdf.org/config/repository/object#blobStore</tt> */
 	public final static URI BLOB_STORE;
 
@@ -90,18 +72,12 @@ public class ObjectRepositorySchema {
 
 	static {
 		ValueFactory vf = ValueFactoryImpl.getInstance();
-		DATA_DIR = vf.createURI(NAMESPACE, "dataDir");
-		COMPILE_REPOSITORY = vf.createURI(NAMESPACE, "compileRepository");
-		PACKAGE_PREFIX = vf.createURI(NAMESPACE, "packgaePrefix");
-		MEMBER_PREFIX = vf.createURI(NAMESPACE, "memberPrefix");
 		DATATYPE = vf.createURI(NAMESPACE, "datatype");
 		CONCEPT = vf.createURI(NAMESPACE, "concept");
 		BEHAVIOUR = vf.createURI(NAMESPACE, "behaviour");
 		KNOWN_AS = vf.createURI(NAMESPACE, "knownAs");
 		CONCEPT_JAR = vf.createURI(NAMESPACE, "conceptJar");
 		BEHAVIOUR_JAR = vf.createURI(NAMESPACE, "behaviourJar");
-		IMPORTS = vf.createURI(NAMESPACE, "imports");
-		FOLLOW_IMPORTS = vf.createURI(NAMESPACE, "followImports");
 		BLOB_STORE = vf.createURI(NAMESPACE, "blobStore");
 		BLOB_STORE_PARAMETER = vf.createURI(NAMESPACE, "blobStoreParameter");
 	}

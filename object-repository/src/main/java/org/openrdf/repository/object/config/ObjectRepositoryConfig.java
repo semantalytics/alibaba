@@ -34,21 +34,13 @@ import static org.openrdf.repository.object.config.ObjectRepositorySchema.BEHAVI
 import static org.openrdf.repository.object.config.ObjectRepositorySchema.BEHAVIOUR_JAR;
 import static org.openrdf.repository.object.config.ObjectRepositorySchema.BLOB_STORE;
 import static org.openrdf.repository.object.config.ObjectRepositorySchema.BLOB_STORE_PARAMETER;
-import static org.openrdf.repository.object.config.ObjectRepositorySchema.COMPILE_REPOSITORY;
 import static org.openrdf.repository.object.config.ObjectRepositorySchema.CONCEPT;
 import static org.openrdf.repository.object.config.ObjectRepositorySchema.CONCEPT_JAR;
 import static org.openrdf.repository.object.config.ObjectRepositorySchema.DATATYPE;
-import static org.openrdf.repository.object.config.ObjectRepositorySchema.DATA_DIR;
-import static org.openrdf.repository.object.config.ObjectRepositorySchema.FOLLOW_IMPORTS;
-import static org.openrdf.repository.object.config.ObjectRepositorySchema.IMPORTS;
 import static org.openrdf.repository.object.config.ObjectRepositorySchema.KNOWN_AS;
-import static org.openrdf.repository.object.config.ObjectRepositorySchema.MEMBER_PREFIX;
-import static org.openrdf.repository.object.config.ObjectRepositorySchema.PACKAGE_PREFIX;
 
-import java.io.File;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -59,7 +51,6 @@ import java.util.Map;
 import java.util.Set;
 
 import org.openrdf.model.Graph;
-import org.openrdf.model.Literal;
 import org.openrdf.model.Model;
 import org.openrdf.model.Resource;
 import org.openrdf.model.URI;
@@ -84,7 +75,6 @@ import org.openrdf.repository.object.exceptions.ObjectStoreConfigException;
 public class ObjectRepositoryConfig extends ContextAwareConfig implements
 		Cloneable {
 	private static final String JAVA_NS = "java:";
-	private File dataDir;
 	private ValueFactory vf = ValueFactoryImpl.getInstance();
 	private ClassLoader cl;
 	private Map<Class<?>, List<URI>> datatypes = new HashMap<Class<?>, List<URI>>();
@@ -93,11 +83,6 @@ public class ObjectRepositoryConfig extends ContextAwareConfig implements
 	private Map<Class<?>, List<URI>> behaviours = new HashMap<Class<?>, List<URI>>();
 	private List<URL> conceptJars = new ArrayList<URL>();
 	private List<URL> behaviourJars = new ArrayList<URL>();
-	private List<URL> ontologies = new ArrayList<URL>();
-	private String pkgPrefix;
-	private String memberPrefix;
-	private boolean followImports = true;
-	private boolean compileRepository;
 	private Value blobStore;
 	private Set<Value> blobStoreParameters = new HashSet<Value>();
 
@@ -107,14 +92,6 @@ public class ObjectRepositoryConfig extends ContextAwareConfig implements
 		if (cl == null) {
 			cl = getClass().getClassLoader();
 		}
-	}
-
-	public File getObjectDataDir() {
-		return dataDir;
-	}
-
-	public void setObjectDataDir(File dataDir) {
-		this.dataDir = dataDir;
 	}
 
 	public ObjectRepositoryConfig(ClassLoader cl) {
@@ -127,30 +104,6 @@ public class ObjectRepositoryConfig extends ContextAwareConfig implements
 
 	public ClassLoader getClassLoader() {
 		return cl;
-	}
-
-	public boolean isCompileRepository() {
-		return compileRepository;
-	}
-
-	public void setCompileRepository(boolean compileRepository) {
-		this.compileRepository = compileRepository;
-	}
-
-	public String getPackagePrefix() {
-		return pkgPrefix;
-	}
-
-	public void setPackagePrefix(String pkgPrefix) {
-		this.pkgPrefix = pkgPrefix;
-	}
-
-	public String getMemberPrefix() {
-		return memberPrefix;
-	}
-
-	public void setMemberPrefix(String prefix) {
-		this.memberPrefix = prefix;
 	}
 
 	public Map<Class<?>, List<URI>> getDatatypes() {
@@ -412,23 +365,6 @@ public class ObjectRepositoryConfig extends ContextAwareConfig implements
 		behaviourJars.add(jarFile);
 	}
 
-	public List<URL> getImports() {
-		return unmodifiableList(ontologies);
-	}
-
-	public void addImports(URL ontology) {
-		assert ontology != null;
-		ontologies.add(ontology);
-	}
-
-	public boolean isFollowImports() {
-		return followImports;
-	}
-
-	public void setFollowImports(boolean followImports) {
-		this.followImports = followImports;
-	}
-
 	public String getBlobStore() {
 		if (blobStore == null)
 			return null;
@@ -469,7 +405,6 @@ public class ObjectRepositoryConfig extends ContextAwareConfig implements
 			clone.behaviours = copy(behaviours);
 			clone.conceptJars = new ArrayList<URL>(conceptJars);
 			clone.behaviourJars = new ArrayList<URL>(behaviourJars);
-			clone.ontologies = new ArrayList<URL>(ontologies);
 			clone.blobStoreParameters = new HashSet<Value>(blobStoreParameters);
 			Graph model = new GraphImpl();
 			Resource subj = clone.export(model);
@@ -486,30 +421,14 @@ public class ObjectRepositoryConfig extends ContextAwareConfig implements
 	public Resource export(Graph model) {
 		ValueFactory vf = ValueFactoryImpl.getInstance();
 		Resource subj = super.export(model);
-		if (dataDir != null) {
-			model.add(subj, DATA_DIR, vf.createURI(dataDir.toURI().toASCIIString()));
-		}
-		if (pkgPrefix != null) {
-			model.add(subj, PACKAGE_PREFIX, vf.createLiteral(pkgPrefix));
-		}
-		if (memberPrefix != null) {
-			model.add(subj, MEMBER_PREFIX, vf.createLiteral(memberPrefix));
-		}
 		exportAssocation(subj, datatypes, DATATYPE, model);
 		exportAssocation(subj, concepts, CONCEPT, model);
 		exportAssocation(subj, behaviours, BEHAVIOUR, model);
-		Literal bool = vf.createLiteral(followImports);
-		model.add(subj, FOLLOW_IMPORTS, bool);
-		bool = vf.createLiteral(compileRepository);
-		model.add(subj, COMPILE_REPOSITORY, bool);
 		for (URL jar : conceptJars) {
 			model.add(subj, CONCEPT_JAR, vf.createURI(jar.toExternalForm()));
 		}
 		for (URL jar : behaviourJars) {
 			model.add(subj, BEHAVIOUR_JAR, vf.createURI(jar.toExternalForm()));
-		}
-		for (URL url : ontologies) {
-			model.add(subj, IMPORTS, vf.createURI(url.toExternalForm()));
 		}
 		if (blobStore != null) {
 			model.add(subj, BLOB_STORE, blobStore);
@@ -526,21 +445,6 @@ public class ObjectRepositoryConfig extends ContextAwareConfig implements
 		super.parse(graph, subj);
 		try {
 			Model model = new LinkedHashModel(graph);
-			for (Value obj : model.filter(subj, DATA_DIR, null).objects()) {
-				if (obj instanceof URI) {
-					try {
-						java.net.URI uri = new java.net.URI(obj.stringValue());
-						setObjectDataDir(new File(uri));
-					} catch (URISyntaxException e) {
-						throw new RepositoryConfigException(e);
-					}
-				} else {
-					setObjectDataDir(new File(obj.stringValue()));
-				}
-			}
-			pkgPrefix = model.filter(subj, PACKAGE_PREFIX, null).objectString();
-			memberPrefix = model.filter(subj, MEMBER_PREFIX, null)
-					.objectString();
 			parseAssocation(subj, datatypes, DATATYPE, model);
 			parseAssocation(subj, concepts, CONCEPT, model);
 			parseAssocation(subj, behaviours, BEHAVIOUR, model);
@@ -551,23 +455,6 @@ public class ObjectRepositoryConfig extends ContextAwareConfig implements
 			behaviourJars.clear();
 			for (Value obj : model.filter(subj, BEHAVIOUR_JAR, null).objects()) {
 				behaviourJars.add(new URL(obj.stringValue()));
-			}
-			ontologies.clear();
-			for (Value obj : model.filter(subj, IMPORTS, null).objects()) {
-				ontologies.add(new URL(obj.stringValue()));
-			}
-			if (model.contains(subj, FOLLOW_IMPORTS, null)) {
-				followImports = model.filter(subj, FOLLOW_IMPORTS, null)
-						.objectLiteral().booleanValue();
-			} else {
-				followImports = true;
-			}
-			if (model.contains(subj, COMPILE_REPOSITORY, null)) {
-				compileRepository = model
-						.filter(subj, COMPILE_REPOSITORY, null).objectLiteral()
-						.booleanValue();
-			} else {
-				compileRepository = false;
 			}
 			blobStore = model.filter(subj, BLOB_STORE, null).objectValue();
 			blobStoreParameters.clear();

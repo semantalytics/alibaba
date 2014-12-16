@@ -46,6 +46,7 @@ import org.openrdf.repository.config.RepositoryFactory;
 import org.openrdf.repository.config.RepositoryImplConfig;
 import org.openrdf.repository.contextaware.config.ContextAwareFactory;
 import org.openrdf.repository.object.ObjectRepository;
+import org.openrdf.repository.object.ObjectServiceImpl;
 import org.openrdf.repository.object.behaviours.RDFObjectImpl;
 import org.openrdf.repository.object.exceptions.ObjectStoreConfigException;
 import org.openrdf.repository.object.managers.LiteralManager;
@@ -86,9 +87,8 @@ public class ObjectRepositoryFactory extends ContextAwareFactory {
 	public ObjectRepository createRepository(ObjectRepositoryConfig config,
 			Repository delegate) throws RepositoryConfigException,
 			RepositoryException {
-		ObjectRepository repo = getRepository(config);
+		ObjectRepository repo = getRepository(config, delegate.getValueFactory());
 		repo.setDelegate(delegate);
-		repo.init(repo.getObjectDataDir());
 		return repo;
 	}
 
@@ -106,25 +106,11 @@ public class ObjectRepositoryFactory extends ContextAwareFactory {
 	@Override
 	public ObjectRepository getRepository(RepositoryImplConfig configuration)
 			throws RepositoryConfigException {
-		if (configuration instanceof ObjectRepositoryConfig) {
-			ObjectRepositoryConfig config = (ObjectRepositoryConfig) configuration;
-
-			ObjectRepository repo = getObjectRepository(config);
-
-			repo.setIncludeInferred(config.isIncludeInferred());
-			repo.setMaxQueryTime(config.getMaxQueryTime());
-			repo.setQueryLanguage(config.getQueryLanguage());
-			repo.setReadContexts(config.getReadContexts());
-			repo.setAddContexts(config.getAddContexts());
-			repo.setInsertContext(config.getInsertContext());
-			repo.setRemoveContexts(config.getRemoveContexts());
-			repo.setArchiveContexts(config.getArchiveContexts());
-			// repo.setQueryResultLimit(config.getQueryResultLimit());
-			return repo;
-		}
-
-		throw new RepositoryConfigException("Invalid configuration class: "
-				+ configuration.getClass());
+		if (!(configuration instanceof ObjectRepositoryConfig))
+			throw new RepositoryConfigException("Invalid configuration class: "
+					+ configuration.getClass());
+		ObjectRepositoryConfig config = (ObjectRepositoryConfig) configuration;
+		return getRepository(config, ValueFactoryImpl.getInstance());
 	}
 
 	protected LiteralManager createLiteralManager(ValueFactory uf,
@@ -138,39 +124,42 @@ public class ObjectRepositoryFactory extends ContextAwareFactory {
 	}
 
 	protected ObjectRepository createObjectRepository(RoleMapper mapper,
-			LiteralManager literals, ClassLoader cl) {
-		return new ObjectRepository(mapper, literals, cl);
+			LiteralManager literals, ClassLoader cl) throws ObjectStoreConfigException {
+		return new ObjectRepository(new ObjectServiceImpl(mapper, literals, cl));
 	}
 
-	private ObjectRepository getObjectRepository(ObjectRepositoryConfig module)
-			throws ObjectStoreConfigException {
-		ClassLoader cl = getClassLoader(module);
-		ValueFactory uf = new ValueFactoryImpl();
-		RoleMapper mapper = getRoleMapper(cl, uf, module);
-		LiteralManager literals = getLiteralManager(cl, uf, module);
-		ObjectRepository repo = createObjectRepository(mapper, literals, cl);
-		try {
-			repo.setCompileRepository(module.isCompileRepository());
-		} catch (RepositoryException e) {
-			throw new ObjectStoreConfigException(e);
-		}
-		List<URL> list = new ArrayList<URL>(module.getImports());
-		repo.setPackagePrefix(module.getPackagePrefix());
-		repo.setMemberPrefix(module.getMemberPrefix());
-		repo.setFollowImports(module.isFollowImports());
-		repo.setOWLImports(list);
-		List<URL> jars = module.getBehaviourJars();
-		repo.setBehaviourClassPath(jars.toArray(new URL[jars.size()]));
+	private ObjectRepository getRepository(ObjectRepositoryConfig config,
+			ValueFactory vf) throws ObjectStoreConfigException {
+		ObjectRepository repo = getObjectRepository(config, vf);
 
+		repo.setIncludeInferred(config.isIncludeInferred());
+		repo.setMaxQueryTime(config.getMaxQueryTime());
+		repo.setQueryLanguage(config.getQueryLanguage());
+		repo.setReadContexts(config.getReadContexts());
+		repo.setAddContexts(config.getAddContexts());
+		repo.setInsertContext(config.getInsertContext());
+		repo.setRemoveContexts(config.getRemoveContexts());
+		repo.setArchiveContexts(config.getArchiveContexts());
+		// repo.setQueryResultLimit(config.getQueryResultLimit());
+		return repo;
+	}
+
+	private ObjectRepository getObjectRepository(ObjectRepositoryConfig module,
+			ValueFactory vf) throws ObjectStoreConfigException {
+		ClassLoader cl = getClassLoader(module);
+		RoleMapper mapper = getRoleMapper(cl, vf, module);
+		LiteralManager literals = getLiteralManager(cl, vf, module);
+		ObjectRepository repo = createObjectRepository(mapper, literals, cl);
 		repo.setBlobStoreUrl(module.getBlobStore());
 		repo.setBlobStoreParameters(module.getBlobStoreParameters());
-		repo.setObjectDataDir(module.getObjectDataDir());
 		return repo;
 	}
 
 	private ClassLoader getClassLoader(ObjectRepositoryConfig module) {
 		ClassLoader cl = module.getClassLoader();
-		List<URL> jars = module.getConceptJars();
+		List<URL> jars = new ArrayList<URL>();
+		jars.addAll(module.getConceptJars());
+		jars.addAll(module.getBehaviourJars());
 		if (jars.isEmpty())
 			return cl;
 		URL[] array = jars.toArray(new URL[jars.size()]);
@@ -185,6 +174,11 @@ public class ObjectRepositoryFactory extends ContextAwareFactory {
 		loader.loadRoles(cl);
 		if (module.getConceptJars() != null) {
 			for (URL url : module.getConceptJars()) {
+				loader.scan(url, cl);
+			}
+		}
+		if (module.getBehaviourJars() != null) {
+			for (URL url : module.getBehaviourJars()) {
 				loader.scan(url, cl);
 			}
 		}
@@ -218,10 +212,9 @@ public class ObjectRepositoryFactory extends ContextAwareFactory {
 		return mapper;
 	}
 
-	private LiteralManager getLiteralManager(ClassLoader cl, ValueFactory uf,
+	private LiteralManager getLiteralManager(ClassLoader cl, ValueFactory vf,
 			ObjectRepositoryConfig module) {
-		LiteralManager literalManager = createLiteralManager(uf,
-				new ValueFactoryImpl());
+		LiteralManager literalManager = createLiteralManager(vf, vf);
 		literalManager.setClassLoader(cl);
 		for (Map.Entry<Class<?>, List<URI>> e : module.getDatatypes().entrySet()) {
 			for (URI value : e.getValue()) {
