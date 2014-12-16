@@ -45,6 +45,7 @@ import java.net.URLClassLoader;
 import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -72,6 +73,7 @@ import org.openrdf.repository.object.compiler.source.JavaCompiler;
 import org.openrdf.repository.object.exceptions.ObjectStoreConfigException;
 import org.openrdf.repository.object.managers.LiteralManager;
 import org.openrdf.repository.object.managers.RoleMapper;
+import org.openrdf.repository.object.managers.helpers.RoleClassLoader;
 import org.openrdf.repository.object.vocabulary.MSG;
 import org.openrdf.rio.RDFFormat;
 import org.slf4j.Logger;
@@ -236,7 +238,7 @@ public class OWLCompiler {
 	private String memPrefix;
 	private Model model;
 	/** context -&gt; prefix -&gt; namespace */
-	private Map<URI, Map<String, String>> ns = new HashMap<URI, Map<String, String>>();
+	private Collection<Map<String, String>> ns = Collections.emptySet();
 	private String pkgPrefix = "";
 	JavaNameResolver resolver;
 	private Map<URL, RDFFormat> ontologies;
@@ -248,6 +250,20 @@ public class OWLCompiler {
 
 	/**
 	 * Constructs a new compiler instance using the
+	 * existing Java classes referenced in the classpath.
+	 * 
+	 */
+	public OWLCompiler() throws ObjectStoreConfigException {
+		if (cl == null) {
+			cl = getClass().getClassLoader();
+		}
+		this.mapper = new RoleMapper();
+		new RoleClassLoader(mapper).loadRoles(cl);
+		this.literals = new LiteralManager(cl);
+	}
+
+	/**
+	 * Constructs a new compiler instance using the
 	 * existing Java classes referenced in the {@link RoleMapper} and
 	 * {@link LiteralManager}.
 	 * 
@@ -256,6 +272,9 @@ public class OWLCompiler {
 		assert mapper != null && literals != null;
 		this.mapper = mapper;
 		this.literals = literals;
+		if (cl == null) {
+			cl = getClass().getClassLoader();
+		}
 	}
 
 	/**
@@ -314,7 +333,21 @@ public class OWLCompiler {
 	 * Sets the prefixes for namespaces used in each graph of the model
 	 */
 	public void setPrefixNamespaces(Map<URI, Map<String, String>> namespaces) {
+		this.ns = namespaces.values();
+	}
+
+	/**
+	 * Sets the prefixes for namespaces used in each graph of the model
+	 */
+	public void setPrefixNamespaces(Collection<Map<String, String>> namespaces) {
 		this.ns = namespaces;
+	}
+
+	/**
+	 * Sets the prefixes for namespaces used in each graph of the model
+	 */
+	public void setNamespaces(Map<String, String> namespaces) {
+		this.ns = Collections.singleton(namespaces);
 	}
 
 	/**
@@ -588,7 +621,7 @@ public class OWLCompiler {
 	}
 
 	private JavaNameResolver buildJavaNameResolver(String pkgPrefix,
-			String memberPrefix, Map<URI, Map<String, String>> namespaces,
+			String memberPrefix, Collection<Map<String, String>> namespaces,
 			Model model, OwlNormalizer normalizer, ClassLoader cl) {
 		if (model == null)
 			throw new IllegalStateException("setModel not called");
@@ -631,7 +664,7 @@ public class OWLCompiler {
 
 	private JavaNameResolver createJavaNameResolver(
 			Map<String, String> packages, String memberPrefix,
-			Map<URI, Map<String, String>> namespaces, ClassLoader cl) {
+			Collection<Map<String, String>> namespaces, ClassLoader cl) {
 		JavaNameResolver resolver = new JavaNameResolver(cl);
 		resolver.setPluralForms(pluralForms);
 		resolver.setModel(model);
@@ -642,7 +675,7 @@ public class OWLCompiler {
 			resolver.bindPrefixToNamespace(e.getPrefix(), e.getName());
 		}
 		if (memberPrefix == null) {
-			for (Map<String, String> p : namespaces.values()) {
+			for (Map<String, String> p : namespaces) {
 				for (Map.Entry<String, String> e : p.entrySet()) {
 					resolver.bindPrefixToNamespace(e.getKey(), e.getValue());
 				}

@@ -105,6 +105,11 @@ public class LiteralManager implements Cloneable {
 		this(ValueFactoryImpl.getInstance(), ValueFactoryImpl.getInstance());
 	}
 
+	public LiteralManager(ClassLoader cl) {
+		this(ValueFactoryImpl.getInstance(), ValueFactoryImpl.getInstance());
+		setClassLoader(cl);
+	}
+
 	public LiteralManager(ValueFactory uf, ValueFactory lf) {
 		this.uf = uf;
 		this.lf = lf;
