@@ -30,9 +30,11 @@ package org.openrdf.repository.object;
 
 import static org.openrdf.query.QueryLanguage.SPARQL;
 import info.aduna.iteration.CloseableIteration;
+import info.aduna.iteration.IterationWrapper;
 import info.aduna.iteration.LookAheadIteration;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -52,6 +54,7 @@ import org.openrdf.model.ValueFactory;
 import org.openrdf.query.MalformedQueryException;
 import org.openrdf.query.QueryEvaluationException;
 import org.openrdf.query.QueryLanguage;
+import org.openrdf.query.TupleQuery;
 import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.RepositoryException;
 import org.openrdf.repository.contextaware.ContextAwareConnection;
@@ -60,6 +63,7 @@ import org.openrdf.repository.object.exceptions.BlobStoreException;
 import org.openrdf.repository.object.exceptions.ObjectPersistException;
 import org.openrdf.repository.object.managers.TypeManager;
 import org.openrdf.repository.object.result.ObjectIterator;
+import org.openrdf.repository.object.result.WeakValueMap;
 import org.openrdf.repository.object.traits.Mergeable;
 import org.openrdf.repository.object.traits.RDFObjectBehaviour;
 import org.openrdf.result.Result;
@@ -97,7 +101,7 @@ public class ObjectConnection extends ContextAwareConnection {
 	private final BlobStore blobs;
 	private URI versionBundle;
 	private BlobVersion blobVersion;
-    private final Map<Value, Object> cachedObjects = new HashMap<Value, Object>();
+	private final Map<Resource, RDFObject> cachedObjects = new WeakValueMap<Resource, RDFObject>(512);
 
 	protected ObjectConnection(ObjectRepository repository,
 			RepositoryConnection connection, ObjectFactory factory,
@@ -151,7 +155,7 @@ public class ObjectConnection extends ContextAwareConnection {
 		try {
 			super.close();
 		} finally {
-            cachedObjects.clear();
+			cachedObjects.clear();
 		}
 	}
 
@@ -165,7 +169,7 @@ public class ObjectConnection extends ContextAwareConnection {
 			}
 		}
 		super.rollback();
-        cachedObjects.clear();
+		cachedObjects.clear();
 	}
 
 	@Override
@@ -327,6 +331,7 @@ public class ObjectConnection extends ContextAwareConnection {
 			if (autoCommit) {
 				setAutoCommit(true);
 			}
+			cachedObjects.remove(resource);
 		} finally {
 			if (autoCommit && !isAutoCommit()) {
 				rollback();
@@ -340,7 +345,8 @@ public class ObjectConnection extends ContextAwareConnection {
 	 *
 	 * @return the entity with new composed concept
 	 */
-	public <T> T addDesignation(Object entity, Class<T> concept) throws RepositoryException {
+	public <T> T addDesignation(Object entity, Class<T> concept)
+			throws RepositoryException {
 		if (entity instanceof RDFObjectBehaviour) {
 			RDFObjectBehaviour support = (RDFObjectBehaviour) entity;
 			Object delegate = support.getBehaviourDelegate();
@@ -349,13 +355,12 @@ public class ObjectConnection extends ContextAwareConnection {
 			}
 		}
 		Resource resource = findResource(entity);
-        cachedObjects.remove(resource);
 		Set<URI> types = new HashSet<URI>(4);
 		getTypes(entity.getClass(), types);
 		addConcept(resource, concept, types);
-		Object bean = of.createObject(resource, types);
+		RDFObject bean = of.createObject(resource, types);
 		assert assertConceptRecorded(bean, concept);
-		return (T) bean;
+		return (T) cache(bean);
 	}
 
 	/**
@@ -426,7 +431,7 @@ public class ObjectConnection extends ContextAwareConnection {
 				setAutoCommit(true);
 			}
 		}
-		return of.createObject(resource, list);
+		return cache(of.createObject(resource, list));
 	}
 
 	/**
@@ -442,7 +447,7 @@ public class ObjectConnection extends ContextAwareConnection {
 							+ concept.getSimpleName());
 		}
 		types.removeTypeStatement(resource, type);
-        cachedObjects.remove(resource);
+		cachedObjects.remove(resource);
 	}
 
 	/**
@@ -486,10 +491,10 @@ public class ObjectConnection extends ContextAwareConnection {
 			for (URI type : types) {
 				this.types.removeTypeStatement(resource, type);
 			}
-            cachedObjects.remove(resource);
 			if (autoCommit) {
 				setAutoCommit(true);
 			}
+			cachedObjects.remove(resource);
 		} finally {
 			if (autoCommit && !isAutoCommit()) {
 				rollback();
@@ -511,15 +516,13 @@ public class ObjectConnection extends ContextAwareConnection {
 	 */
 	public Object getObject(Value value) throws RepositoryException {
 		assert value != null;
-        Object resultObject = cachedObjects.get(value);
-        if (resultObject == null) {
-            if (value instanceof Literal)
-                return of.createObject((Literal) value);
-                Resource resource = (Resource) value;
-                resultObject = of.createObject(resource, types.getTypes(resource));
-                cachedObjects.put(value, resultObject);
-        }
-        return resultObject;
+		if (value instanceof Literal)
+			return of.createObject((Literal) value);
+		Resource resource = (Resource) value;
+		RDFObject cached = cached(resource);
+		if (cached != null)
+			return cached;
+		return cache(of.createObject(resource, types.getTypes(resource)));
 	}
 
 	/**
@@ -536,12 +539,10 @@ public class ObjectConnection extends ContextAwareConnection {
 	 */
 	public <T> T getObject(Class<T> concept, Resource resource)
 			throws RepositoryException, QueryEvaluationException {
-        T resultObject = (T) cachedObjects.get(resource);
-        if(resultObject==null){
-            resultObject=getObjects(concept, resource).singleResult();
-            cachedObjects.put(resource,resultObject);
-        }
-        return resultObject;
+		RDFObject cached = cached(resource);
+		if (concept.isInstance(cached))
+			return concept.cast(cached);
+		return getObjects(concept, resource).singleResult();
 	}
 
 	/**
@@ -600,11 +601,11 @@ public class ObjectConnection extends ContextAwareConnection {
 				protected T getNextElement() throws QueryEvaluationException {
 					T next = result.next();
 					if (next != null) {
-						list.remove(((RDFObject) next).getResource());
+						list.remove(cache((RDFObject) next).getResource());
 						return next;
 					}
 					if (!list.isEmpty())
-						return (T) of.createObject(list.remove(0));
+						return (T) cache(of.createObject(list.remove(0)));
 					return null;
 				}
 			};
@@ -612,6 +613,12 @@ public class ObjectConnection extends ContextAwareConnection {
 		} catch (MalformedQueryException e) {
 			throw new AssertionError(e);
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	public <T> T refresh(T object) throws RepositoryException {
+		Resource resource = findResource(object);
+		return (T) cache(of.createObject(resource, types.getTypes(resource)));
 	}
 
 	public synchronized BlobObject getBlobObject(final String uri)
@@ -646,7 +653,7 @@ public class ObjectConnection extends ContextAwareConnection {
 	 */
 	public ObjectQuery prepareObjectQuery(QueryLanguage ql, String query,
 			String baseURI) throws MalformedQueryException, RepositoryException {
-		return new ObjectQuery(this, prepareTupleQuery(ql, query, baseURI));
+		return createObjectQuery(prepareTupleQuery(ql, query, baseURI));
 	}
 
 	/**
@@ -654,7 +661,7 @@ public class ObjectConnection extends ContextAwareConnection {
 	 */
 	public ObjectQuery prepareObjectQuery(QueryLanguage ql, String query)
 			throws MalformedQueryException, RepositoryException {
-		return new ObjectQuery(this, prepareTupleQuery(ql, query));
+		return createObjectQuery(prepareTupleQuery(ql, query));
 	}
 
 	/**
@@ -662,7 +669,16 @@ public class ObjectConnection extends ContextAwareConnection {
 	 */
 	public ObjectQuery prepareObjectQuery(String query)
 			throws MalformedQueryException, RepositoryException {
-		return new ObjectQuery(this, prepareTupleQuery(query));
+		return createObjectQuery(prepareTupleQuery(query));
+	}
+
+	RDFObject cache(RDFObject object) {
+		cachedObjects.put(object.getResource(), object);
+		return object;
+	}
+
+	private RDFObject cached(Resource resource) {
+		return cachedObjects.get(resource);
 	}
 
 	/** method and result synchronised on this */
@@ -682,6 +698,44 @@ public class ObjectConnection extends ContextAwareConnection {
 			map.put(length, query);
 			return query;
 		}
+	}
+
+	private ObjectQuery createObjectQuery(TupleQuery query) {
+		return new ObjectQuery(this, query) {
+			public Result<?> evaluate() throws QueryEvaluationException {
+				return new ResultImpl<Object>(wrap(super.evaluate()));
+			}
+
+			public Result<Object[]> evaluate(Class<?>... concepts)
+					throws QueryEvaluationException {
+				return new ResultImpl<Object[]>(wrap(super.evaluate(concepts)));
+			}
+
+			public <T> Result<T> evaluate(Class<T> concept)
+					throws QueryEvaluationException {
+				return new ResultImpl<T>(wrap(super.evaluate(concept)));
+			}
+
+			private <T> CloseableIteration<T, QueryEvaluationException> wrap(
+					CloseableIteration<T, QueryEvaluationException> iter) {
+				return new IterationWrapper<T, QueryEvaluationException>(iter) {
+					public T next() throws QueryEvaluationException {
+						T next = super.next();
+						if (next instanceof RDFObject) {
+							cache((RDFObject) next);
+						} else if (next.getClass().isArray()) {
+							for (int i = 0, n = Array.getLength(next); i < n; i++) {
+								Object object = Array.get(next, i);
+								if (object instanceof RDFObject) {
+									cache((RDFObject) object);
+								}
+							}
+						}
+						return next;
+					}
+				};
+			}
+		};
 	}
 
 	private Resource findResource(Object object) {
@@ -763,19 +817,4 @@ public class ObjectConnection extends ContextAwareConnection {
 		set.add(type);
 		return set;
 	}
-
-    @Override
-    public void remove(final Resource subject, final URI predicate, final Value object, final Resource... contexts) throws RepositoryException {
-        super.remove(subject, predicate, object, contexts);
-        cachedObjects.remove(subject);
-    }
-
-
-    //Used to invalidate the object cache, e.g. when it is necessary to re-read properties to resolve changed inverse relations
-    public void refresh(final Object object) {
-        if(object instanceof RDFObject){
-            cachedObjects.remove(findResource(object));
-        }
-
-    }
 }

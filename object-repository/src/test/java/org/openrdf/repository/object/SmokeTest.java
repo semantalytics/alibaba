@@ -245,12 +245,9 @@ public class SmokeTest extends TestCase {
 		assertEquals(nil, myself.getDepiction());
 		assertEquals(me, image.getDepicts());
 		image.setDepicts(myself);
-        con.refresh(me);
-        con.refresh(myself);
-        con.refresh(image);
-		me = con.getObject(Person.class, "urn:test:me");
-		myself = con.getObject(Person.class, "urn:test:myself");
-		image = con.getObject(Image.class, "urn:test:image");
+		me = con.refresh(me);
+		myself = con.refresh(myself);
+		image = con.refresh(image);
 		assertEquals(image, myself.getDepiction());
 		assertEquals(nil, me.getDepiction());
 		assertEquals(myself, image.getDepicts());
