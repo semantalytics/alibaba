@@ -49,6 +49,8 @@ import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
+import org.openrdf.IsolationLevel;
+import org.openrdf.IsolationLevels;
 import org.openrdf.model.Model;
 import org.openrdf.model.Namespace;
 import org.openrdf.model.Resource;
@@ -68,6 +70,7 @@ import org.openrdf.query.algebra.TupleExpr;
 import org.openrdf.query.algebra.Union;
 import org.openrdf.query.algebra.UpdateExpr;
 import org.openrdf.query.algebra.Var;
+import org.openrdf.query.algebra.evaluation.federation.FederatedServiceResolver;
 import org.openrdf.query.algebra.evaluation.impl.BindingAssigner;
 import org.openrdf.query.algebra.evaluation.impl.CompareOptimizer;
 import org.openrdf.query.algebra.evaluation.impl.ConjunctiveConstraintSplitter;
@@ -82,6 +85,7 @@ import org.openrdf.sail.NotifyingSailConnection;
 import org.openrdf.sail.SailConnection;
 import org.openrdf.sail.SailConnectionListener;
 import org.openrdf.sail.SailException;
+import org.openrdf.sail.UnknownSailTransactionStateException;
 import org.openrdf.sail.UpdateContext;
 import org.openrdf.sail.helpers.SailConnectionWrapper;
 import org.openrdf.sail.optimistic.helpers.DeltaMerger;
@@ -165,9 +169,7 @@ public class OptimisticConnection extends SailConnectionWrapper implements
 	}
 
 	private OptimisticSail sail;
-	private boolean readSnapshot = true;
-	private boolean snapshot;
-	private boolean serializable;
+	private IsolationLevel level  = IsolationLevels.SNAPSHOT_READ;
 	private volatile boolean active;
 	/** locked by this */
 	final Map<Operation,MemoryOverflowModel> added = new LinkedHashMap<Operation,MemoryOverflowModel>();
@@ -235,40 +237,48 @@ public class OptimisticConnection extends SailConnectionWrapper implements
 	}
 
 	public boolean isReadSnapshot() {
-		return readSnapshot || isSnapshot();
+		return level.isCompatibleWith(IsolationLevels.SNAPSHOT_READ);
 	}
 
 	public void setReadSnapshot(boolean readSnapshot) throws SailException, InterruptedException {
-		if (!readSnapshot && this.readSnapshot) {
+		if (!readSnapshot && isReadSnapshot()) {
 			if (active) {
 				sail.exclusive(this);
 			}
 			synchronized (this) {
 				releaseObservedChange();
-				flush();
+				flushWriteOperations();
 			}
+			level = IsolationLevels.READ_COMMITTED;
 			setSnapshot(false);
+		} else if (readSnapshot && !isReadSnapshot()) {
+			level = IsolationLevels.SNAPSHOT_READ;
 		}
-		this.readSnapshot = readSnapshot;
 	}
 
 	public boolean isSnapshot() {
-		return snapshot || isSerializable();
+		return level.isCompatibleWith(IsolationLevels.SNAPSHOT);
 	}
 
 	public void setSnapshot(boolean snapshot) {
-		this.snapshot = snapshot;
-		if (!snapshot) {
+		if (!snapshot && isSnapshot()) {
+			level = IsolationLevels.READ_COMMITTED;
 			setSerializable(false);
+		} else if (snapshot && !isSnapshot()) {
+			level = IsolationLevels.SNAPSHOT;
 		}
 	}
 
 	public boolean isSerializable() {
-		return serializable;
+		return level.isCompatibleWith(IsolationLevels.SERIALIZABLE);
 	}
 
 	public void setSerializable(boolean serializable) {
-		this.serializable = serializable;
+		if (!serializable && isSerializable()) {
+			level = IsolationLevels.SNAPSHOT;
+		} else if (serializable && !isSerializable()) {
+			level = IsolationLevels.SERIALIZABLE;
+		}
 	}
 
 	public void close() throws SailException {
@@ -310,9 +320,21 @@ public class OptimisticConnection extends SailConnectionWrapper implements
 		return active;
 	}
 
+	@Override
 	public void begin() throws SailException {
+		begin(level);
+	}
+
+	public void begin(IsolationLevel level) throws SailException {
 		if (isActive())
 			throw new IllegalStateException("Transaction already started");
+		if (level != null) {
+			if (!IsolationLevels.SERIALIZABLE.isCompatibleWith(level)) {
+				throw new UnknownSailTransactionStateException(level
+						+ " is not supported");
+			}
+			this.level = level;
+		}
 		try {
 			synchronized (this) {
 				assert active == false;
@@ -324,7 +346,7 @@ public class OptimisticConnection extends SailConnectionWrapper implements
 			sail.begin(this);
 			if (!isReadSnapshot()) {
 				sail.exclusive(this);
-				super.begin();
+				super.begin(level);
 			}
 		} catch (InterruptedException e) {
 			end(false);
@@ -350,13 +372,13 @@ public class OptimisticConnection extends SailConnectionWrapper implements
 				}
 			}
 			if (!super.isActive()) {
-				super.begin();
+				super.begin(IsolationLevels.READ_UNCOMMITTED);
 			}
-			if (isReadSnapshot() && sail.isListenerPresent()) {
+			if (event != null && isReadSnapshot() && sail.isListenerPresent()) {
 				event.unionAddedModel(getAddedModel());
 				event.unionRemovedModel(getRemovedModel());
 			}
-			flush();
+			flushWriteOperations();
 			super.prepare();
 		} catch (InterruptedException e) {
 			end(false);
@@ -421,7 +443,9 @@ public class OptimisticConnection extends SailConnectionWrapper implements
 	}
 
 	public void clear(Resource... contexts) throws SailException {
-		if (isReadSnapshot()) {
+		if (!active || !isReadSnapshot()) {
+			delegate.clear(contexts);
+		} else {
 			removeStatements(null, null, null, contexts);
 			if (contexts != null && contexts.length > 0) {
 				synchronized (this) {
@@ -433,8 +457,6 @@ public class OptimisticConnection extends SailConnectionWrapper implements
 					}
 				}
 			}
-		} else {
-			delegate.clear(contexts);
 		}
 	}
 
@@ -751,7 +773,7 @@ public class OptimisticConnection extends SailConnectionWrapper implements
 	}
 
 	/** locked by this */
-	synchronized void flush() throws SailException {
+	synchronized void flushWriteOperations() throws SailException {
 		for (String prefix : removedPrefixes) {
 			delegate.removeNamespace(prefix);
 		}
@@ -950,8 +972,9 @@ public class OptimisticConnection extends SailConnectionWrapper implements
 	private TupleExpr optimize(TupleExpr query, Dataset dataset,
 			BindingSet bindings) {
 		ValueFactory vf = sail.getValueFactory();
-		InvalidTripleSource source = new InvalidTripleSource(vf);
-		EvaluationStrategyImpl strategy = new EvaluationStrategyImpl(source);
+		InvalidTripleSource src = new InvalidTripleSource(vf);
+		FederatedServiceResolver res = sail.getFederatedServiceResolver();
+		EvaluationStrategyImpl strategy = new EvaluationStrategyImpl(src, res);
 		if (query instanceof QueryRoot) {
 			query = query.clone();
 		} else {

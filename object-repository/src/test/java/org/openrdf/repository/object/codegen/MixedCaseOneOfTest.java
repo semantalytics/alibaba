@@ -34,7 +34,7 @@ public class MixedCaseOneOfTest extends CodeGenTestCase {
 		FileWriter writer = new FileWriter(file);
 		writer.write(RDF_XML);
 		writer.close();
-		converter.addImports(file.toURI().toURL());
+		addImports(file.toURI().toURL());
 		createJar("mixedCaseOneOf.jar");
 	}
 

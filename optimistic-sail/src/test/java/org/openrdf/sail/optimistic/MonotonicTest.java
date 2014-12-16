@@ -76,59 +76,59 @@ public class MonotonicTest extends TestCase {
 	}
 
 	public void test_independentPattern() throws Exception {
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		a.add(PICASSO, RDF.TYPE, PAINTER);
 		b.add(REMBRANDT, RDF.TYPE, PAINTER);
 		assertEquals(1, size(a, PICASSO, RDF.TYPE, PAINTER, false));
 		assertEquals(1, size(b, REMBRANDT, RDF.TYPE, PAINTER, false));
-		a.setAutoCommit(true);
-		b.setAutoCommit(true);
+		a.commit();
+		b.commit();
 		assertEquals(2, size(a, null, RDF.TYPE, PAINTER, false));
 		assertEquals(2, size(b, null, RDF.TYPE, PAINTER, false));
 	}
 
 	public void test_safePattern() throws Exception {
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		a.add(PICASSO, RDF.TYPE, PAINTER);
 		b.add(REMBRANDT, RDF.TYPE, PAINTER);
 		assertEquals(1, size(a, null, RDF.TYPE, PAINTER, false));
-		a.setAutoCommit(true);
-		b.setAutoCommit(true);
+		a.commit();
+		b.commit();
 	}
 
 	public void test_afterPattern() throws Exception {
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		a.add(PICASSO, RDF.TYPE, PAINTER);
 		b.add(REMBRANDT, RDF.TYPE, PAINTER);
 		assertEquals(1, size(a, null, RDF.TYPE, PAINTER, false));
-		a.setAutoCommit(true);
+		a.commit();
 		assertEquals(2, size(b, null, RDF.TYPE, PAINTER, false));
-		b.setAutoCommit(true);
+		b.commit();
 	}
 
 	public void test_afterInsertDataPattern() throws Exception {
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		a.prepareUpdate(QueryLanguage.SPARQL, "INSERT DATA { <picasso> a <Painter> }", NS).execute();
 		b.prepareUpdate(QueryLanguage.SPARQL, "INSERT DATA { <rembrandt> a <Painter> }", NS).execute();
 		assertEquals(1, size(a, null, RDF.TYPE, PAINTER, false));
-		a.setAutoCommit(true);
+		a.commit();
 		assertEquals(2, size(b, null, RDF.TYPE, PAINTER, false));
-		b.setAutoCommit(true);
+		b.commit();
 	}
 
 	public void test_changedPattern() throws Exception {
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		a.add(PICASSO, RDF.TYPE, PAINTER);
 		b.add(REMBRANDT, RDF.TYPE, PAINTER);
 		assertEquals(1, size(b, null, RDF.TYPE, PAINTER, false));
-		a.setAutoCommit(true);
+		a.commit();
 		assertEquals(2, size(b, null, RDF.TYPE, PAINTER, false));
-		b.setAutoCommit(true);
+		b.commit();
 	}
 
 	public void test_safeQuery() throws Exception {
@@ -136,8 +136,8 @@ public class MonotonicTest extends TestCase {
 		b.add(REMBRANDT, PAINTS, NIGHTWATCH);
 		b.add(REMBRANDT, PAINTS, ARTEMISIA);
 		b.add(REMBRANDT, PAINTS, DANAE);
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		// PICASSO is *not* a known PAINTER
 		a.add(PICASSO, PAINTS, GUERNICA);
 		a.add(PICASSO, PAINTS, JACQUELINE);
@@ -146,8 +146,8 @@ public class MonotonicTest extends TestCase {
 		for (Value painting : result) {
 			b.add((Resource) painting, RDF.TYPE, PAINTING);
 		}
-		a.setAutoCommit(true);
-		b.setAutoCommit(true);
+		a.commit();
+		b.commit();
 		assertEquals(9, size(a, null, null, null, false));
 		assertEquals(9, size(b, null, null, null, false));
 	}
@@ -157,15 +157,15 @@ public class MonotonicTest extends TestCase {
 		b.add(REMBRANDT, PAINTS, NIGHTWATCH);
 		b.add(REMBRANDT, PAINTS, ARTEMISIA);
 		b.add(REMBRANDT, PAINTS, DANAE);
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		// PICASSO is *not* a known PAINTER
 		a.add(PICASSO, PAINTS, GUERNICA);
 		a.add(PICASSO, PAINTS, JACQUELINE);
 		b.prepareUpdate(QueryLanguage.SPARQL, "INSERT { ?painting a <Painting> }\n"
 				+ "WHERE { [a <Painter>] <paints> ?painting }", NS).execute();
-		a.setAutoCommit(true);
-		b.setAutoCommit(true);
+		a.commit();
+		b.commit();
 		assertEquals(9, size(a, null, null, null, false));
 		assertEquals(9, size(b, null, null, null, false));
 	}
@@ -176,8 +176,8 @@ public class MonotonicTest extends TestCase {
 		b.add(REMBRANDT, PAINTS, NIGHTWATCH);
 		b.add(REMBRANDT, PAINTS, ARTEMISIA);
 		b.add(REMBRANDT, PAINTS, DANAE);
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		// PICASSO *is* a known PAINTER
 		a.add(PICASSO, PAINTS, GUERNICA);
 		a.add(PICASSO, PAINTS, JACQUELINE);
@@ -186,9 +186,9 @@ public class MonotonicTest extends TestCase {
 		for (Value painting : result) {
 			b.add((Resource) painting, RDF.TYPE, PAINTING);
 		}
-		a.setAutoCommit(true);
+		a.commit();
 		assertEquals(3, size(b, REMBRANDT, PAINTS, null, false));
-		b.setAutoCommit(true);
+		b.commit();
 		assertEquals(3, size(a, null, RDF.TYPE, PAINTING, false));
 	}
 
@@ -198,16 +198,16 @@ public class MonotonicTest extends TestCase {
 		b.add(REMBRANDT, PAINTS, NIGHTWATCH);
 		b.add(REMBRANDT, PAINTS, ARTEMISIA);
 		b.add(REMBRANDT, PAINTS, DANAE);
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		// PICASSO *is* a known PAINTER
 		a.add(PICASSO, PAINTS, GUERNICA);
 		a.add(PICASSO, PAINTS, JACQUELINE);
 		b.prepareUpdate(QueryLanguage.SPARQL, "INSERT { ?painting a <Painting> }\n"
 				+ "WHERE { [a <Painter>] <paints> ?painting }", NS).execute();
-		a.setAutoCommit(true);
+		a.commit();
 		assertEquals(3, size(b, REMBRANDT, PAINTS, null, false));
-		b.setAutoCommit(true);
+		b.commit();
 		assertEquals(3, size(a, null, RDF.TYPE, PAINTING, false));
 	}
 
@@ -217,8 +217,8 @@ public class MonotonicTest extends TestCase {
 		b.add(REMBRANDT, PAINTS, NIGHTWATCH);
 		b.add(REMBRANDT, PAINTS, ARTEMISIA);
 		b.add(REMBRANDT, PAINTS, DANAE);
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		// PICASSO *is* a known PAINTER
 		a.add(PICASSO, PAINTS, GUERNICA);
 		a.add(PICASSO, PAINTS, JACQUELINE);
@@ -227,9 +227,9 @@ public class MonotonicTest extends TestCase {
 		for (Value painting : result) {
 			b.add((Resource) painting, RDF.TYPE, PAINTING);
 		}
-		a.setAutoCommit(true);
+		a.commit();
 		assertEquals(5, size(b, null, PAINTS, null, false));
-		b.setAutoCommit(true);
+		b.commit();
 		assertEquals(3, size(a, null, RDF.TYPE, PAINTING, false));
 	}
 
@@ -239,16 +239,16 @@ public class MonotonicTest extends TestCase {
 		b.add(REMBRANDT, PAINTS, NIGHTWATCH);
 		b.add(REMBRANDT, PAINTS, ARTEMISIA);
 		b.add(REMBRANDT, PAINTS, DANAE);
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		// PICASSO *is* a known PAINTER
 		a.add(PICASSO, PAINTS, GUERNICA);
 		a.add(PICASSO, PAINTS, JACQUELINE);
 		b.prepareUpdate(QueryLanguage.SPARQL, "INSERT { ?painting a <Painting> }\n"
 				+ "WHERE { [a <Painter>] <paints> ?painting }", NS).execute();
-		a.setAutoCommit(true);
+		a.commit();
 		assertEquals(5, size(b, null, PAINTS, null, false));
-		b.setAutoCommit(true);
+		b.commit();
 		assertEquals(3, size(a, null, RDF.TYPE, PAINTING, false));
 	}
 
@@ -257,8 +257,8 @@ public class MonotonicTest extends TestCase {
 		b.add(REMBRANDT, PAINTS, NIGHTWATCH);
 		b.add(REMBRANDT, PAINTS, ARTEMISIA);
 		b.add(REMBRANDT, PAINTS, DANAE);
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		// PICASSO is *not* a known PAINTER
 		a.add(PICASSO, PAINTS, GUERNICA);
 		a.add(PICASSO, PAINTS, JACQUELINE);
@@ -270,8 +270,8 @@ public class MonotonicTest extends TestCase {
 				b.add((Resource) painting, RDF.TYPE, PAINTING);
 			}
 		}
-		a.setAutoCommit(true);
-		b.setAutoCommit(true);
+		a.commit();
+		b.commit();
 		assertEquals(9, size(a, null, null, null, false));
 		assertEquals(9, size(b, null, null, null, false));
 	}
@@ -281,16 +281,16 @@ public class MonotonicTest extends TestCase {
 		b.add(REMBRANDT, PAINTS, NIGHTWATCH);
 		b.add(REMBRANDT, PAINTS, ARTEMISIA);
 		b.add(REMBRANDT, PAINTS, DANAE);
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		// PICASSO is *not* a known PAINTER
 		a.add(PICASSO, PAINTS, GUERNICA);
 		a.add(PICASSO, PAINTS, JACQUELINE);
 		b.prepareUpdate(QueryLanguage.SPARQL, "INSERT { ?painting a <Painting> }\n"
 				+ "WHERE { ?painter a <Painter> "
 				+ "OPTIONAL { ?painter <paints> ?painting } }", NS).execute();
-		a.setAutoCommit(true);
-		b.setAutoCommit(true);
+		a.commit();
+		b.commit();
 		assertEquals(9, size(a, null, null, null, false));
 		assertEquals(9, size(b, null, null, null, false));
 	}
@@ -301,8 +301,8 @@ public class MonotonicTest extends TestCase {
 		b.add(REMBRANDT, PAINTS, NIGHTWATCH);
 		b.add(REMBRANDT, PAINTS, ARTEMISIA);
 		b.add(REMBRANDT, PAINTS, DANAE);
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		// PICASSO *is* a known PAINTER
 		a.add(PICASSO, PAINTS, GUERNICA);
 		a.add(PICASSO, PAINTS, JACQUELINE);
@@ -314,9 +314,9 @@ public class MonotonicTest extends TestCase {
 				b.add((Resource) painting, RDF.TYPE, PAINTING);
 			}
 		}
-		a.setAutoCommit(true);
+		a.commit();
 		assertEquals(3, size(b, REMBRANDT, PAINTS, null, false));
-		b.setAutoCommit(true);
+		b.commit();
 		assertEquals(10, size(a, null, null, null, false));
 	}
 
@@ -326,17 +326,17 @@ public class MonotonicTest extends TestCase {
 		b.add(REMBRANDT, PAINTS, NIGHTWATCH);
 		b.add(REMBRANDT, PAINTS, ARTEMISIA);
 		b.add(REMBRANDT, PAINTS, DANAE);
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		// PICASSO *is* a known PAINTER
 		a.add(PICASSO, PAINTS, GUERNICA);
 		a.add(PICASSO, PAINTS, JACQUELINE);
 		b.prepareUpdate(QueryLanguage.SPARQL, "INSERT { ?painting a <Painting> }\n"
 				+ "WHERE { ?painter a <Painter> "
 				+ "OPTIONAL { ?painter <paints> ?painting } }", NS).execute();
-		a.setAutoCommit(true);
+		a.commit();
 		assertEquals(3, size(b, REMBRANDT, PAINTS, null, false));
-		b.setAutoCommit(true);
+		b.commit();
 		assertEquals(10, size(a, null, null, null, false));
 	}
 
@@ -346,8 +346,8 @@ public class MonotonicTest extends TestCase {
 		b.add(REMBRANDT, PAINTS, NIGHTWATCH);
 		b.add(REMBRANDT, PAINTS, ARTEMISIA);
 		b.add(REMBRANDT, PAINTS, DANAE);
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		// PICASSO *is* a known PAINTER
 		a.add(PICASSO, PAINTS, GUERNICA);
 		a.add(PICASSO, PAINTS, JACQUELINE);
@@ -359,9 +359,9 @@ public class MonotonicTest extends TestCase {
 				b.add((Resource) painting, RDF.TYPE, PAINTING);
 			}
 		}
-		a.setAutoCommit(true);
+		a.commit();
 		assertEquals(5, size(b, null, PAINTS, null, false));
-		b.setAutoCommit(true);
+		b.commit();
 		assertEquals(10, size(a, null, null, null, false));
 	}
 
@@ -371,17 +371,17 @@ public class MonotonicTest extends TestCase {
 		b.add(REMBRANDT, PAINTS, NIGHTWATCH);
 		b.add(REMBRANDT, PAINTS, ARTEMISIA);
 		b.add(REMBRANDT, PAINTS, DANAE);
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		// PICASSO *is* a known PAINTER
 		a.add(PICASSO, PAINTS, GUERNICA);
 		a.add(PICASSO, PAINTS, JACQUELINE);
 		b.prepareUpdate(QueryLanguage.SPARQL, "INSERT { ?painting a <Painting> }\n"
 				+ "WHERE { ?painter a <Painter> "
 				+ "OPTIONAL { ?painter <paints> ?painting } }", NS).execute();
-		a.setAutoCommit(true);
+		a.commit();
 		assertEquals(5, size(b, null, PAINTS, null, false));
-		b.setAutoCommit(true);
+		b.commit();
 		assertEquals(10, size(a, null, null, null, false));
 	}
 
@@ -390,8 +390,8 @@ public class MonotonicTest extends TestCase {
 		b.add(REMBRANDT, PAINTS, NIGHTWATCH);
 		b.add(REMBRANDT, PAINTS, ARTEMISIA);
 		b.add(REMBRANDT, PAINTS, DANAE);
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		a.add(PICASSO, RDF.TYPE, PAINTER);
 		a.add(PICASSO, PAINTS, GUERNICA);
 		a.add(PICASSO, PAINTS, JACQUELINE);
@@ -401,8 +401,8 @@ public class MonotonicTest extends TestCase {
 		for (Value painting : result) {
 			b.add((Resource) painting, RDF.TYPE, PAINTING);
 		}
-		a.setAutoCommit(true);
-		b.setAutoCommit(true);
+		a.commit();
+		b.commit();
 		assertEquals(10, size(a, null, null, null, false));
 	}
 
@@ -411,16 +411,16 @@ public class MonotonicTest extends TestCase {
 		b.add(REMBRANDT, PAINTS, NIGHTWATCH);
 		b.add(REMBRANDT, PAINTS, ARTEMISIA);
 		b.add(REMBRANDT, PAINTS, DANAE);
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		a.add(PICASSO, RDF.TYPE, PAINTER);
 		a.add(PICASSO, PAINTS, GUERNICA);
 		a.add(PICASSO, PAINTS, JACQUELINE);
 		b.prepareUpdate(QueryLanguage.SPARQL, "INSERT { ?painting a <Painting> }\n"
 				+ "WHERE { ?painter a <Painter>; <paints> ?painting "
 				+ "FILTER  regex(str(?painter), \"rem\", \"i\") }", NS).execute();
-		a.setAutoCommit(true);
-		b.setAutoCommit(true);
+		a.commit();
+		b.commit();
 		assertEquals(10, size(a, null, null, null, false));
 	}
 
@@ -432,8 +432,8 @@ public class MonotonicTest extends TestCase {
 		b.add(REMBRANDT, PAINTS, NIGHTWATCH);
 		b.add(REMBRANDT, PAINTS, ARTEMISIA);
 		b.add(REMBRANDT, PAINTS, DANAE);
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		a.add(GUERNICA, RDF.TYPE, PAINTING);
 		a.add(JACQUELINE, RDF.TYPE, PAINTING);
 		List<Value> result = eval("painting", b, "SELECT ?painting "
@@ -444,9 +444,9 @@ public class MonotonicTest extends TestCase {
 				b.add((Resource) painting, RDF.TYPE, PAINTING);
 			}
 		}
-		a.setAutoCommit(true);
+		a.commit();
 		assertEquals(5, size(b, null, PAINTS, null, false));
-		b.setAutoCommit(true);
+		b.commit();
 		assertEquals(12, size(a, null, null, null, false));
 	}
 
@@ -458,16 +458,16 @@ public class MonotonicTest extends TestCase {
 		b.add(REMBRANDT, PAINTS, NIGHTWATCH);
 		b.add(REMBRANDT, PAINTS, ARTEMISIA);
 		b.add(REMBRANDT, PAINTS, DANAE);
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		a.add(GUERNICA, RDF.TYPE, PAINTING);
 		a.add(JACQUELINE, RDF.TYPE, PAINTING);
 		b.prepareUpdate(QueryLanguage.SPARQL, "INSERT { ?painting a <Painting> }\n"
 				+ "WHERE { [a <Painter>] <paints> ?painting "
 				+ "OPTIONAL { ?painting a ?type  } FILTER (!bound(?type)) }", NS).execute();
-		a.setAutoCommit(true);
+		a.commit();
 		assertEquals(5, size(b, null, PAINTS, null, false));
-		b.setAutoCommit(true);
+		b.commit();
 		assertEquals(12, size(a, null, null, null, false));
 	}
 
@@ -479,8 +479,8 @@ public class MonotonicTest extends TestCase {
 		b.add(REMBRANDT, PAINTS, NIGHTWATCH);
 		b.add(REMBRANDT, PAINTS, ARTEMISIA);
 		b.add(REMBRANDT, PAINTS, DANAE);
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		a.add(GUERNICA, RDF.TYPE, PAINTING);
 		a.add(JACQUELINE, RDF.TYPE, PAINTING);
 		List<Value> result = eval("painting", b, "SELECT ?painting "
@@ -491,9 +491,9 @@ public class MonotonicTest extends TestCase {
 				b.add((Resource) painting, RDF.TYPE, PAINTING);
 			}
 		}
-		a.setAutoCommit(true);
+		a.commit();
 		assertEquals(7, size(b, null, RDF.TYPE, PAINTING, false));
-		b.setAutoCommit(true);
+		b.commit();
 		assertEquals(12, size(a, null, null, null, false));
 	}
 
@@ -505,16 +505,16 @@ public class MonotonicTest extends TestCase {
 		b.add(REMBRANDT, PAINTS, NIGHTWATCH);
 		b.add(REMBRANDT, PAINTS, ARTEMISIA);
 		b.add(REMBRANDT, PAINTS, DANAE);
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		a.add(GUERNICA, RDF.TYPE, PAINTING);
 		a.add(JACQUELINE, RDF.TYPE, PAINTING);
 		b.prepareUpdate(QueryLanguage.SPARQL, "INSERT { ?painting a <Painting> }\n"
 				+ "WHERE { [a <Painter>] <paints> ?painting "
 				+ "OPTIONAL { ?painting a ?type  } FILTER (!bound(?type)) }", NS).execute();
-		a.setAutoCommit(true);
+		a.commit();
 		assertEquals(7, size(b, null, RDF.TYPE, PAINTING, false));
-		b.setAutoCommit(true);
+		b.commit();
 		assertEquals(12, size(a, null, null, null, false));
 	}
 
@@ -530,8 +530,8 @@ public class MonotonicTest extends TestCase {
 		a.add(DANAE, YEAR, lf.createLiteral(1636));
 		a.add(JACOB, YEAR, lf.createLiteral(1632));
 		a.add(ANATOMY, YEAR, lf.createLiteral(1632));
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		List<Value> result = eval("painting", b, "SELECT ?painting "
 				+ "WHERE { <rembrandt> <paints> ?painting . ?painting <year> ?year "
 				+ "FILTER  (1631 <= ?year && ?year <= 1635) }");
@@ -540,8 +540,8 @@ public class MonotonicTest extends TestCase {
 		}
 		a.add(REMBRANDT, PAINTS, NIGHTWATCH);
 		a.add(NIGHTWATCH, YEAR, lf.createLiteral(1642));
-		a.setAutoCommit(true);
-		b.setAutoCommit(true);
+		a.commit();
+		b.commit();
 		assertEquals(17, size(a, null, null, null, false));
 	}
 
@@ -557,15 +557,15 @@ public class MonotonicTest extends TestCase {
 		a.add(DANAE, YEAR, lf.createLiteral(1636));
 		a.add(JACOB, YEAR, lf.createLiteral(1632));
 		a.add(ANATOMY, YEAR, lf.createLiteral(1632));
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		b.prepareUpdate(QueryLanguage.SPARQL, "INSERT { ?painting <period> \"First Amsterdam period\" }\n"
 				+ "WHERE { <rembrandt> <paints> ?painting . ?painting <year> ?year "
 				+ "FILTER  (1631 <= ?year && ?year <= 1635) }", NS).execute();
 		a.add(REMBRANDT, PAINTS, NIGHTWATCH);
 		a.add(NIGHTWATCH, YEAR, lf.createLiteral(1642));
-		a.setAutoCommit(true);
-		b.setAutoCommit(true);
+		a.commit();
+		b.commit();
 		assertEquals(17, size(a, null, null, null, false));
 	}
 
@@ -581,8 +581,8 @@ public class MonotonicTest extends TestCase {
 		a.add(DANAE, YEAR, lf.createLiteral(1636));
 		a.add(JACOB, YEAR, lf.createLiteral(1632));
 		a.add(ANATOMY, YEAR, lf.createLiteral(1632));
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		List<Value> result = eval("painting", b, "SELECT ?painting "
 				+ "WHERE { <rembrandt> <paints> ?painting . ?painting <year> ?year "
 				+ "FILTER  (1631 <= ?year && ?year <= 1635) }");
@@ -591,9 +591,9 @@ public class MonotonicTest extends TestCase {
 		}
 		a.add(REMBRANDT, PAINTS, BELSHAZZAR);
 		a.add(BELSHAZZAR, YEAR, lf.createLiteral(1635));
-		a.setAutoCommit(true);
+		a.commit();
 		assertEquals(2, size(b, ARTEMISIA, null, null, false));
-		b.setAutoCommit(true);
+		b.commit();
 		assertEquals(16, size(a, null, null, null, false));
 	}
 
@@ -609,16 +609,16 @@ public class MonotonicTest extends TestCase {
 		a.add(DANAE, YEAR, lf.createLiteral(1636));
 		a.add(JACOB, YEAR, lf.createLiteral(1632));
 		a.add(ANATOMY, YEAR, lf.createLiteral(1632));
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		b.prepareUpdate(QueryLanguage.SPARQL, "INSERT { ?painting <period> \"First Amsterdam period\" }\n"
 				+ "WHERE { <rembrandt> <paints> ?painting . ?painting <year> ?year "
 				+ "FILTER  (1631 <= ?year && ?year <= 1635) }", NS).execute();
 		a.add(REMBRANDT, PAINTS, BELSHAZZAR);
 		a.add(BELSHAZZAR, YEAR, lf.createLiteral(1635));
-		a.setAutoCommit(true);
+		a.commit();
 		assertEquals(2, size(b, ARTEMISIA, null, null, false));
-		b.setAutoCommit(true);
+		b.commit();
 		assertEquals(16, size(a, null, null, null, false));
 	}
 
@@ -634,8 +634,8 @@ public class MonotonicTest extends TestCase {
 		a.add(DANAE, YEAR, lf.createLiteral(1636));
 		a.add(JACOB, YEAR, lf.createLiteral(1632));
 		a.add(ANATOMY, YEAR, lf.createLiteral(1632));
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		List<Value> result = eval("painting", b, "SELECT ?painting "
 				+ "WHERE { <rembrandt> <paints> ?painting . ?painting <year> ?year "
 				+ "FILTER  (1631 <= ?year && ?year <= 1635) }");
@@ -644,9 +644,9 @@ public class MonotonicTest extends TestCase {
 		}
 		a.add(REMBRANDT, PAINTS, BELSHAZZAR);
 		a.add(BELSHAZZAR, YEAR, lf.createLiteral(1635));
-		a.setAutoCommit(true);
+		a.commit();
 		assertEquals(6, size(b, REMBRANDT, PAINTS, null, false));
-		b.setAutoCommit(true);
+		b.commit();
 		assertEquals(16, size(a, null, null, null, false));
 	}
 
@@ -662,16 +662,16 @@ public class MonotonicTest extends TestCase {
 		a.add(DANAE, YEAR, lf.createLiteral(1636));
 		a.add(JACOB, YEAR, lf.createLiteral(1632));
 		a.add(ANATOMY, YEAR, lf.createLiteral(1632));
-		a.setAutoCommit(false);
-		b.setAutoCommit(false);
+		a.begin();
+		b.begin();
 		b.prepareUpdate(QueryLanguage.SPARQL, "INSERT { ?painting <period> \"First Amsterdam period\" }\n"
 				+ "WHERE { <rembrandt> <paints> ?painting . ?painting <year> ?year "
 				+ "FILTER  (1631 <= ?year && ?year <= 1635) }", NS).execute();
 		a.add(REMBRANDT, PAINTS, BELSHAZZAR);
 		a.add(BELSHAZZAR, YEAR, lf.createLiteral(1635));
-		a.setAutoCommit(true);
+		a.commit();
 		assertEquals(6, size(b, REMBRANDT, PAINTS, null, false));
-		b.setAutoCommit(true);
+		b.commit();
 		assertEquals(16, size(a, null, null, null, false));
 	}
 

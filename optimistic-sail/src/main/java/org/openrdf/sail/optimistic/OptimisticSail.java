@@ -47,6 +47,9 @@ import org.openrdf.query.QueryEvaluationException;
 import org.openrdf.query.algebra.QueryRoot;
 import org.openrdf.query.algebra.TupleExpr;
 import org.openrdf.query.algebra.evaluation.QueryBindingSet;
+import org.openrdf.query.algebra.evaluation.federation.FederatedServiceResolver;
+import org.openrdf.query.algebra.evaluation.federation.FederatedServiceResolverClient;
+import org.openrdf.query.algebra.evaluation.federation.FederatedServiceResolverImpl;
 import org.openrdf.sail.NotifyingSail;
 import org.openrdf.sail.Sail;
 import org.openrdf.sail.SailChangedEvent;
@@ -64,7 +67,7 @@ import org.openrdf.sail.optimistic.helpers.EvaluateOperation;
  * @author Steve Battle
  * 
  */
-public class OptimisticSail extends SailWrapper implements NotifyingSail {
+public class OptimisticSail extends SailWrapper implements NotifyingSail, FederatedServiceResolverClient {
 
 	private static final String DELTA_VARNAME = "-delta-";
 	private boolean readSnapshot = true;
@@ -77,6 +80,8 @@ public class OptimisticSail extends SailWrapper implements NotifyingSail {
 	private volatile OptimisticConnection prepared;
 	private volatile boolean listenersIsEmpty = true;
 	private Set<SailChangedListener> listeners = new HashSet<SailChangedListener>();
+	private FederatedServiceResolver resolver;
+	private FederatedServiceResolverImpl serviceResolverImpl;
 
 	public OptimisticSail() {
 		super();
@@ -84,6 +89,21 @@ public class OptimisticSail extends SailWrapper implements NotifyingSail {
 
 	public OptimisticSail(Sail baseSail) {
 		super(baseSail);
+	}
+
+	public synchronized FederatedServiceResolver getFederatedServiceResolver() {
+		if (resolver == null) {
+			if (serviceResolverImpl == null) {
+				serviceResolverImpl = new FederatedServiceResolverImpl();
+			}
+			return resolver = serviceResolverImpl;
+		}
+		return resolver;
+	}
+
+	@Override
+	public void setFederatedServiceResolver(FederatedServiceResolver resolver) {
+		this.resolver = resolver;
 	}
 
 	/**
@@ -132,6 +152,17 @@ public class OptimisticSail extends SailWrapper implements NotifyingSail {
 		super.initialize();
 		if (serializable) {
 			snapshot = true;
+		}
+	}
+
+	@Override
+	public synchronized void shutDown() throws SailException {
+		try {
+			super.shutDown();
+		} finally {
+			if (serviceResolverImpl != null) {
+				serviceResolverImpl.shutDown();
+			}
 		}
 	}
 

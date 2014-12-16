@@ -15,6 +15,7 @@ import org.openrdf.repository.object.ObjectConnection;
 import org.openrdf.repository.object.ObjectFactory;
 import org.openrdf.repository.object.ObjectRepository;
 import org.openrdf.repository.object.base.CodeGenTestCase;
+import org.openrdf.repository.object.config.ObjectRepositoryConfig;
 import org.openrdf.repository.object.config.ObjectRepositoryFactory;
 import org.openrdf.repository.sail.SailRepository;
 import org.openrdf.sail.memory.MemoryStore;
@@ -27,6 +28,8 @@ public class SparqlMethodTest extends CodeGenTestCase {
 		addRdfSource("/ontologies/owl-schema.rdf");
 		addRdfSource("/ontologies/object-ontology.owl");
 		addRdfSource("/ontologies/sparql-ontology.ttl");
+		ObjectRepositoryConfig converter = new ObjectRepositoryConfig();
+		converter.addConceptJar(createJar("object.jar").toURI().toURL());
 		ObjectRepositoryFactory ofm = new ObjectRepositoryFactory();
 		ObjectRepository repo = ofm.getRepository(converter);
 		repo.setDelegate(new SailRepository(new MemoryStore()));

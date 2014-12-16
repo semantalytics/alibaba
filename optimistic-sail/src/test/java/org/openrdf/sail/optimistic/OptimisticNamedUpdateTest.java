@@ -132,7 +132,7 @@ public class OptimisticNamedUpdateTest extends TestCase {
 			String eTag = nq1.getResultTag() ;
 			Thread.sleep(100) ;
 			
-			a.setAutoCommit(false) ;
+			a.begin();
 			
 			// Add a new result
 			a.add(PICASSO, PAINTS, GUERNICA);
@@ -159,7 +159,7 @@ public class OptimisticNamedUpdateTest extends TestCase {
 			String eTag = nq1.getResultTag() ;
 			Thread.sleep(100) ;
 			
-			a.setAutoCommit(false) ;
+			a.begin();
 			
 			// Add a new result
 			a.add(PICASSO, PAINTS, GUERNICA);

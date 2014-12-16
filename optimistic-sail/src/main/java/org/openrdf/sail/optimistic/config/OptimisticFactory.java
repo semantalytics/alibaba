@@ -28,6 +28,8 @@
  */
 package org.openrdf.sail.optimistic.config;
 
+import org.openrdf.query.algebra.evaluation.federation.FederatedServiceResolver;
+import org.openrdf.query.algebra.evaluation.federation.FederatedServiceResolverClient;
 import org.openrdf.sail.config.SailConfigException;
 import org.openrdf.sail.config.SailFactory;
 import org.openrdf.sail.config.SailImplConfig;
@@ -38,9 +40,10 @@ import org.openrdf.sail.optimistic.OptimisticSail;
  * 
  * @author James Leigh
  */
-public class OptimisticFactory implements SailFactory {
-
+public class OptimisticFactory implements SailFactory, FederatedServiceResolverClient {
 	public static final String SAIL_TYPE = "openrdf:OptimisticSail";
+
+	private FederatedServiceResolver resolver;
 
 	public String getSailType() {
 		return SAIL_TYPE;
@@ -48,6 +51,15 @@ public class OptimisticFactory implements SailFactory {
 
 	public OptimisticConfig getConfig() {
 		return new OptimisticConfig();
+	}
+
+	public FederatedServiceResolver getFederatedServiceResolver() {
+		return resolver;
+	}
+
+	@Override
+	public void setFederatedServiceResolver(FederatedServiceResolver resolver) {
+		this.resolver = resolver;
 	}
 
 	public OptimisticSail getSail(SailImplConfig config)
@@ -59,6 +71,7 @@ public class OptimisticFactory implements SailFactory {
 			sail.setReadSnapshot(orc.isReadSnapshot());
 			sail.setSnapshot(orc.isSnapshot());
 			sail.setSerializable(orc.isSerializable());
+			sail.setFederatedServiceResolver(resolver);
 		}
 		return sail;
 	}

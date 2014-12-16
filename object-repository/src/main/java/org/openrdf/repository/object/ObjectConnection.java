@@ -139,23 +139,10 @@ public class ObjectConnection extends ContextAwareConnection {
 	}
 
 	public String toString() {
-		try {
-			URI uri = getVersionBundle();
-			if (uri == null)
-				return getDelegate().toString();
-			return uri.stringValue();
-		} catch (RepositoryException e) {
-			return super.toString();
-		}
-	}
-
-	@Override
-	public void close() throws RepositoryException {
-		try {
-			super.close();
-		} finally {
-			repository.closed(this);
-		}
+		URI uri = getVersionBundle();
+		if (uri == null)
+			return getDelegate().toString();
+		return uri.stringValue();
 	}
 
 	@Override
@@ -194,10 +181,6 @@ public class ObjectConnection extends ContextAwareConnection {
 		} catch (IOException e) {
 			throw new BlobStoreException(e);
 		}
-	}
-
-	public void recompileSchemaOnClose() {
-		getRepository().compileAfter(this);
 	}
 
 	@Override
