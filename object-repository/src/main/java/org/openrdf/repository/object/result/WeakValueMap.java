@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, James Leigh Some rights reserved.
+ * Copyright (c) 2014, 3 Round Stones Inc. Some rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
