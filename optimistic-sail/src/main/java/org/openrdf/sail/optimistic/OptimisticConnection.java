@@ -361,6 +361,8 @@ public class OptimisticConnection extends SailConnectionWrapper implements
 	}
 
 	public synchronized void prepare() throws SailException {
+		if (!isActive())
+			return;
 		try {
 			sail.prepare(this);
 			SailConflictException conflict = getConcurrencyConflict();
