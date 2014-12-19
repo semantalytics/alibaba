@@ -45,7 +45,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Tracks recorded roles and maps them to their subject type.
+ * Tracks types and maps them to their assigned roles.
  * 
  * @author James Leigh
  * 

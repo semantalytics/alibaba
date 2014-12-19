@@ -68,7 +68,7 @@ public class JavaMessageBuilder extends JavaAnnotationBuilder {
 		annotationProperties(code, msg);
 		URI rdfType = resolver.getType(uri);
 		if (rdfType != null) {
-			code.annotateURI(Iri.class, rdfType);
+			code.annotateURI(Iri.class, "value", rdfType);
 		}
 		RDFProperty response = msg.getResponseProperty();
 		String range = getResponseClassName(msg, response);
@@ -89,7 +89,7 @@ public class JavaMessageBuilder extends JavaAnnotationBuilder {
 				}
 			}
 			if (rdf != null) {
-				code.annotateURI(Iri.class, rdf);
+				code.annotateURI(Iri.class, "value", rdf);
 			}
 			if (msg.isFunctional(param)) {
 				String name = resolver.getSingleParameterName(pred);

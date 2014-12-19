@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2009, James Leigh All rights reserved.
  * Copyright (c) 2011 Talis Inc., Some rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -26,30 +27,29 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.openrdf.repository.object.vocabulary;
+package org.openrdf.annotations;
 
-import org.openrdf.model.URI;
-import org.openrdf.model.impl.URIImpl;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+import org.openrdf.annotations.Iri;
+import org.openrdf.repository.object.vocabulary.MSG;
 
 /**
- * Vocabulary of the Messaging Ontology.
- *
+ * List of URLs to JAR locations that should be included in the classpath when resolving
+ * {@link Mixin} class names.
+ * 
  * @author James Leigh
- **/
-public class MSG {
-	public static final String NAMESPACE = "http://www.openrdf.org/rdf/2011/messaging#";
-	public static final URI LITERAL = new URIImpl(NAMESPACE + "literal");
-	public static final URI LITERAL_SET = new URIImpl(NAMESPACE + "literalSet");
-	public static final URI MATCHING = new URIImpl(NAMESPACE + "matching");
-	public static final URI CLASSPATH = new URIImpl(NAMESPACE + "classpath");
-	public static final URI MIXIN = new URIImpl(NAMESPACE + "mixin");
-	public static final URI MESSAGE = new URIImpl(NAMESPACE + "Message");
-	public static final URI OBJECT = new URIImpl(NAMESPACE + "object");
-	public static final URI OBJECT_SET = new URIImpl(NAMESPACE + "objectSet");
-	public static final URI TARGET = new URIImpl(NAMESPACE + "target");
-
-	private MSG() {
-		// prevent instantiation
-	}
-
+ * 
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ ElementType.TYPE })
+public @interface Classpath {
+	/**
+	 * One or more JAR URLs
+	 */
+	@Iri(MSG.NAMESPACE + "classpath")
+	String[] value();
 }

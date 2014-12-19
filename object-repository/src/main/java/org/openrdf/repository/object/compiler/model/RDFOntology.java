@@ -67,9 +67,9 @@ public class RDFOntology extends RDFEntity {
 			throws ObjectStoreConfigException {
 		builder.comment(this);
 		builder.annotationProperties(this);
-		builder.annotateString(Prefix.class.getName(), builder
+		builder.annotateString(Prefix.class.getName(), "value", builder
 				.getMemberPrefix(namespace));
-		builder.annotateString(Iri.class.getName(), namespace);
+		builder.annotateString(Iri.class.getName(), "value", namespace);
 		builder.pkg(builder.getPackageName(new URIImpl(namespace)));
 	}
 

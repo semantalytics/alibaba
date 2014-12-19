@@ -77,12 +77,12 @@ public class RDFProperty extends RDFEntity {
 		if (this.isA(OWL.DEPRECATEDPROPERTY)) {
 			builder.annotate(Deprecated.class);
 		}
-		builder.annotateEnum(Retention.class, RetentionPolicy.class, "RUNTIME");
-		builder.annotateEnums(Target.class, ElementType.class, "TYPE", "METHOD",
+		builder.annotateEnum(Retention.class, "value", RetentionPolicy.class, "RUNTIME");
+		builder.annotateEnums(Target.class, "value", ElementType.class, "TYPE", "METHOD",
 					"PARAMETER", "ANNOTATION_TYPE", "PACKAGE");
 		builder.annotationName(simple);
 		builder.annotationProperties(this);
-		builder.annotateURI(Iri.class, builder.getType(this.getURI()));
+		builder.annotateURI(Iri.class, "value", builder.getType(this.getURI()));
 		if (this.isA(OWL.FUNCTIONALPROPERTY)) {
 			builder.method("value", true).returnType(builder.imports(String.class)).end();
 		} else {

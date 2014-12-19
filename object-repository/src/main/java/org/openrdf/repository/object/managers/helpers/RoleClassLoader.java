@@ -162,11 +162,15 @@ public class RoleClassLoader {
 					if (idx < 0) {
 						recordRole(clazz, rdf, concept);
 					} else {
-						String mname = ((String)e.getKey()).substring(idx);
+						String mname = ((String)e.getKey()).substring(idx + 1);
 						if (mname.endsWith("()")) {
-							mname.substring(0, mname.length() - 2);
+							mname = mname.substring(0, mname.length() - 2);
 						}
-						roleMapper.addAnnotation(clazz.getMethod(mname), new URIImpl(rdf));
+						if (rdf.length() > 0) {
+							roleMapper.addAnnotation(clazz.getMethod(mname), new URIImpl(rdf));
+						} else {
+							roleMapper.addAnnotation(clazz.getMethod(mname));
+						}
 					}
 				}
 			} catch (ClassNotFoundException exc) {

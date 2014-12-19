@@ -36,7 +36,7 @@ import java.util.Set;
 import org.openrdf.model.URI;
 
 /**
- * Tracks recorded roles and maps them to their subject type.
+ * Tracks explicit types and roles assignment.
  * 
  * @author James Leigh
  * 

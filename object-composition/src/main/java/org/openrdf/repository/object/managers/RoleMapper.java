@@ -32,6 +32,9 @@ package org.openrdf.repository.object.managers;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -39,10 +42,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import org.openrdf.annotations.Classpath;
 import org.openrdf.annotations.Iri;
+import org.openrdf.annotations.Mixin;
 import org.openrdf.model.URI;
 import org.openrdf.model.ValueFactory;
 import org.openrdf.model.impl.URIImpl;
@@ -51,6 +57,7 @@ import org.openrdf.model.vocabulary.OWL;
 import org.openrdf.repository.object.exceptions.ObjectStoreConfigException;
 import org.openrdf.repository.object.managers.helpers.HierarchicalRoleMapper;
 import org.openrdf.repository.object.managers.helpers.RoleMatcher;
+import org.openrdf.repository.object.managers.helpers.WeakValueMap;
 import org.openrdf.repository.object.vocabulary.MSG;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,6 +70,7 @@ import org.slf4j.LoggerFactory;
  * 
  */
 public class RoleMapper implements Cloneable {
+	private static final WeakHashMap<ClassLoader, WeakValueMap<Set<URL>,ClassLoader>> classloaders = new WeakHashMap<ClassLoader, WeakValueMap<Set<URL>,ClassLoader>>();
 	private ValueFactory vf;
 	private Logger logger = LoggerFactory.getLogger(RoleMapper.class);
 	private HierarchicalRoleMapper roleMapper = new HierarchicalRoleMapper();
@@ -414,10 +422,113 @@ public class RoleMapper implements Cloneable {
 			throw new ObjectStoreConfigException(role.getSimpleName()
 					+ " does not have an RDF type mapping");
 		}
+		recordMixins(role, elm, rdfType);
 		if (concept && !role.isInterface()) {
 			conceptClasses.add(role);
 		}
 		return hasType;
+	}
+
+	private void recordMixins(Class<?> role, Class<?> elm, URI rdfType)
+			throws ObjectStoreConfigException {
+		Mixin mixin = role.getAnnotation(Mixin.class);
+		if (mixin != null) {
+			for (Class<?> mix : mixin.value()) {
+				assertBehaviour(mix);
+				recordRole(mix, elm, rdfType, true, false, false);
+			}
+			for (String name : mixin.name()) {
+				Classpath cp = role.getAnnotation(Classpath.class);
+				String[] jars = cp == null ? new String[0] : cp.value();
+				Class<?> mix = findClass(name, role.getClassLoader(), jars,
+						role);
+				if (mix != null) {
+					assertBehaviour(mix);
+					recordRole(mix, elm, rdfType, true, false, false);
+				} else {
+					logger.error("Could not find {} in {}", name, jars);
+				}
+			}
+		}
+	}
+
+	private Class<?> findClass(String name, ClassLoader cl, String[] jars,
+			Class<?> base) {
+		try {
+			return Class.forName(name, true, findClassLoader(cl, jars, base));
+		} catch (Throwable e) {
+			logger.error(e.getMessage(), e);
+			return null;
+		}
+	}
+
+	private ClassLoader findClassLoader(ClassLoader parent, String[] jars,
+			Class<?> base) {
+		if (jars.length == 0)
+			return parent; // no children
+		Set<URL> urls = resolve(jars, base);
+		if (urls.isEmpty())
+			return parent; // no valid children
+		return createClassLoader(parent, urls);
+	}
+
+	private static synchronized ClassLoader createClassLoader(ClassLoader parent, Set<URL> urls) {
+		WeakValueMap<Set<URL>, ClassLoader> map = classloaders.get(parent);
+		if (map == null) {
+			map = new WeakValueMap<Set<URL>, ClassLoader>();
+			classloaders.put(parent, map);
+		}
+		ClassLoader direct = map.get(urls);
+		if (direct != null)
+			return direct; // already loaded
+		for (Map.Entry<Set<URL>, ClassLoader> e : map.entrySet()) {
+			ClassLoader p = e.getValue();
+			if (p != null && urls.containsAll(e.getKey())) {
+				Set<URL> set = new HashSet<URL>(urls);
+				set.removeAll(e.getKey());
+				URL[] array = set.toArray(new URL[set.size()]);
+				ClassLoader cl = new URLClassLoader(array, p);
+				map.put(urls, cl);
+				return cl; // reuse an exiting cl as parent
+			}
+		}
+		URL[] array = urls.toArray(new URL[urls.size()]);
+		ClassLoader cl = new URLClassLoader(array, parent);
+		map.put(urls, cl);
+		return cl; // new cl
+	}
+
+	private Set<URL> resolve(String[] jars, Class<?> base) {
+		Set<URL> urls = new HashSet<URL>(jars.length);
+		for (int i = 0; i < jars.length; i++) {
+			try {
+				urls.add(resolve(jars[i], base));
+			} catch (MalformedURLException e) {
+				logger.error(e.getMessage(), e);
+			}
+		}
+		return urls;
+	}
+
+	private URL resolve(String jar, Class<?> base) throws MalformedURLException {
+		java.net.URI jurl = java.net.URI.create(jar);
+		if (jurl.isAbsolute())
+			return jurl.toURL();
+		URL url = base.getResource(jar);
+		if (url != null)
+			return url;
+		java.net.URI uri = java.net.URI.create(getSystemId(base));
+		return uri.resolve(jar).toURL();
+	}
+
+	private String getSystemId(Class<?> base) {
+		if (base.isAnnotationPresent(Iri.class))
+			return base.getAnnotation(Iri.class).value();
+		String name = base.getSimpleName() + ".class";
+		URL url = base.getResource(name);
+		if (url != null)
+			return url.toExternalForm();
+		return "java:" + base.getName();
 	}
 
 	private boolean recordAnonymous(Class<?> role, Class<?> elm,
