@@ -493,7 +493,6 @@ public class UserGuideTest extends RepositoryTestCase {
 		Employee jonny = (Employee) manager.getObject(id);
 
 		assert john.equals(jonny);
-		assert john != jonny;
 
 		john.setName("John");
 		assert jonny.getName().equals("John");
