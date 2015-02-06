@@ -66,7 +66,7 @@ import org.openrdf.server.object.util.SystemProperties;
 public class HttpClientFactory implements Closeable {
 	private static final String DEFAULT_NAME = Version.getInstance()
 			.getVersion();
-	private static HttpClientFactory instance;
+	static HttpClientFactory instance;
 	static {
 		try {
 			String tmpDirStr = System.getProperty("java.io.tmpdir");
@@ -108,7 +108,7 @@ public class HttpClientFactory implements Closeable {
 		instance = new HttpClientFactory(dir);
 	}
 
-	private final ProxyClientExecDecorator decorator;
+	final ProxyClientExecDecorator decorator;
 	private final ResourceFactory entryFactory;
 	final PoolingHttpClientConnectionManager connManager;
 	private final ConnectionReuseStrategy reuseStrategy;

@@ -45,7 +45,7 @@ import org.openrdf.server.object.fluid.FluidBuilder;
 import org.openrdf.server.object.fluid.FluidType;
 import org.openrdf.server.object.fluid.producers.base.MessageReaderBase;
 import org.openrdf.server.object.io.ChannelUtil;
-import org.openrdf.server.object.server.util.BackgroundGraphResult;
+import org.openrdf.server.object.util.BackgroundGraphResult;
 
 /**
  * Reads RDF graph messages.

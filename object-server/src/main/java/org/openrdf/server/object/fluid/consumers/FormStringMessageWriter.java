@@ -49,8 +49,8 @@ import org.openrdf.server.object.fluid.Fluid;
 import org.openrdf.server.object.fluid.FluidBuilder;
 import org.openrdf.server.object.fluid.FluidType;
 import org.openrdf.server.object.fluid.Vapor;
+import org.openrdf.server.object.helpers.ReadableHttpEntityChannel;
 import org.openrdf.server.object.io.ChannelUtil;
-import org.openrdf.server.object.server.helpers.ReadableHttpEntityChannel;
 import org.xml.sax.SAXException;
 
 /**

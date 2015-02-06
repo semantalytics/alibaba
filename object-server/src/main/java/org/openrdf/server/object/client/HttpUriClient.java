@@ -38,7 +38,7 @@ import org.apache.http.impl.client.DefaultRedirectStrategy;
 import org.apache.http.impl.client.RedirectLocations;
 import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.HttpContext;
-import org.openrdf.server.object.server.exceptions.ResponseException;
+import org.openrdf.server.object.exceptions.ResponseException;
 import org.openrdf.server.object.util.URLUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

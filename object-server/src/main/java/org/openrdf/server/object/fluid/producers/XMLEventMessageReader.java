@@ -41,8 +41,8 @@ import javax.xml.stream.XMLStreamException;
 import org.openrdf.server.object.fluid.FluidBuilder;
 import org.openrdf.server.object.fluid.FluidType;
 import org.openrdf.server.object.fluid.Producer;
-import org.openrdf.server.object.fluid.helpers.XMLEventReaderFactory;
 import org.openrdf.server.object.io.ChannelUtil;
+import org.openrdf.server.object.io.XMLEventReaderFactory;
 
 /**
  * Converts an InputStream into a XMLEventReader.

@@ -52,13 +52,13 @@ import org.openrdf.server.object.cli.Command;
 import org.openrdf.server.object.cli.CommandSet;
 import org.openrdf.server.object.concurrent.ManagedThreadPool;
 import org.openrdf.server.object.concurrent.ThreadPoolMXBean;
+import org.openrdf.server.object.helpers.WebServer;
+import org.openrdf.server.object.helpers.WebServerMXBean;
 import org.openrdf.server.object.io.ChannelUtil;
 import org.openrdf.server.object.management.CalliServer;
 import org.openrdf.server.object.management.CalliServerMXBean;
 import org.openrdf.server.object.management.JVMSummary;
 import org.openrdf.server.object.management.JVMSummaryMXBean;
-import org.openrdf.server.object.server.WebServer;
-import org.openrdf.server.object.server.WebServerMXBean;
 
 /**
  * Command line tool for monitoring the server.

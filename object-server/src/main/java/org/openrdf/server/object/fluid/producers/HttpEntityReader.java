@@ -23,7 +23,7 @@ import org.apache.http.HttpEntity;
 import org.openrdf.server.object.fluid.FluidBuilder;
 import org.openrdf.server.object.fluid.FluidType;
 import org.openrdf.server.object.fluid.Producer;
-import org.openrdf.server.object.server.helpers.ReadableHttpEntityChannel;
+import org.openrdf.server.object.helpers.ReadableHttpEntityChannel;
 
 public class HttpEntityReader implements Producer {
 

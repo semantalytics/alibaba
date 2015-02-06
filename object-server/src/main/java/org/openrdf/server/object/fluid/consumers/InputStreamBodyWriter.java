@@ -51,8 +51,8 @@ import org.openrdf.server.object.fluid.FluidBuilder;
 import org.openrdf.server.object.fluid.FluidType;
 import org.openrdf.server.object.fluid.Vapor;
 import org.openrdf.server.object.fluid.helpers.DocumentFactory;
-import org.openrdf.server.object.fluid.helpers.XMLEventReaderFactory;
 import org.openrdf.server.object.io.ChannelUtil;
+import org.openrdf.server.object.io.XMLEventReaderFactory;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
