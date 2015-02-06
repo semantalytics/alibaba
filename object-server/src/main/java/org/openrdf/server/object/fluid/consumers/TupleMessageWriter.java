@@ -27,14 +27,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.consumers;
+package org.openrdf.server.object.fluid.consumers;
 
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.List;
 
-import org.callimachusproject.fluid.consumers.helpers.MessageWriterBase;
 import org.openrdf.OpenRDFException;
 import org.openrdf.query.QueryEvaluationException;
 import org.openrdf.query.QueryResultUtil;
@@ -45,6 +44,7 @@ import org.openrdf.query.resultio.TupleQueryResultWriter;
 import org.openrdf.query.resultio.TupleQueryResultWriterFactory;
 import org.openrdf.query.resultio.TupleQueryResultWriterRegistry;
 import org.openrdf.repository.object.ObjectConnection;
+import org.openrdf.server.object.fluid.helpers.MessageWriterBase;
 
 /**
  * Writes tuple results.

@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server;
+package org.openrdf.server.object.server;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -36,19 +36,13 @@ import java.io.PrintWriter;
 import java.net.BindException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.SSLContext;
@@ -57,23 +51,18 @@ import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLSession;
 
 import org.apache.http.HttpException;
-import org.apache.http.HttpHost;
 import org.apache.http.HttpInetConnection;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpRequestFactory;
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpResponseInterceptor;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpExecutionAware;
 import org.apache.http.client.methods.HttpRequestWrapper;
 import org.apache.http.client.protocol.HttpClientContext;
-import org.apache.http.client.utils.URIUtils;
-import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.config.ConnectionConfig;
 import org.apache.http.conn.routing.HttpRoute;
-import org.apache.http.impl.client.cache.CacheConfig;
 import org.apache.http.impl.client.cache.FileResourceFactory;
 import org.apache.http.impl.execchain.ClientExecChain;
 import org.apache.http.impl.nio.DefaultHttpServerIODispatch;
@@ -92,55 +81,22 @@ import org.apache.http.nio.reactor.IOSession;
 import org.apache.http.nio.reactor.ssl.SSLSetupHandler;
 import org.apache.http.nio.util.ByteBufferAllocator;
 import org.apache.http.nio.util.HeapByteBufferAllocator;
-import org.apache.http.protocol.BasicHttpContext;
-import org.apache.http.protocol.HttpContext;
 import org.apache.http.protocol.HttpProcessor;
 import org.apache.http.protocol.ImmutableHttpProcessor;
 import org.apache.http.protocol.ResponseConnControl;
 import org.apache.http.protocol.ResponseContent;
 import org.apache.http.protocol.ResponseDate;
-import org.apache.http.util.EntityUtils;
 import org.apache.http.util.TextUtils;
-import org.callimachusproject.Version;
-import org.callimachusproject.client.HttpUriResponse;
-import org.callimachusproject.concurrent.ManagedExecutors;
-import org.callimachusproject.concurrent.NamedThreadFactory;
-import org.callimachusproject.repository.CalliRepository;
-import org.callimachusproject.repository.SparqlServiceCredentialManager;
-import org.callimachusproject.server.chain.AlternativeHandler;
-import org.callimachusproject.server.chain.AuthenticationHandler;
-import org.callimachusproject.server.chain.CacheHandler;
-import org.callimachusproject.server.chain.ContentHeadersFilter;
-import org.callimachusproject.server.chain.ContentPeekHandler;
-import org.callimachusproject.server.chain.ExpectContinueHandler;
-import org.callimachusproject.server.chain.GUnzipFilter;
-import org.callimachusproject.server.chain.GZipFilter;
-import org.callimachusproject.server.chain.HeadRequestFilter;
-import org.callimachusproject.server.chain.HttpResponseFilter;
-import org.callimachusproject.server.chain.InvokeHandler;
-import org.callimachusproject.server.chain.LinksFilter;
-import org.callimachusproject.server.chain.MD5ValidationFilter;
-import org.callimachusproject.server.chain.ModifiedSinceHandler;
-import org.callimachusproject.server.chain.NotFoundHandler;
-import org.callimachusproject.server.chain.OptionsHandler;
-import org.callimachusproject.server.chain.PingOptionsHandler;
-import org.callimachusproject.server.chain.ResponseExceptionHandler;
-import org.callimachusproject.server.chain.SecureChannelFilter;
-import org.callimachusproject.server.chain.ServerNameFilter;
-import org.callimachusproject.server.chain.TransactionHandler;
-import org.callimachusproject.server.chain.UnmodifiedSinceHandler;
-import org.callimachusproject.server.exceptions.BadGateway;
-import org.callimachusproject.server.exceptions.GatewayTimeout;
-import org.callimachusproject.server.exceptions.ResponseException;
-import org.callimachusproject.server.helpers.AsyncRequestHandler;
-import org.callimachusproject.server.helpers.CalliContext;
-import org.callimachusproject.server.helpers.Exchange;
-import org.callimachusproject.server.helpers.PooledExecChain;
-import org.callimachusproject.server.helpers.ResponseBuilder;
-import org.callimachusproject.server.util.AnyHttpMethodRequestFactory;
-import org.callimachusproject.server.util.InlineExecutorService;
-import org.callimachusproject.util.DomainNameSystemResolver;
-import org.openrdf.query.algebra.evaluation.federation.FederatedServiceManager;
+import org.openrdf.repository.object.ObjectRepository;
+import org.openrdf.server.object.Version;
+import org.openrdf.server.object.concurrent.NamedThreadFactory;
+import org.openrdf.server.object.server.chain.HeadRequestFilter;
+import org.openrdf.server.object.server.chain.ServerNameFilter;
+import org.openrdf.server.object.server.helpers.AsyncRequestHandler;
+import org.openrdf.server.object.server.helpers.CalliContext;
+import org.openrdf.server.object.server.helpers.Exchange;
+import org.openrdf.server.object.server.helpers.RequestExecChain;
+import org.openrdf.server.object.server.util.AnyHttpMethodRequestFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -153,11 +109,8 @@ import org.slf4j.LoggerFactory;
  */
 public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, ClientExecChain {
 	protected static final String DEFAULT_NAME = Version.getInstance().getVersion();
-	private static final int MAX_QUEUE_SIZE = 32;
-	private static final String ENVELOPE_TYPE = "message/x-response";
 	private static NamedThreadFactory executor = new NamedThreadFactory("WebServer", false);
 	private static final Set<WebServer> instances = new HashSet<WebServer>();
-	private static final InetAddress LOCALHOST = DomainNameSystemResolver.getInstance().getLocalHost();
 
 	public static WebServer[] getInstances() {
 		synchronized (instances) {
@@ -171,74 +124,26 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 		}
 	}
 
-	private final Logger logger = LoggerFactory.getLogger(WebServer.class);
-	private final Map<NHttpConnection, Boolean> connections = new WeakHashMap<NHttpConnection, Boolean>();
-	private final Map<CalliRepository, Boolean> repositories = new WeakHashMap<CalliRepository, Boolean>();
-	private final Set<String> origins = new HashSet<String>();
-	private final ThreadLocal<Boolean> foreground = new ThreadLocal<Boolean>();
-	private final ExecutorService triaging = new InlineExecutorService(
-			foreground, ManagedExecutors.getInstance()
-					.newAntiDeadlockThreadPool(
-							new ArrayBlockingQueue<Runnable>(MAX_QUEUE_SIZE),
-							"HttpTriaging"));
-	private final ExecutorService handling = new InlineExecutorService(
-			foreground, ManagedExecutors.getInstance()
-					.newAntiDeadlockThreadPool(
-							new ArrayBlockingQueue<Runnable>(MAX_QUEUE_SIZE),
-							"HttpHandling"));
-	private final ExecutorService closing = new InlineExecutorService(
-			foreground, ManagedExecutors.getInstance().newFixedThreadPool(1,
-					"HttpTransactionClosing"));
-	private final DefaultListeningIOReactor server;
-	private final IOEventDispatch dispatch;
-	private DefaultListeningIOReactor sslserver;
-	private IOEventDispatch ssldispatch;
+	final Logger logger = LoggerFactory.getLogger(WebServer.class);
+	final Map<NHttpConnection, Boolean> connections = new WeakHashMap<NHttpConnection, Boolean>();
+	final DefaultListeningIOReactor server;
+	final IOEventDispatch dispatch;
+	DefaultListeningIOReactor sslserver;
+	IOEventDispatch ssldispatch;
 	private int[] ports = new int[0];
 	private int[] sslports = new int[0];
 	private final ServerNameFilter name;
-	private final HttpResponseFilter env;
+	private final RequestExecChain chain;
 	volatile boolean listening;
 	volatile boolean ssllistening;
 	private final AsyncRequestHandler service;
-	private final TransactionHandler transaction;
-	private final AsyncExecChain chain;
-	private final LinksFilter links;
-	private final AuthenticationHandler authCache;
-	private final ModifiedSinceHandler remoteCache;
-	private final CacheHandler cache;
 	private int timeout = 0;
 	private final HttpResponseInterceptor[] interceptors;
-	private final Runnable schemaListener;
 
 	public WebServer(File cacheDir)
 			throws IOException, NoSuchAlgorithmException {
 		cacheDir.mkdirs();
-		// exec in handling thread
-		ClientExecChain handler = new InvokeHandler();
-		handler = new ContentPeekHandler(handler);
-		handler = new NotFoundHandler(handler);
-		handler = new AlternativeHandler(handler);
-		// exec in triaging thread
-		AsyncExecChain filter = new PooledExecChain(handler, handling);
-		filter = new ExpectContinueHandler(filter);
-		filter = new OptionsHandler(filter);
-		filter = links = new LinksFilter(filter);
-		filter = new ContentHeadersFilter(filter);
-		filter = remoteCache = new ModifiedSinceHandler(filter);
-		filter = new UnmodifiedSinceHandler(filter);
-		filter = authCache = new AuthenticationHandler(filter);
-		filter = new ResponseExceptionHandler(filter);
-		filter = transaction = new TransactionHandler(filter, closing);
-		filter = env = new HttpResponseFilter(filter);
-		filter = new GZipFilter(filter);
-		filter = new PingOptionsHandler(filter);
-		// exec in i/o thread
-		filter = new PooledExecChain(filter, triaging);
-		filter = cache = new CacheHandler(filter, new FileResourceFactory(cacheDir), getDefaultCacheConfig());
-		filter = new GUnzipFilter(filter);
-		filter = new MD5ValidationFilter(filter);
-		filter = new SecureChannelFilter(filter);
-		chain = filter = new AccessLog(filter);
+		chain = new RequestExecChain(new FileResourceFactory(cacheDir));
 		service = new AsyncRequestHandler(chain);
 		interceptors = new HttpResponseInterceptor[] { new ResponseDate(),
 				new ResponseContent(true), new ResponseConnControl(),
@@ -264,45 +169,14 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 				logger.warn(e.toString(), e);
 			}
 		}
-		this.setEnvelopeType(ENVELOPE_TYPE);
-		schemaListener = new Runnable() {
-			public String toString() {
-				return "reset cache";
-			}
-
-			public void run() {
-				resetCache();
-			}
-		};
 	}
 
-	public synchronized void addOrigin(String origin, CalliRepository repository) {
-		origins.add(origin);
-		FederatedServiceManager manager = FederatedServiceManager.getInstance();
-		if (!(manager instanceof SparqlServiceCredentialManager)) {
-			FederatedServiceManager.setImplementationClass(SparqlServiceCredentialManager.class);
-			manager = FederatedServiceManager.getInstance();
-		}
-		((SparqlServiceCredentialManager) manager).addOrigin(origin, repository);
-		transaction.addOrigin(origin, repository);
-		authCache.addOrigin(origin, repository);
-		synchronized(repositories) {
-			if (repositories.put(repository, true) == null) {
-				repository.addSchemaListener(schemaListener);
-			}
-		}
+	public synchronized void addRepository(String origin, ObjectRepository repository) {
+		chain.addRepository(origin, repository);
 	}
 
-	public synchronized void removeOrigin(String origin) {
-		FederatedServiceManager manager = FederatedServiceManager.getInstance();
-		if (!(manager instanceof SparqlServiceCredentialManager)) {
-			FederatedServiceManager.setImplementationClass(SparqlServiceCredentialManager.class);
-			manager = FederatedServiceManager.getInstance();
-		}
-		((SparqlServiceCredentialManager) manager).removeOrigin(origin);
-		transaction.removeOrigin(origin);
-		authCache.removeOrigin(origin);
-		origins.remove(origin);
+	public synchronized void removeRepository(String origin) {
+		chain.removeRepository(origin);
 	}
 
 	public String getName() {
@@ -331,50 +205,8 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 		this.timeout = timeout;
 	}
 
-	public String getEnvelopeType() {
-		return env.getEnvelopeType();
-	}
-
-	public void setEnvelopeType(String type) {
-		env.setEnvelopeType(type);
-		links.setEnvelopeType(type);
-	}
-
-	public String getFrom() {
-		return null;
-	}
-
-	public void setFrom(String from) {
-		throw new UnsupportedOperationException();
-	}
-
 	public void resetCache() {
-		ManagedExecutors.getInstance().getTimeoutThreadPool().execute(new Runnable() {
-			public String toString() {
-				return "reset cache";
-			}
-
-			public void run() {
-				try {
-					logger.info("Resetting cache");
-					cache.reset();
-					remoteCache.invalidate();
-					synchronized (repositories) {
-						for (CalliRepository repository : repositories.keySet()) {
-							repository.resetCache();
-						}
-					}
-				} catch (Error e) {
-					logger.error(e.toString(), e);
-				} catch (RuntimeException e) {
-					logger.error(e.toString(), e);
-				} finally {
-					System.gc();
-					System.runFinalization();
-					logger.debug("Cache reset");
-				}
-			}
-		});
+		chain.resetCache();
 	}
 
 	public void resetConnections() throws IOException {
@@ -495,10 +327,10 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 		if (ports == null || sslports == null)
 			return false;
 		if (ports.length > 0 && server.getStatus() == IOReactorStatus.ACTIVE)
-			return !handling.isShutdown() && !triaging.isShutdown();
+			return !chain.isShutdown();
 		if (sslports.length > 0 && sslserver != null
 				&& sslserver.getStatus() == IOReactorStatus.ACTIVE)
-			return !handling.isShutdown() && !triaging.isShutdown();
+			return !chain.isShutdown();
 		return false;
 	}
 
@@ -513,21 +345,12 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 
 	public synchronized void destroy() throws IOException {
 		stop();
-		triaging.shutdown();
-		handling.shutdown();
+		chain.shutdown();
 		server.shutdown();
 		if (sslserver != null) {
 			sslserver.shutdown();
 		}
-		for (String origin : new ArrayList<String>(origins)) {
-			removeOrigin(origin);
-		}
-		synchronized(repositories) {
-			for (CalliRepository repository : repositories.keySet()) {
-				repository.removeSchemaListener(schemaListener);
-			}
-			repositories.clear();
-		}
+		chain.removeAllRepositories();
 		resetConnections();
 		try {
 			synchronized (WebServer.this) {
@@ -550,13 +373,9 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 						throw new IOException("Could not shutdown secure Web server");
 				}
 			}
-			triaging.awaitTermination(1000, TimeUnit.MILLISECONDS);
-			if (!triaging.isTerminated()) {
+			chain.awaitTermination(1000, TimeUnit.MILLISECONDS);
+			if (!chain.isTerminated()) {
 				throw new IOException("Could not shutdown triage queue server");
-			}
-			handling.awaitTermination(1000, TimeUnit.MILLISECONDS);
-			if (!handling.isTerminated()) {
-				throw new IOException("Could not shutdown service handler server");
 			}
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
@@ -580,6 +399,7 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 
 	public void poke() {
 		System.gc();
+		System.runFinalization();
 		for (NHttpConnection conn : getOpenConnections()) {
 			conn.requestInput();
 			conn.requestOutput();
@@ -604,86 +424,11 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 	public CloseableHttpResponse execute(HttpRoute route,
 			HttpRequestWrapper request, HttpClientContext context,
 			HttpExecutionAware execAware) throws IOException, HttpException {
-		HttpResponse response = null;
-		Boolean previously = foreground.get();
-		try {
-			if (previously == null) {
-				foreground.set(true);
-			}
-			HttpHost target = route.getTargetHost();
-			HttpProcessor httpproc = getHttpProcessor(target.getSchemeName());
-			CalliContext cc = CalliContext.adapt(new BasicHttpContext(context));
-			cc.setReceivedOn(System.currentTimeMillis());
-			cc.setClientAddr(LOCALHOST);
-			httpproc.process(request, cc);
-			try {
-				response = chain.execute(target, request, cc,
-						new FutureCallback<HttpResponse>() {
-							public void failed(Exception ex) {
-								if (ex instanceof RuntimeException) {
-									throw (RuntimeException) ex;
-								} else {
-									throw new BadGateway(ex);
-								}
-							}
-
-							public void completed(HttpResponse result) {
-								// yay!
-							}
-
-							public void cancelled() {
-								// oops!
-							}
-						}).get();
-			} catch (InterruptedException ex) {
-				logger.error(ex.toString(), ex);
-				response = new ResponseBuilder(request, cc).exception(new GatewayTimeout(ex));
-			} catch (ExecutionException e) {
-				Throwable ex = e.getCause();
-				logger.error(ex.toString(), ex);
-				if (ex instanceof Error) {
-					throw (Error) ex;
-				} else if (ex instanceof ResponseException) {
-					response = new ResponseBuilder(request, cc).exception((ResponseException) ex);
-				} else {
-					response = new ResponseBuilder(request, cc).exception(new BadGateway(ex));
-				}
-			} catch (ResponseException ex) {
-				response = new ResponseBuilder(request, cc).exception(ex);
-			} catch (RuntimeException ex) {
-				response = new ResponseBuilder(request, cc).exception(new BadGateway(ex));
-			}
-			if (response == null) {
-				response = new ResponseBuilder(request, cc).exception(new BadGateway());
-			}
-			httpproc.process(response, cc);
-			if (response instanceof CloseableHttpResponse)
-				return (CloseableHttpResponse) response;
-			String systemId;
-			String uri = request.getRequestLine().getUri();
-			if (uri.startsWith("/")) {
-				URI net = URI.create(uri);
-				URI rewriten = URIUtils.rewriteURI(net, target, true);
-				systemId = rewriten.toASCIIString();
-			} else {
-				systemId = uri;
-			}
-			return new HttpUriResponse(systemId, response);
-		} catch (URISyntaxException e) {
-			if (response != null) {
-				EntityUtils.consumeQuietly(response.getEntity());
-			}
-			throw new ClientProtocolException(e);
-		} catch (HttpException e) {
-			if (response != null) {
-				EntityUtils.consumeQuietly(response.getEntity());
-			}
-			throw new ClientProtocolException(e);
-		} finally {
-			if (previously == null) {
-				foreground.remove();
-			}
-		}
+		HttpProcessor httpproc = getHttpProcessor();
+		httpproc.process(request, context);
+		CloseableHttpResponse resp = chain.execute(route, request, context, execAware);
+		httpproc.process(resp, context);
+		return resp;
 	}
 
 	public ConnectionBean[] getConnections() {
@@ -782,7 +527,7 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 		HttpAsyncService handler;
 		DefaultNHttpServerConnectionFactory factory;
 		ConnectionConfig params = getDefaultConnectionConfig();
-		handler = createProtocolHandler(getHttpProcessor("http"), service);
+		handler = createProtocolHandler(getHttpProcessor(), service);
 		DefaultHttpRequestParserFactory rparser = new DefaultHttpRequestParserFactory(null, requestFactory);
 		factory = new DefaultNHttpServerConnectionFactory(allocator, rparser, null, params);
 		return new DefaultHttpServerIODispatch(handler, factory);
@@ -794,7 +539,7 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 		HttpAsyncService handler;
 		SSLNHttpServerConnectionFactory factory;
 		ConnectionConfig params = getDefaultConnectionConfig();
-		handler = createProtocolHandler(getHttpProcessor("https"), service);
+		handler = createProtocolHandler(getHttpProcessor(), service);
 		DefaultHttpRequestParserFactory rparser = new DefaultHttpRequestParserFactory(null, requestFactory);
 		factory = new SSLNHttpServerConnectionFactory(sslcontext, getSSLSetupHandler(), rparser, null, allocator, params);
 		return new DefaultHttpServerIODispatch(handler, factory);
@@ -832,14 +577,9 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 		};
 	}
 
-	private ImmutableHttpProcessor getHttpProcessor(final String protocol) {
-		return new ImmutableHttpProcessor(
-				new HttpRequestInterceptor[] { new HttpRequestInterceptor() {
-					public void process(HttpRequest request, HttpContext context)
-							throws HttpException, IOException {
-						CalliContext.adapt(context).setProtocolScheme(protocol);
-					}
-				} }, interceptors);
+	private ImmutableHttpProcessor getHttpProcessor() {
+		return new ImmutableHttpProcessor(new HttpRequestInterceptor[0],
+				interceptors);
 	}
 
 	private ConnectionConfig getDefaultConnectionConfig() {
@@ -852,16 +592,6 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 				.setSndBufSize(8 * 1024).setSoKeepAlive(true)
 				.setSoReuseAddress(true).setSoTimeout(timeout)
 				.setTcpNoDelay(false).build();
-	}
-
-	private CacheConfig getDefaultCacheConfig() {
-		return CacheConfig.custom().setSharedCache(true)
-				.setAllow303Caching(true)
-				.setWeakETagOnPutDeleteAllowed(true)
-				.setHeuristicCachingEnabled(true)
-				.setHeuristicDefaultLifetime(60 * 60 * 24)
-				// TODO in HttpClient 4.4: .setAdditionalNotModifiedHeaders("Last-Modified")
-				.setMaxObjectSize(1024 * 1024).build();
 	}
 
 	private HttpAsyncService createProtocolHandler(HttpProcessor httpproc,

@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  */
-package org.callimachusproject.fluid.consumers.helpers;
+package org.openrdf.server.object.fluid.helpers;
 
 import java.io.IOException;
 import java.io.Reader;

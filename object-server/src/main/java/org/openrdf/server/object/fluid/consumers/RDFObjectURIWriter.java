@@ -27,14 +27,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.consumers;
+package org.openrdf.server.object.fluid.consumers;
 
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidType;
 import org.openrdf.model.Resource;
 import org.openrdf.model.URI;
 import org.openrdf.query.QueryResult;
 import org.openrdf.repository.object.RDFObject;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidType;
 
 /**
  * Writes RDF URI from RDFObject(s).

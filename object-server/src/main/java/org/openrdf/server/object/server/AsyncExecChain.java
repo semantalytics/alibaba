@@ -26,7 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server;
+package org.openrdf.server.object.server;
 
 import java.util.concurrent.Future;
 

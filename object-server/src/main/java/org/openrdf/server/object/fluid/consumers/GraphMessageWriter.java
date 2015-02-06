@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.consumers;
+package org.openrdf.server.object.fluid.consumers;
 
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -40,10 +40,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidType;
-import org.callimachusproject.fluid.consumers.helpers.MessageWriterBase;
-import org.callimachusproject.io.TurtleStreamWriterFactory;
 import org.openrdf.OpenRDFException;
 import org.openrdf.model.Literal;
 import org.openrdf.model.Namespace;
@@ -60,6 +56,10 @@ import org.openrdf.rio.RDFHandlerException;
 import org.openrdf.rio.RDFWriter;
 import org.openrdf.rio.RDFWriterFactory;
 import org.openrdf.rio.RDFWriterRegistry;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.fluid.helpers.MessageWriterBase;
+import org.openrdf.server.object.io.TurtleStreamWriterFactory;
 
 /**
  * Writes RDF messages.

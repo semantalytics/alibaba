@@ -26,15 +26,15 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server.helpers;
+package org.openrdf.server.object.server.helpers;
 
 import java.net.InetAddress;
 import java.util.LinkedList;
 import java.util.Queue;
 
+import org.apache.http.HttpResponse;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
-import org.callimachusproject.repository.CalliRepository;
 import org.openrdf.repository.object.ObjectConnection;
 
 public class CalliContext implements HttpContext {
@@ -42,14 +42,14 @@ public class CalliContext implements HttpContext {
 	private static final String PROTOCOL_SCHEME = "http.protocol.scheme";
 	private static final String NS = CalliContext.class.getName() + "#";
     private static final String CLIENT_ATTR = NS + "clientAddr";
-    private static final String CONNECTION_ATTR = NS + "#connection";
-    private static final String CREDENTIAL_ATTR = NS + "#credential";
-    private static final String EXCHANGE_ATTR = NS + "#exchange";
-	private static final String PROCESSING_ATTR = NS + "#processing";
-	private static final String PUBLIC_ATTR = NS + "#public";
+    private static final String CONNECTION_ATTR = NS + "connection";
+    private static final String CREDENTIAL_ATTR = NS + "credential";
+    private static final String EXCHANGE_ATTR = NS + "exchange";
+	private static final String PROCESSING_ATTR = NS + "processing";
+	private static final String PUBLIC_ATTR = NS + "public";
 	private static final String RECEIVED_ATTR = NS + "receivedOn";
-	private static final String REPOSITORY_ATTR = NS + "repository";
 	private static final String TRANSACTION_ATTR = NS + "resourceTransaction";
+	private static final String HEAD_ATTR = NS + "headResponse";
 
     public static CalliContext adapt(HttpContext context) {
         if (context instanceof CalliContext) {
@@ -61,7 +61,6 @@ public class CalliContext implements HttpContext {
 
     public static CalliContext fork(HttpContext context) {
     	CalliContext forked = adapt(new BasicHttpContext(context));
-    	forked.setCalliRepository(forked.getCalliRepository());
     	forked.setClientAddr(forked.getClientAddr());
     	forked.setCredential(forked.getCredential());
     	forked.setExchange(forked.getExchange());
@@ -148,14 +147,6 @@ public class CalliContext implements HttpContext {
 		setAttribute(PUBLIC_ATTR, bool);
 	}
 
-	public synchronized CalliRepository getCalliRepository() {
-		return getAttribute(REPOSITORY_ATTR, CalliRepository.class);
-	}
-
-	public synchronized void setCalliRepository(CalliRepository repository) {
-		setAttribute(REPOSITORY_ATTR, repository);
-	}
-
 	public synchronized ObjectConnection getObjectConnection() {
 		return getAttribute(CONNECTION_ATTR, ObjectConnection.class);
 	}
@@ -170,6 +161,14 @@ public class CalliContext implements HttpContext {
 
 	public void setResourceTransaction(ResourceOperation trans) {
 		setAttribute(TRANSACTION_ATTR, trans);
+	}
+
+	public HttpResponse getDerivedFromHeadResponse() {
+		return getAttribute(HEAD_ATTR, HttpResponse.class);
+	}
+
+	public void setDerivedFromHeadResponse(HttpResponse head) {
+		setAttribute(HEAD_ATTR, head);
 	}
 
 	public Exchange getExchange() {

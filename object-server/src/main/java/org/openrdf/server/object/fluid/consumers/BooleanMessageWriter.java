@@ -27,17 +27,17 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.consumers;
+package org.openrdf.server.object.fluid.consumers;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 
-import org.callimachusproject.fluid.consumers.helpers.MessageWriterBase;
 import org.openrdf.query.resultio.BooleanQueryResultFormat;
 import org.openrdf.query.resultio.BooleanQueryResultWriterFactory;
 import org.openrdf.query.resultio.BooleanQueryResultWriterRegistry;
 import org.openrdf.repository.object.ObjectConnection;
+import org.openrdf.server.object.fluid.helpers.MessageWriterBase;
 
 /**
  * Writes a boolean query result.

@@ -14,7 +14,7 @@
    limitations under the License.
 
  */
-package org.callimachusproject.fluid;
+package org.openrdf.server.object.fluid;
 
 /**
  * Interface for HTTP message body writers.

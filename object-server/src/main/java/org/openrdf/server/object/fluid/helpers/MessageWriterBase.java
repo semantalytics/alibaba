@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.consumers.helpers;
+package org.openrdf.server.object.fluid.helpers;
 
 import info.aduna.lang.FileFormat;
 import info.aduna.lang.service.FileFormatServiceRegistry;
@@ -43,20 +43,20 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.transform.TransformerException;
 
-import org.callimachusproject.fluid.Consumer;
-import org.callimachusproject.fluid.Fluid;
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidException;
-import org.callimachusproject.fluid.FluidType;
-import org.callimachusproject.fluid.Vapor;
-import org.callimachusproject.io.ChannelUtil;
-import org.callimachusproject.io.ProducerStream;
-import org.callimachusproject.io.ProducerStream.OutputProducer;
 import org.openrdf.OpenRDFException;
 import org.openrdf.query.QueryEvaluationException;
 import org.openrdf.query.TupleQueryResultHandlerException;
 import org.openrdf.repository.object.ObjectConnection;
 import org.openrdf.rio.RDFHandlerException;
+import org.openrdf.server.object.fluid.Consumer;
+import org.openrdf.server.object.fluid.Fluid;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidException;
+import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.fluid.Vapor;
+import org.openrdf.server.object.io.ChannelUtil;
+import org.openrdf.server.object.io.ProducerStream;
+import org.openrdf.server.object.io.ProducerStream.OutputProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

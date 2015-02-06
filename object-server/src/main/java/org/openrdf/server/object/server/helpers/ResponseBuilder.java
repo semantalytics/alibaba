@@ -28,10 +28,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server.helpers;
+package org.openrdf.server.object.server.helpers;
 
-import java.io.ByteArrayOutputStream;
-import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
@@ -52,13 +50,9 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.message.BasicHttpResponse;
 import org.apache.http.message.BasicStatusLine;
 import org.apache.http.protocol.HttpContext;
-import org.callimachusproject.auth.DetachedRealm;
-import org.callimachusproject.client.HttpUriResponse;
-import org.callimachusproject.io.ChannelUtil;
-import org.callimachusproject.repository.CalliRepository;
-import org.callimachusproject.server.exceptions.ResponseException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openrdf.server.object.client.HttpUriResponse;
+import org.openrdf.server.object.io.ChannelUtil;
+import org.openrdf.server.object.server.exceptions.ResponseException;
 
 /**
  * Builds an HTTP response.
@@ -78,19 +72,10 @@ public class ResponseBuilder {
 	private static final Pattern URL_PATTERN = Pattern
 			.compile("[a-zA-Z0-9\\+\\-\\.]+://[a-zA-Z0-9\\-\\._~%!\\$\\&'\\(\\)\\*\\+,;=:/\\?\\#\\[\\]@]+");
 
-	private final Logger logger = LoggerFactory.getLogger(ResponseBuilder.class);
 	private final String systemId;
-	private final CalliRepository repository;
 
 	public ResponseBuilder(HttpRequest request, HttpContext context) {
-		CalliContext ctx = CalliContext.adapt(context);
-		this.repository = ctx.getCalliRepository();
-		ResourceOperation trans = ctx.getResourceTransaction();
-		if (trans == null) {
-			this.systemId = new Request(request, ctx).getRequestURL();
-		} else {
-			this.systemId = trans.getRequestURL();
-		}
+		this(new Request(request, CalliContext.adapt(context)));
 	}
 
 	public ResponseBuilder(Request request) {
@@ -99,7 +84,6 @@ public class ResponseBuilder {
 
 	public ResponseBuilder(String systemId) {
 		this.systemId = systemId;
-		this.repository = null;
 	}
 
 	public HttpUriResponse ok(HttpEntity entity) {
@@ -303,23 +287,7 @@ public class ResponseBuilder {
 	}
 
 	private byte[] formatPage(String body) {
-		if (repository == null)
-			return body.getBytes(UTF8);
-		try {
-			DetachedRealm realm = repository.getRealm(systemId);
-			if (realm == null)
-				return body.getBytes(UTF8);
-			ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
-			OutputStreamWriter w = new OutputStreamWriter(out, "UTF-8");
-			int q = systemId.indexOf('?');
-			String query = q > 0 ? systemId.substring(q) : null;
-			realm.transformErrorPage(body, w, systemId, query);
-			w.close();
-			return out.toByteArray();
-		} catch (Exception exc) {
-			logger.error("Could not create error page: " + systemId, exc);
-			return body.getBytes(UTF8);
-		}
+		return body.getBytes(UTF8);
 	}
 
 }

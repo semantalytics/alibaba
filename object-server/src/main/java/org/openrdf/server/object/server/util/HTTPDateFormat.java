@@ -26,7 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server.util;
+package org.openrdf.server.object.server.util;
 
 import java.text.DateFormat;
 import java.text.FieldPosition;

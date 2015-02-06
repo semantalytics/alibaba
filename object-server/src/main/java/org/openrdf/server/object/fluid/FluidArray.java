@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  */
-package org.callimachusproject.fluid;
+package org.openrdf.server.object.fluid;
 
 import java.io.IOException;
 

@@ -27,20 +27,20 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.consumers;
+package org.openrdf.server.object.fluid.consumers;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
-import org.callimachusproject.fluid.Consumer;
-import org.callimachusproject.fluid.Fluid;
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidType;
 import org.openrdf.model.Model;
 import org.openrdf.model.Namespace;
 import org.openrdf.query.GraphQueryResult;
 import org.openrdf.query.impl.GraphQueryResultImpl;
+import org.openrdf.server.object.fluid.Consumer;
+import org.openrdf.server.object.fluid.Fluid;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidType;
 
 /**
  * Writes RDF from a {@link Model}.

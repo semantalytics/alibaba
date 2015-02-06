@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  */
-package org.callimachusproject.fluid;
+package org.openrdf.server.object.fluid;
 
 public class FluidException extends Exception {
 	private static final long serialVersionUID = -8785159384729178823L;

@@ -26,7 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server.helpers;
+package org.openrdf.server.object.server.helpers;
 
 import org.apache.http.Header;
 import org.apache.http.HeaderIterator;

@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server.helpers;
+package org.openrdf.server.object.server.helpers;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,8 +43,8 @@ import org.apache.http.message.BasicHeader;
 import org.apache.http.nio.ContentEncoder;
 import org.apache.http.nio.IOControl;
 import org.apache.http.nio.entity.HttpAsyncContentProducer;
-import org.callimachusproject.io.AutoCloseChannel;
-import org.callimachusproject.io.ChannelUtil;
+import org.openrdf.server.object.io.AutoCloseChannel;
+import org.openrdf.server.object.io.ChannelUtil;
 
 /**
  * Allows an {@link ReadableByteChannel} to be used as an HttpEntity.

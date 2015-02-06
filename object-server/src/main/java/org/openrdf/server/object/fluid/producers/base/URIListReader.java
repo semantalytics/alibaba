@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.producers.base;
+package org.openrdf.server.object.fluid.producers.base;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -38,11 +38,6 @@ import java.nio.charset.Charset;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-import org.callimachusproject.engine.model.TermFactory;
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidType;
-import org.callimachusproject.fluid.Producer;
-import org.callimachusproject.io.ChannelUtil;
 import org.openrdf.model.ValueFactory;
 import org.openrdf.model.impl.ValueFactoryImpl;
 import org.openrdf.query.QueryEvaluationException;
@@ -50,6 +45,11 @@ import org.openrdf.query.TupleQueryResultHandlerException;
 import org.openrdf.query.resultio.QueryResultParseException;
 import org.openrdf.repository.RepositoryException;
 import org.openrdf.repository.object.ObjectConnection;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.fluid.Producer;
+import org.openrdf.server.object.io.ChannelUtil;
+import org.openrdf.server.object.util.URLUtil;
 
 /**
  * Parses text/uri-list messages.
@@ -123,18 +123,14 @@ public abstract class URIListReader<URI> implements Producer {
 		}
 		BufferedReader reader = ChannelUtil.newReader(in, charset);
 		try {
-			TermFactory rel = null;
-			if (base != null) {
-				rel = TermFactory.newInstance(base);
-			}
 			Set<URI> set = new LinkedHashSet<URI>();
 			String str;
 			while ((str = reader.readLine()) != null) {
 				if (str.startsWith("#") || str.isEmpty())
 					continue;
 				URI url;
-				if (rel != null) {
-					url = create(builder.getObjectConnection(), rel.resolve(str.trim()));
+				if (base != null) {
+					url = create(builder.getObjectConnection(), URLUtil.resolve(str.trim(), base));
 				} else {
 					url = create(builder.getObjectConnection(), canonicalize(str.trim()));
 				}
@@ -150,7 +146,7 @@ public abstract class URIListReader<URI> implements Producer {
 			throws MalformedURLException, RepositoryException;
 
 	private String canonicalize(String uri) {
-		return TermFactory.newInstance(uri).getSystemId();
+		return URLUtil.canonicalize(uri);
 	}
 
 }

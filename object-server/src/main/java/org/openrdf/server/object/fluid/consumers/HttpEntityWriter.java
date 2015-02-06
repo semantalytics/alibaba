@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  */
-package org.callimachusproject.fluid.consumers;
+package org.openrdf.server.object.fluid.consumers;
 
 import java.io.IOException;
 import java.nio.channels.ReadableByteChannel;
@@ -26,13 +26,13 @@ import javax.xml.transform.TransformerException;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.util.EntityUtils;
-import org.callimachusproject.fluid.Consumer;
-import org.callimachusproject.fluid.Fluid;
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidType;
-import org.callimachusproject.fluid.Vapor;
-import org.callimachusproject.io.ChannelUtil;
 import org.openrdf.OpenRDFException;
+import org.openrdf.server.object.fluid.Consumer;
+import org.openrdf.server.object.fluid.Fluid;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.fluid.Vapor;
+import org.openrdf.server.object.io.ChannelUtil;
 
 public class HttpEntityWriter implements Consumer<HttpEntity> {
 

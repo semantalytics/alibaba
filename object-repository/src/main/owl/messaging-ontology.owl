@@ -57,6 +57,36 @@ should respond with this query's result. In addition to parameters, the variable
 		<rdfs:isDefinedBy rdf:resource="" />
 	</owl:AnnotationProperty>
 
+	<owl:AnnotationProperty rdf:ID="method">
+		<rdfs:label xml:lang="en">method</rdfs:label>
+		<rdfs:comment xml:lang="en">Placed on message classes that can be called for the given HTTP method</rdfs:comment>
+		<rdfs:isDefinedBy rdf:resource="" />
+	</owl:AnnotationProperty>
+
+	<owl:AnnotationProperty rdf:ID="path">
+		<rdfs:label xml:lang="en">path</rdfs:label>
+		<rdfs:comment xml:lang="en">A regular expression that must match the (absolute) request URL (including query string), starting at the region following the requested resource URI, for messages of this class to match.</rdfs:comment>
+		<rdfs:isDefinedBy rdf:resource="" />
+	</owl:AnnotationProperty>
+
+	<owl:AnnotationProperty rdf:ID="param">
+		<rdfs:label xml:lang="en">param</rdfs:label>
+		<rdfs:comment xml:lang="en">Placed on message properties that should be populated with the corresponding value. Use Regex group names or numbers for the matched msg:pattern and other query parameter names for their values</rdfs:comment>
+		<rdfs:isDefinedBy rdf:resource="" />
+	</owl:AnnotationProperty>
+
+	<owl:AnnotationProperty rdf:ID="header">
+		<rdfs:label xml:lang="en">header</rdfs:label>
+		<rdfs:comment xml:lang="en">Placed on message properties that should be populated with request header values corresponding to the given name</rdfs:comment>
+		<rdfs:isDefinedBy rdf:resource="" />
+	</owl:AnnotationProperty>
+
+	<owl:AnnotationProperty rdf:ID="type">
+		<rdfs:label xml:lang="en">type</rdfs:label>
+		<rdfs:comment xml:lang="en">The content type for binary or text representations of objects for this property, or return type for this message class</rdfs:comment>
+		<rdfs:isDefinedBy rdf:resource="" />
+	</owl:AnnotationProperty>
+
 	<!-- Message Properties -->
 
 	<owl:ObjectProperty rdf:ID="target">

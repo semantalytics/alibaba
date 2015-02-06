@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.producers;
+package org.openrdf.server.object.fluid.producers;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -41,11 +41,11 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
 
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidType;
-import org.callimachusproject.fluid.Producer;
-import org.callimachusproject.io.ChannelUtil;
 import org.openrdf.OpenRDFException;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.fluid.Producer;
+import org.openrdf.server.object.io.ChannelUtil;
 import org.xml.sax.SAXException;
 
 /**

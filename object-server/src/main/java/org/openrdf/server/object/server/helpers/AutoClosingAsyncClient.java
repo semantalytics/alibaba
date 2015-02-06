@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  */
-package org.callimachusproject.server.helpers;
+package org.openrdf.server.object.server.helpers;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -31,7 +31,7 @@ import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.nio.protocol.HttpAsyncRequestProducer;
 import org.apache.http.nio.protocol.HttpAsyncResponseConsumer;
 import org.apache.http.protocol.HttpContext;
-import org.callimachusproject.client.CloseableEntity;
+import org.openrdf.server.object.client.CloseableEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

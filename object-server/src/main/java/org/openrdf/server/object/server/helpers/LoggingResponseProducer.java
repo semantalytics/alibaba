@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  */
-package org.callimachusproject.server.helpers;
+package org.openrdf.server.object.server.helpers;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.nio.protocol.BasicAsyncResponseProducer;

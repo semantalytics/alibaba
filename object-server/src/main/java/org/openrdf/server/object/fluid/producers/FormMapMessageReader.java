@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.producers;
+package org.openrdf.server.object.fluid.producers;
 
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.ParameterizedType;
@@ -41,10 +41,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Scanner;
 
-import org.callimachusproject.fluid.Fluid;
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidType;
-import org.callimachusproject.fluid.Producer;
+import org.openrdf.server.object.fluid.Fluid;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.fluid.Producer;
 
 /**
  * Readers a percent encoded form into a {@link Map}.

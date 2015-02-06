@@ -26,7 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server.helpers;
+package org.openrdf.server.object.server.helpers;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -49,11 +49,11 @@ import org.apache.http.nio.protocol.HttpAsyncRequestHandler;
 import org.apache.http.nio.protocol.HttpAsyncRequestHandlerMapper;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.protocol.HttpCoreContext;
-import org.callimachusproject.client.HttpUriResponse;
-import org.callimachusproject.server.AsyncExecChain;
-import org.callimachusproject.server.exceptions.InternalServerError;
-import org.callimachusproject.server.exceptions.ResponseException;
-import org.callimachusproject.util.DomainNameSystemResolver;
+import org.openrdf.server.object.client.HttpUriResponse;
+import org.openrdf.server.object.server.AsyncExecChain;
+import org.openrdf.server.object.server.exceptions.InternalServerError;
+import org.openrdf.server.object.server.exceptions.ResponseException;
+import org.openrdf.server.object.util.DomainNameSystemResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

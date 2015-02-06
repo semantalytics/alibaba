@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.producers.base;
+package org.openrdf.server.object.fluid.producers.base;
 
 import info.aduna.lang.FileFormat;
 import info.aduna.lang.service.FileFormatServiceRegistry;
@@ -38,12 +38,12 @@ import java.nio.charset.Charset;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidType;
-import org.callimachusproject.fluid.Producer;
 import org.openrdf.query.QueryEvaluationException;
 import org.openrdf.query.TupleQueryResultHandlerException;
 import org.openrdf.query.resultio.QueryResultParseException;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.fluid.Producer;
 
 /**
  * Base class for readers that use a {@link FileFormat}.

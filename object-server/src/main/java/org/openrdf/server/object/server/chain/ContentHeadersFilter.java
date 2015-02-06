@@ -27,31 +27,47 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server.chain;
+package org.openrdf.server.object.server.chain;
 
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.Future;
 
+import org.apache.http.Header;
+import org.apache.http.HttpException;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
+import org.apache.http.ProtocolVersion;
+import org.apache.http.RequestLine;
 import org.apache.http.concurrent.FutureCallback;
+import org.apache.http.message.BasicHttpRequest;
 import org.apache.http.protocol.HttpContext;
-import org.callimachusproject.server.AsyncExecChain;
-import org.callimachusproject.server.helpers.CalliContext;
-import org.callimachusproject.server.helpers.ResourceOperation;
-import org.callimachusproject.server.helpers.ResponseCallback;
-import org.callimachusproject.server.util.HTTPDateFormat;
+import org.openrdf.server.object.client.HttpUriResponse;
+import org.openrdf.server.object.server.AsyncExecChain;
+import org.openrdf.server.object.server.helpers.CalliContext;
+import org.openrdf.server.object.server.helpers.Request;
+import org.openrdf.server.object.server.helpers.ResourceOperation;
+import org.openrdf.server.object.server.helpers.ResponseCallback;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Adds the HTTP headers: Cache-Control, Vary, ETag, Content-Type,
- * and Last-Modified.
+ * Copies HEAD response headers to other responses.
  * 
  * @author James Leigh
  * 
  */
 public class ContentHeadersFilter implements AsyncExecChain {
+	private static final Set<String> contentHeaders = new HashSet<String>(
+			Arrays.asList("age", "cache-control", "content-encoding",
+					"content-language", "content-length", "content-md5",
+					"content-disposition", "content-range", "content-type",
+					"expires", "location", "pragma", "refresh"));
+	private final Logger logger = LoggerFactory.getLogger(ContentHeadersFilter.class);
 	private final AsyncExecChain delegate;
-	private final HTTPDateFormat format = new HTTPDateFormat();
 
 	public ContentHeadersFilter(AsyncExecChain delegate) {
 		this.delegate = delegate;
@@ -61,15 +77,16 @@ public class ContentHeadersFilter implements AsyncExecChain {
 	public Future<HttpResponse> execute(HttpHost target,
 			final HttpRequest request, final HttpContext context,
 			FutureCallback<HttpResponse> callback) {
-		final ResourceOperation trans = CalliContext.adapt(context)
-				.getResourceTransaction();
-		final String contentType = trans.getResponseContentType();
-		final String derived = trans.getContentVersion();
-		final String cache = trans.getResponseCacheControl();
+		CalliContext ctx = CalliContext.adapt(context);
+		final Request req = new Request(request, ctx);
+		if ("HEAD".equals(req.getMethod()))
+			delegate.execute(target, request, context, callback);
+		final HttpUriResponse head = getHeadResponse(request, ctx);
+		ctx.setDerivedFromHeadResponse(head);
 		return delegate.execute(target, request, context, new ResponseCallback(callback) {
 			public void completed(HttpResponse result) {
 				try {
-					addHeaders(request, context, trans, contentType, derived, cache, result);
+					addHeaders(req, context, head, result);
 					super.completed(result);
 				} catch (RuntimeException ex) {
 					super.failed(ex);
@@ -78,56 +95,52 @@ public class ContentHeadersFilter implements AsyncExecChain {
 		});
 	}
 
-	void addHeaders(HttpRequest req, HttpContext context,
-			ResourceOperation trans, String contentType, String derived,
-			String cache, HttpResponse rb) {
-		String version = trans.isSafe() ? derived : trans.getContentVersion();
-		String entityTag = trans.getEntityTag(req, version, cache, contentType);
-		long lastModified = trans.getLastModified();
+	private HttpUriResponse getHeadResponse(final HttpRequest request, CalliContext ctx) {
+		ResourceOperation trans = ctx.getResourceTransaction();
+		RequestLine line = request.getRequestLine();
+		try {
+			ProtocolVersion ver = line.getProtocolVersion();
+			BasicHttpRequest head = new BasicHttpRequest("HEAD", line.getUri(), ver);
+			for (Header header : request.getAllHeaders()) {
+				head.addHeader(header);
+			}
+			if (trans.isHandled(head))
+				return trans.invoke(head);
+			else
+				return trans.head(request);
+		} catch (IOException e) {
+			logger.warn(e.toString(), e);
+		} catch (HttpException e) {
+			logger.warn(e.toString(), e);
+		}
+		return null;
+	}
+
+	void addHeaders(Request req, HttpContext context, HttpResponse head,
+			HttpResponse rb) {
+		Header derivedFrom = head.getFirstHeader("Content-Version");
+		Header version = rb.getFirstHeader("Content-Version");
+		if (version != null && derivedFrom != null
+				&& !version.getValue().equals(derivedFrom.getValue())) {
+			for (Header hd : head.getHeaders("Content-Version")) {
+				rb.addHeader("Derived-From", hd.getValue());
+			}
+		}
 		int code = rb.getStatusLine().getStatusCode();
-		if (code != 412 && code != 304 && trans.isSafe()) {
-			StringBuilder sb = new StringBuilder();
-			if (cache != null) {
-				sb.append(cache);
-			}
-			if (sb.indexOf("private") < 0 && sb.indexOf("public") < 0) {
-				CalliContext ctx = CalliContext.adapt(context);
-				if (!ctx.isPublic() && sb.indexOf("s-maxage") < 0) {
-					if (sb.length() > 0) {
-						sb.append(", ");
-					}
-					sb.append("s-maxage=0");
-				} else if (ctx.isPublic()) {
-					if (sb.length() > 0) {
-						sb.append(", ");
-					}
-					sb.append("public");
-				}
-			}
-			if (sb.length() > 0) {
-				rb.setHeader("Cache-Control", sb.toString());
-			}
-			for (String vary : trans.getVary()) {
-				if (!vary.equalsIgnoreCase("Authorization") && !vary.equalsIgnoreCase("Cookie")) {
-					rb.addHeader("Vary", vary);
-				}
+		for (Header hd : head.getAllHeaders()) {
+			String name = hd.getName();
+			if ("GET".equals(req.getMethod()) && code < 400 && code != 304
+					|| !contentHeaders.contains(name.toLowerCase())) {
+				addIfAbsent(name, head, rb);
 			}
 		}
-		if (version != null && !rb.containsHeader("Content-Version")) {
-			rb.setHeader("Content-Version", "\"" + version + "\"");
-		}
-		if (derived != null && !derived.equals(version)
-				&& !rb.containsHeader("Derived-From")) {
-			rb.setHeader("Derived-From", "\"" + derived + "\"");
-		}
-		if (entityTag != null && !rb.containsHeader("ETag")) {
-			rb.setHeader("ETag", entityTag);
-		}
-		if (contentType != null && rb.getEntity() != null && !rb.containsHeader("Content-Type")) {
-			rb.setHeader("Content-Type", contentType);
-		}
-		if (lastModified > 0) {
-			rb.setHeader("Last-Modified", format.format(lastModified));
+	}
+
+	private void addIfAbsent(String name, HttpResponse head, HttpResponse rb) {
+		if (!rb.containsHeader(name) && head.containsHeader(name)) {
+			for (Header hd : head.getHeaders(name)) {
+				rb.addHeader(hd);
+			}
 		}
 	}
 

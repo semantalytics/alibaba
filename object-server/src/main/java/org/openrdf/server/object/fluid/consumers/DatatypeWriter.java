@@ -27,15 +27,15 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.consumers;
+package org.openrdf.server.object.fluid.consumers;
 
 import java.util.Set;
 
-import org.callimachusproject.fluid.Consumer;
-import org.callimachusproject.fluid.Fluid;
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidType;
 import org.openrdf.repository.object.RDFObject;
+import org.openrdf.server.object.fluid.Consumer;
+import org.openrdf.server.object.fluid.Fluid;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidType;
 
 /**
  * Writes RDF Object datatypes.

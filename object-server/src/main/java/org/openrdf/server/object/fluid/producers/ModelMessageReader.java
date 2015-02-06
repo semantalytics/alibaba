@@ -26,7 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.producers;
+package org.openrdf.server.object.fluid.producers;
 
 import info.aduna.iteration.Iterations;
 
@@ -36,7 +36,6 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.callimachusproject.fluid.producers.base.MessageReaderBase;
 import org.openrdf.model.Model;
 import org.openrdf.model.Namespace;
 import org.openrdf.model.impl.LinkedHashModel;
@@ -46,6 +45,7 @@ import org.openrdf.query.QueryEvaluationException;
 import org.openrdf.rio.RDFFormat;
 import org.openrdf.rio.RDFParserFactory;
 import org.openrdf.rio.RDFParserRegistry;
+import org.openrdf.server.object.fluid.producers.base.MessageReaderBase;
 
 /**
  * Reads RDF into a {@link Model}.

@@ -14,21 +14,17 @@
  * limitations under the License.
  *
  */
-package org.callimachusproject.server.chain;
+package org.openrdf.server.object.server.chain;
 
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
-
-import javax.xml.datatype.DatatypeConfigurationException;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
@@ -37,28 +33,27 @@ import org.apache.http.HttpResponse;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.protocol.HttpContext;
-import org.callimachusproject.client.CloseableEntity;
-import org.callimachusproject.client.HttpUriResponse;
-import org.callimachusproject.io.ChannelUtil;
-import org.callimachusproject.repository.CalliRepository;
-import org.callimachusproject.repository.auditing.ActivityFactory;
-import org.callimachusproject.repository.auditing.AuditingRepositoryConnection;
-import org.callimachusproject.server.AsyncExecChain;
-import org.callimachusproject.server.exceptions.InternalServerError;
-import org.callimachusproject.server.exceptions.ServiceUnavailable;
-import org.callimachusproject.server.helpers.CalliContext;
-import org.callimachusproject.server.helpers.CompletedResponse;
-import org.callimachusproject.server.helpers.Request;
-import org.callimachusproject.server.helpers.RequestActivityFactory;
-import org.callimachusproject.server.helpers.ResourceOperation;
-import org.callimachusproject.server.helpers.ResponseBuilder;
-import org.callimachusproject.server.helpers.ResponseCallback;
 import org.openrdf.OpenRDFException;
-import org.openrdf.model.URI;
-import org.openrdf.repository.RepositoryConnection;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.query.QueryLanguage;
 import org.openrdf.repository.RepositoryException;
-import org.openrdf.repository.base.RepositoryConnectionWrapper;
 import org.openrdf.repository.object.ObjectConnection;
+import org.openrdf.repository.object.ObjectQuery;
+import org.openrdf.repository.object.ObjectRepository;
+import org.openrdf.repository.object.RDFObject;
+import org.openrdf.server.object.client.CloseableEntity;
+import org.openrdf.server.object.client.HttpUriResponse;
+import org.openrdf.server.object.io.ChannelUtil;
+import org.openrdf.server.object.server.AsyncExecChain;
+import org.openrdf.server.object.server.exceptions.InternalServerError;
+import org.openrdf.server.object.server.exceptions.ServiceUnavailable;
+import org.openrdf.server.object.server.helpers.CalliContext;
+import org.openrdf.server.object.server.helpers.CompletedResponse;
+import org.openrdf.server.object.server.helpers.Request;
+import org.openrdf.server.object.server.helpers.ResourceOperation;
+import org.openrdf.server.object.server.helpers.ResponseBuilder;
+import org.openrdf.server.object.server.helpers.ResponseCallback;
+import org.openrdf.server.object.util.PrefixMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,7 +61,7 @@ public class TransactionHandler implements AsyncExecChain {
 	private static final int ONE_PACKET = 1024;
 
 	private final Logger logger = LoggerFactory.getLogger(ResourceOperation.class);
-	private final Map<String, CalliRepository> repositories = new LinkedHashMap<String, CalliRepository>();
+	private final PrefixMap<ObjectRepository> repositories = new PrefixMap<ObjectRepository>();
 	private final AsyncExecChain handler;
 	final Executor executor;
 
@@ -75,12 +70,16 @@ public class TransactionHandler implements AsyncExecChain {
 		this.executor = executor;
 	}
 
-	public synchronized void addOrigin(String origin, CalliRepository repository) {
+	public synchronized void addRepository(String origin, ObjectRepository repository) {
 		repositories.put(origin, repository);
 	}
 
-	public synchronized void removeOrigin(String origin) {
+	public synchronized void removeRepository(String origin) {
 		repositories.remove(origin);
+	}
+
+	public synchronized void removeAllRepositories() {
+		repositories.clear();
 	}
 
 	@Override
@@ -88,24 +87,19 @@ public class TransactionHandler implements AsyncExecChain {
 			HttpRequest request, HttpContext ctx,
 			FutureCallback<HttpResponse> callback) {
 		final Request req = new Request(request, ctx);
-		String origin = req.getOrigin();
-		CalliRepository repo = getRepository(origin);
+		ObjectRepository repo = getRepository(req.getRequestURL());
 		if (repo == null || !repo.isInitialized())
-			return notSetup(origin, request, ctx, callback);
+			return notSetup(req, ctx, callback);
 		final CalliContext context = CalliContext.adapt(ctx);
 		try {
-			context.setCalliRepository(repo);
 			final ObjectConnection con = repo.getConnection();
-			con.begin();
-			long now = context.getReceivedOn();
-			if (!req.isSafe()) {
-				initiateActivity(now, con, context);
-			}
-			context.setObjectConnection(con);
-			final ResourceOperation op = new ResourceOperation(req, con);
-			context.setResourceTransaction(op);
 			boolean success = false;
 			try {
+				con.begin();
+				context.setObjectConnection(con);
+				RDFObject object = getRequestedObject(con, req.getIRI());
+				final ResourceOperation op = new ResourceOperation(object, context);
+				context.setResourceTransaction(op);
 				Future<HttpResponse> future = handler.execute(target, request, context, new ResponseCallback(callback) {
 					public void completed(HttpResponse result) {
 						try {
@@ -120,7 +114,6 @@ public class TransactionHandler implements AsyncExecChain {
 						} finally {
 							context.setResourceTransaction(null);
 							context.setObjectConnection(null);
-							context.setCalliRepository(null);
 						}
 					}
 
@@ -128,7 +121,6 @@ public class TransactionHandler implements AsyncExecChain {
 						endTransaction(con);
 						context.setResourceTransaction(null);
 						context.setObjectConnection(null);
-						context.setCalliRepository(null);
 						super.failed(ex);
 					}
 
@@ -136,7 +128,6 @@ public class TransactionHandler implements AsyncExecChain {
 						endTransaction(con);
 						context.setResourceTransaction(null);
 						context.setObjectConnection(null);
-						context.setCalliRepository(null);
 						super.cancelled();
 					}
 				});
@@ -149,20 +140,41 @@ public class TransactionHandler implements AsyncExecChain {
 			}
 		} catch (OpenRDFException ex) {
 			throw new InternalServerError(ex);
-		} catch (DatatypeConfigurationException ex) {
-			throw new InternalServerError(ex);
 		}
 	}
 
-	private synchronized CalliRepository getRepository(String origin) {
-		return repositories.get(origin);
+	private synchronized ObjectRepository getRepository(String origin) {
+		return repositories.getClosest(origin);
 	}
 
-	private synchronized Future<HttpResponse> notSetup(String origin,
-			HttpRequest request, HttpContext ctx,
-			FutureCallback<HttpResponse> callback) {
+	private RDFObject getRequestedObject(final ObjectConnection con, String iri)
+			throws OpenRDFException {
+		int start = iri.indexOf("://") + 3;
+		StringBuilder sparql = new StringBuilder();
+		sparql.append("SELECT ?resource {\n{\n");
+		for (int i = iri.length() - 1; i > start; i = iri.lastIndexOf('/', i - 1)) {
+			sparql.append("BIND($p").append(i).append(" AS ?resource)\n");
+			sparql.append("FILTER EXISTS { ?resource a ?type }\n");
+			sparql.append("} UNION {\n");
+		}
+		sparql.append("BIND ($p0 AS ?resource)\n}\n");
+		sparql.append("} LIMIT 1");
+		ValueFactory vf = con.getValueFactory();
+		ObjectQuery qry = con.prepareObjectQuery(QueryLanguage.SPARQL,
+				sparql.toString());
+		for (int i = iri.length() - 1; i > start; i = iri.lastIndexOf('/', i - 1)) {
+			String path = iri.substring(0, i + 1);
+			qry.setBinding("p" + i, vf.createURI(path));
+		}
+		qry.setBinding("p0", vf.createURI(iri));
+		return qry.evaluate(RDFObject.class).singleResult();
+	}
+
+	private synchronized Future<HttpResponse> notSetup(Request request,
+			HttpContext ctx, FutureCallback<HttpResponse> callback) {
 		String msg = "No origins are configured";
 		if (!repositories.isEmpty()) {
+			String origin = request.getOrigin();
 			String closest = closest(origin, repositories.keySet());
 			msg = "Origin " + origin
 					+ " is not configured, perhaps you wanted " + closest;
@@ -272,27 +284,6 @@ public class TransactionHandler implements AsyncExecChain {
 				}
 			}
 		});
-	}
-
-	private void initiateActivity(long now, ObjectConnection con, CalliContext ctx) throws RepositoryException,
-			DatatypeConfigurationException {
-		AuditingRepositoryConnection audit = findAuditing(con);
-		if (audit != null) {
-			ActivityFactory delegate = audit.getActivityFactory();
-			URI bundle = con.getVersionBundle();
-			assert bundle != null;
-			URI activity = delegate.createActivityURI(bundle, con.getValueFactory());
-			audit.setActivityFactory(new RequestActivityFactory(activity, delegate, ctx, now));
-		}
-	}
-
-	private AuditingRepositoryConnection findAuditing(
-			RepositoryConnection con) throws RepositoryException {
-		if (con instanceof AuditingRepositoryConnection)
-			return (AuditingRepositoryConnection) con;
-		if (con instanceof RepositoryConnectionWrapper)
-			return findAuditing(((RepositoryConnectionWrapper) con).getDelegate());
-		return null;
 	}
 
 }

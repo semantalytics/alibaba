@@ -26,7 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server;
+package org.openrdf.server.object.server;
 
 import java.io.IOException;
 
@@ -41,10 +41,6 @@ public interface WebServerMXBean {
 	String getName();
 
 	void setName(String name);
-
-	String getFrom();
-
-	void setFrom(String from);
 
 	String getStatus();
 

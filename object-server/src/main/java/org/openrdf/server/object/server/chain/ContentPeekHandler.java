@@ -26,7 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  */
-package org.callimachusproject.server.chain;
+package org.openrdf.server.object.server.chain;
 
 import java.io.IOException;
 
@@ -39,7 +39,7 @@ import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.entity.BasicHttpEntity;
 import org.apache.http.impl.execchain.ClientExecChain;
-import org.callimachusproject.io.LatencyInputStream;
+import org.openrdf.server.object.io.LatencyInputStream;
 
 /**
  * Reads the head/prolog of the response body before the

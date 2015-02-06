@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.consumers;
+package org.openrdf.server.object.fluid.consumers;
 
 import java.io.IOException;
 import java.nio.channels.ReadableByteChannel;
@@ -47,14 +47,14 @@ import org.apache.http.RequestLine;
 import org.apache.http.StatusLine;
 import org.apache.http.message.BasicHeader;
 import org.apache.http.util.EntityUtils;
-import org.callimachusproject.fluid.Vapor;
-import org.callimachusproject.fluid.Consumer;
-import org.callimachusproject.fluid.Fluid;
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidType;
-import org.callimachusproject.io.CatReadableByteChannel;
-import org.callimachusproject.io.ChannelUtil;
 import org.openrdf.OpenRDFException;
+import org.openrdf.server.object.fluid.Consumer;
+import org.openrdf.server.object.fluid.Fluid;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.fluid.Vapor;
+import org.openrdf.server.object.io.CatReadableByteChannel;
+import org.openrdf.server.object.io.ChannelUtil;
 import org.xml.sax.SAXException;
 
 /**
@@ -190,6 +190,7 @@ public class HttpMessageWriter implements Consumer<HttpMessage> {
 		cat.print(line.getUri());
 		cat.print(" ");
 		print(cat, line.getProtocolVersion());
+		cat.println();
 	}
 
 	private void print(CatReadableByteChannel cat, StatusLine status)

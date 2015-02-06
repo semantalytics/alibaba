@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.consumers;
+package org.openrdf.server.object.fluid.consumers;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -39,13 +39,13 @@ import java.nio.charset.Charset;
 import java.util.Iterator;
 
 import org.apache.http.HttpEntity;
-import org.callimachusproject.fluid.Consumer;
-import org.callimachusproject.fluid.Fluid;
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidType;
-import org.callimachusproject.fluid.Vapor;
-import org.callimachusproject.io.ChannelUtil;
-import org.callimachusproject.server.helpers.ReadableHttpEntityChannel;
+import org.openrdf.server.object.fluid.Consumer;
+import org.openrdf.server.object.fluid.Fluid;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.fluid.Vapor;
+import org.openrdf.server.object.io.ChannelUtil;
+import org.openrdf.server.object.server.helpers.ReadableHttpEntityChannel;
 
 /**
  * Writes text/uri-list files.

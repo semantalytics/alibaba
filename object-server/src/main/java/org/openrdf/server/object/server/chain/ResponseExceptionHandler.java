@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server.chain;
+package org.openrdf.server.object.server.chain;
 
 import java.util.Set;
 import java.util.concurrent.Future;
@@ -37,15 +37,16 @@ import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.protocol.HttpContext;
-import org.callimachusproject.client.HttpUriResponse;
-import org.callimachusproject.server.AsyncExecChain;
-import org.callimachusproject.server.exceptions.InternalServerError;
-import org.callimachusproject.server.exceptions.ResponseException;
-import org.callimachusproject.server.helpers.CalliContext;
-import org.callimachusproject.server.helpers.CompletedResponse;
-import org.callimachusproject.server.helpers.ResourceOperation;
-import org.callimachusproject.server.helpers.ResponseBuilder;
-import org.callimachusproject.server.helpers.ResponseCallback;
+import org.openrdf.server.object.client.HttpUriResponse;
+import org.openrdf.server.object.server.AsyncExecChain;
+import org.openrdf.server.object.server.exceptions.InternalServerError;
+import org.openrdf.server.object.server.exceptions.ResponseException;
+import org.openrdf.server.object.server.helpers.CalliContext;
+import org.openrdf.server.object.server.helpers.CompletedResponse;
+import org.openrdf.server.object.server.helpers.Request;
+import org.openrdf.server.object.server.helpers.ResourceOperation;
+import org.openrdf.server.object.server.helpers.ResponseBuilder;
+import org.openrdf.server.object.server.helpers.ResponseCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +57,7 @@ import org.slf4j.LoggerFactory;
  * 
  */
 public class ResponseExceptionHandler implements AsyncExecChain {
-	private final Logger logger = LoggerFactory
+	final Logger logger = LoggerFactory
 			.getLogger(ResponseExceptionHandler.class);
 	private final AsyncExecChain delegate;
 
@@ -91,11 +92,12 @@ public class ResponseExceptionHandler implements AsyncExecChain {
 
 	HttpUriResponse handle(final HttpRequest request,
 			final HttpContext context, ResponseException e) {
+		String url = new Request(request, context).getRequestURL();
 		ResourceOperation trans = CalliContext.adapt(context).getResourceTransaction();
 		HttpUriResponse resp = new ResponseBuilder(request, context).exception(e);
-		if (trans == null || trans.getAllowedMethods().isEmpty())
+		if (trans == null || trans.getAllowedMethods(url).isEmpty())
 			return resp;
-		Set<String> allowed = trans.getAllowedMethods();
+		Set<String> allowed = trans.getAllowedMethods(url);
 		StringBuilder sb = new StringBuilder();
 		for (String method : allowed) {
 			sb.append(method).append(",");

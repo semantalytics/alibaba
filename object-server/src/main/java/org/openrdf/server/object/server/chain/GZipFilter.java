@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server.chain;
+package org.openrdf.server.object.server.chain;
 
 import java.util.concurrent.Future;
 
@@ -38,11 +38,11 @@ import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.protocol.HttpContext;
-import org.callimachusproject.client.CloseableEntity;
-import org.callimachusproject.client.GUnzipEntity;
-import org.callimachusproject.client.GZipEntity;
-import org.callimachusproject.server.AsyncExecChain;
-import org.callimachusproject.server.helpers.DelegatingFuture;
+import org.openrdf.server.object.client.CloseableEntity;
+import org.openrdf.server.object.client.GUnzipEntity;
+import org.openrdf.server.object.client.GZipEntity;
+import org.openrdf.server.object.server.AsyncExecChain;
+import org.openrdf.server.object.server.helpers.DelegatingFuture;
 
 /**
  * Compresses safe responses.
@@ -58,8 +58,7 @@ public class GZipFilter implements AsyncExecChain {
 	public Future<HttpResponse> execute(HttpHost target, HttpRequest request,
 			HttpContext context, FutureCallback<HttpResponse> callback) {
 		String method = request.getRequestLine().getMethod();
-		if (!method.equals("GET") && !method.equals("HEAD")
-				&& !method.equals("PROFIND"))
+		if (!method.equals("GET") && !method.equals("HEAD"))
 			return delegate.execute(target, request, context, callback);
 		final DelegatingFuture future = new DelegatingFuture(callback) {
 			public void completed(HttpResponse result) {

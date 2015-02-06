@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  */
-package org.callimachusproject.server.util;
+package org.openrdf.server.object.server.util;
 
 import java.io.OutputStream;
 

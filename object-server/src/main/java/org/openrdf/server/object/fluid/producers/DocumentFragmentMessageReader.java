@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.producers;
+package org.openrdf.server.object.fluid.producers;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -45,11 +45,11 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMResult;
 import javax.xml.transform.dom.DOMSource;
 
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidType;
-import org.callimachusproject.fluid.Producer;
-import org.callimachusproject.io.ChannelUtil;
-import org.callimachusproject.xml.DocumentFactory;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.fluid.Producer;
+import org.openrdf.server.object.fluid.helpers.DocumentFactory;
+import org.openrdf.server.object.io.ChannelUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -61,7 +61,7 @@ import org.xml.sax.SAXException;
  */
 public class DocumentFragmentMessageReader implements Producer {
 
-	private static class ErrorCatcher implements ErrorListener {
+	static class ErrorCatcher implements ErrorListener {
 		private Logger logger = LoggerFactory.getLogger(ErrorCatcher.class);
 		private TransformerException fatal;
 

@@ -27,8 +27,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server.chain;
+package org.openrdf.server.object.server.chain;
 
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.concurrent.Future;
 
@@ -36,16 +37,17 @@ import org.apache.http.Header;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
+import org.apache.http.client.utils.DateUtils;
 import org.apache.http.concurrent.BasicFuture;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.protocol.HttpContext;
-import org.callimachusproject.client.HttpUriResponse;
-import org.callimachusproject.server.AsyncExecChain;
-import org.callimachusproject.server.helpers.CalliContext;
-import org.callimachusproject.server.helpers.ResourceOperation;
-import org.callimachusproject.server.helpers.ResponseBuilder;
-import org.callimachusproject.server.helpers.ResponseCallback;
-import org.callimachusproject.server.util.HTTPDateFormat;
+import org.openrdf.server.object.client.HttpUriResponse;
+import org.openrdf.server.object.server.AsyncExecChain;
+import org.openrdf.server.object.server.helpers.CalliContext;
+import org.openrdf.server.object.server.helpers.Request;
+import org.openrdf.server.object.server.helpers.ResponseBuilder;
+import org.openrdf.server.object.server.helpers.ResponseCallback;
+import org.openrdf.server.object.server.util.HTTPDateFormat;
 
 /**
  * Response with 304 and 412 when resource has not been modified.
@@ -80,16 +82,16 @@ public class ModifiedSinceHandler implements AsyncExecChain {
 				}
 			}
 		};
-		ResourceOperation req = CalliContext.adapt(context).getResourceTransaction();
+		HttpResponse head = CalliContext.adapt(context).getDerivedFromHeadResponse();
+		Request req = new Request(request, context);
 		String method = req.getMethod();
-		String contentType = req.getResponseContentType();
-		String cache = req.getResponseCacheControl();
-		String entityTag = req.getEntityTag(request, req.getContentVersion(), cache, contentType);
-		if (req.isSafe() && req.isNoValidate()) {
+		Header eTag = head == null ? null : head.getFirstHeader("ETag");
+		Header lastModified = head == null ? null : head.getFirstHeader("Last-Modified");
+		if (eTag == null && lastModified == null) {
 			return delegate.execute(target, request, context, callback);
 		} else {
 			HttpUriResponse resp;
-			String tag = modifiedSince(req, entityTag);
+			String tag = modifiedSince(req, eTag, lastModified);
 			if ("GET".equals(method) || "HEAD".equals(method)) {
 				if (tag == null) {
 					return delegate.execute(target, request, context, callback);
@@ -117,8 +119,8 @@ public class ModifiedSinceHandler implements AsyncExecChain {
 		}
 	}
 
-	private String modifiedSince(ResourceOperation req, String entityTag) {
-		long lastModified = Math.max(reset, req.getLastModified());
+	private String modifiedSince(Request req, Header eTag, Header lastModifiedHeader) {
+		long lastModified = Math.max(reset, getDateHeader(lastModifiedHeader));
 		boolean notModified = false;
 		try {
 			if (lastModified > 0) {
@@ -132,11 +134,11 @@ public class ModifiedSinceHandler implements AsyncExecChain {
 		}
 		Enumeration matchs = req.getHeaderEnumeration("If-None-Match");
 		boolean mustMatch = matchs.hasMoreElements();
-		if (mustMatch) {
+		if (eTag != null && mustMatch) {
 			String match = null;
 			while (matchs.hasMoreElements()) {
 				match = (String) matchs.nextElement();
-				if (match(entityTag, match))
+				if (match(eTag.getValue(), match))
 					return match;
 			}
 		}
@@ -170,6 +172,13 @@ public class ModifiedSinceHandler implements AsyncExecChain {
 		if (mq < 0 || tq < 0 || md < 0 || td < 0)
 			return false;
 		return match.substring(mq, md).equals(tag.substring(tq, td));
+	}
+
+	public long getDateHeader(Header header) {
+		if (header == null)
+			return -1;
+		Date date = DateUtils.parseDate(header.getValue());
+		return date != null ? date.getTime() : -1;
 	}
 
 }

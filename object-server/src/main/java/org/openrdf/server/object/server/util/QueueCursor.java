@@ -3,7 +3,7 @@
  *
  * Licensed under the Aduna BSD-style license.
  */
-package org.callimachusproject.server.util;
+package org.openrdf.server.object.server.util;
 
 import info.aduna.iteration.LookAheadIteration;
 

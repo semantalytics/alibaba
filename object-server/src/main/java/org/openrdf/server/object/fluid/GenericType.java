@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid;
+package org.openrdf.server.object.fluid;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.GenericArrayType;

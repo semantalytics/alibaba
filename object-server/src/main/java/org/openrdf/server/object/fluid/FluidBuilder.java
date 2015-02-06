@@ -14,7 +14,7 @@
    limitations under the License.
 
  */
-package org.callimachusproject.fluid;
+package org.openrdf.server.object.fluid;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,10 +28,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import org.callimachusproject.io.ChannelUtil;
-import org.callimachusproject.server.exceptions.BadRequest;
 import org.openrdf.annotations.Iri;
 import org.openrdf.repository.object.ObjectConnection;
+import org.openrdf.server.object.io.ChannelUtil;
+import org.openrdf.server.object.server.exceptions.BadRequest;
 
 /**
  * Converts Java Objects (of supported types) to other media types.

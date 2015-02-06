@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.consumers;
+package org.openrdf.server.object.fluid.consumers;
 
 import static javax.xml.transform.OutputKeys.ENCODING;
 import static javax.xml.transform.OutputKeys.OMIT_XML_DECLARATION;
@@ -55,16 +55,16 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 
-import org.callimachusproject.fluid.Consumer;
-import org.callimachusproject.fluid.Fluid;
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidType;
-import org.callimachusproject.fluid.Vapor;
-import org.callimachusproject.io.ChannelUtil;
-import org.callimachusproject.io.ProducerStream;
-import org.callimachusproject.io.ProducerStream.OutputProducer;
-import org.callimachusproject.xml.DocumentFactory;
 import org.openrdf.OpenRDFException;
+import org.openrdf.server.object.fluid.Consumer;
+import org.openrdf.server.object.fluid.Fluid;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.fluid.Vapor;
+import org.openrdf.server.object.fluid.helpers.DocumentFactory;
+import org.openrdf.server.object.io.ChannelUtil;
+import org.openrdf.server.object.io.ProducerStream;
+import org.openrdf.server.object.io.ProducerStream.OutputProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -81,7 +81,7 @@ public class DocumentFragmentMessageWriter implements
 	private static final String XSL_FRAGMENT = "<stylesheet version='1.0' xmlns='http://www.w3.org/1999/XSL/Transform'>"
 			+ "<template match='/root'><copy-of select='*|text()|comment()'/></template></stylesheet>";
 
-	private static class ErrorCatcher implements ErrorListener {
+	static class ErrorCatcher implements ErrorListener {
 		private Logger logger = LoggerFactory.getLogger(ErrorCatcher.class);
 		private TransformerException fatal;
 
@@ -110,7 +110,7 @@ public class DocumentFragmentMessageWriter implements
 	}
 
 	private TransformerFactory factory = TransformerFactory.newInstance();
-	private DocumentFactory docFactory;
+	DocumentFactory docFactory;
 	private Templates fragments;
 
 	public DocumentFragmentMessageWriter()
@@ -303,7 +303,7 @@ public class DocumentFragmentMessageWriter implements
 		};
 	}
 
-	private DOMSource createSource(DocumentFragment node, String base)
+	DOMSource createSource(DocumentFragment node, String base)
 			throws ParserConfigurationException {
 		if (node == null)
 			return new DOMSource(docFactory.newDocument(), base);
@@ -315,7 +315,7 @@ public class DocumentFragmentMessageWriter implements
 		return new DOMSource(root, base);
 	}
 
-	private Transformer createTransformer(DocumentFragment node)
+	Transformer createTransformer(DocumentFragment node)
 			throws TransformerConfigurationException {
 		if (node.getChildNodes().getLength() == 1)
 			return factory.newTransformer();

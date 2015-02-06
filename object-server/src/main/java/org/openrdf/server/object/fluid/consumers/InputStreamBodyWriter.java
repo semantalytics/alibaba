@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.consumers;
+package org.openrdf.server.object.fluid.consumers;
 
 import java.io.CharArrayReader;
 import java.io.CharArrayWriter;
@@ -45,14 +45,14 @@ import javax.xml.stream.XMLEventWriter;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 
-import org.callimachusproject.fluid.Consumer;
-import org.callimachusproject.fluid.Fluid;
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidType;
-import org.callimachusproject.fluid.Vapor;
-import org.callimachusproject.io.ChannelUtil;
-import org.callimachusproject.xml.DocumentFactory;
-import org.callimachusproject.xml.XMLEventReaderFactory;
+import org.openrdf.server.object.fluid.Consumer;
+import org.openrdf.server.object.fluid.Fluid;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.fluid.Vapor;
+import org.openrdf.server.object.fluid.helpers.DocumentFactory;
+import org.openrdf.server.object.fluid.helpers.XMLEventReaderFactory;
+import org.openrdf.server.object.io.ChannelUtil;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 

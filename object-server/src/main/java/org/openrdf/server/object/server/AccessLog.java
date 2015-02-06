@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  */
-package org.callimachusproject.server;
+package org.openrdf.server.object.server;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,9 +38,9 @@ import org.apache.http.HttpResponse;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.protocol.HttpCoreContext;
-import org.callimachusproject.client.StreamingHttpEntity;
-import org.callimachusproject.io.ChannelUtil;
-import org.callimachusproject.server.helpers.ResponseCallback;
+import org.openrdf.server.object.client.StreamingHttpEntity;
+import org.openrdf.server.object.io.ChannelUtil;
+import org.openrdf.server.object.server.helpers.ResponseCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

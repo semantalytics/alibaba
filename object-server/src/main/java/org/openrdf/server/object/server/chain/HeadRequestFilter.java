@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  */
-package org.callimachusproject.server.chain;
+package org.openrdf.server.object.server.chain;
 
 import java.io.IOException;
 

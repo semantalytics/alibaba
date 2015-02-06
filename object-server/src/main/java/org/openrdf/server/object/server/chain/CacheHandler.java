@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  */
-package org.callimachusproject.server.chain;
+package org.openrdf.server.object.server.chain;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -37,11 +37,11 @@ import org.apache.http.nio.protocol.HttpAsyncResponseConsumer;
 import org.apache.http.nio.reactor.IOReactorStatus;
 import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.HttpContext;
-import org.callimachusproject.server.AsyncExecChain;
-import org.callimachusproject.server.helpers.AutoClosingAsyncClient;
-import org.callimachusproject.server.helpers.CalliContext;
-import org.callimachusproject.server.helpers.ResponseCallback;
-import org.callimachusproject.server.util.HTTPDateFormat;
+import org.openrdf.server.object.server.AsyncExecChain;
+import org.openrdf.server.object.server.helpers.AutoClosingAsyncClient;
+import org.openrdf.server.object.server.helpers.CalliContext;
+import org.openrdf.server.object.server.helpers.ResponseCallback;
+import org.openrdf.server.object.server.util.HTTPDateFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

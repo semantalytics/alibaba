@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  */
-package org.callimachusproject.fluid.producers;
+package org.openrdf.server.object.fluid.producers;
 
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
@@ -23,10 +23,10 @@ import java.nio.charset.Charset;
 
 import javax.imageio.ImageIO;
 
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidType;
-import org.callimachusproject.fluid.Producer;
-import org.callimachusproject.io.ChannelUtil;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.fluid.Producer;
+import org.openrdf.server.object.io.ChannelUtil;
 
 public class BufferedImageReader implements Producer {
 

@@ -27,20 +27,12 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server.chain;
+package org.openrdf.server.object.server.chain;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Method;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.Future;
-
-import javax.activation.MimeType;
-import javax.activation.MimeTypeParseException;
 
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
@@ -48,14 +40,13 @@ import org.apache.http.HttpResponse;
 import org.apache.http.concurrent.BasicFuture;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.protocol.HttpContext;
-import org.callimachusproject.annotations.header;
-import org.callimachusproject.annotations.method;
-import org.callimachusproject.client.HttpUriResponse;
-import org.callimachusproject.server.AsyncExecChain;
-import org.callimachusproject.server.helpers.CalliContext;
-import org.callimachusproject.server.helpers.ResourceOperation;
-import org.callimachusproject.server.helpers.ResponseBuilder;
-import org.callimachusproject.server.helpers.ResponseCallback;
+import org.openrdf.server.object.client.HttpUriResponse;
+import org.openrdf.server.object.server.AsyncExecChain;
+import org.openrdf.server.object.server.helpers.CalliContext;
+import org.openrdf.server.object.server.helpers.Request;
+import org.openrdf.server.object.server.helpers.ResourceOperation;
+import org.openrdf.server.object.server.helpers.ResponseBuilder;
+import org.openrdf.server.object.server.helpers.ResponseCallback;
 
 /**
  * Responds for OPTIONS requests.
@@ -82,11 +73,13 @@ public class OptionsHandler implements AsyncExecChain {
 	public Future<HttpResponse> execute(HttpHost target,
 			final HttpRequest request, final HttpContext context,
 			final FutureCallback<HttpResponse> callback) {
-		if ("OPTIONS".equals(request.getRequestLine().getMethod())) {
-			ResourceOperation trans = CalliContext.adapt(context).getResourceTransaction();
+		final ResourceOperation trans = CalliContext.adapt(context).getResourceTransaction();
+		final Request req = new Request(request, context);
+		final String m = req.getMethod();
+		if ("OPTIONS".equals(m) && !trans.isHandled(request)) {
 			HttpUriResponse rb = new ResponseBuilder(request, context).noContent();
-			addPreflightHeaders(trans, rb);
-			addDiscoveryHeaders(trans, rb);
+			addPreflightHeaders(trans, req, rb);
+			addDiscoveryHeaders(trans, req, rb);
 			BasicFuture<HttpResponse> future;
 			future = new BasicFuture<HttpResponse>(callback);
 			future.completed(rb);
@@ -96,7 +89,13 @@ public class OptionsHandler implements AsyncExecChain {
 				public void completed(HttpResponse result) {
 					try {
 						if (result != null) {
-							discover(request, context, result);
+							int status = result.getStatusLine().getStatusCode();
+							if ("GET".equals(m) || "HEAD".equals(m) || status >= 400) {
+								addDiscoveryHeaders(trans, req, result);
+							} else if ("OPTIONS".equals(m)) {
+								addPreflightHeaders(trans, req, result);
+								addDiscoveryHeaders(trans, req, result);
+							}
 						}
 						super.completed(result);
 					} catch (RuntimeException ex) {
@@ -107,153 +106,59 @@ public class OptionsHandler implements AsyncExecChain {
 		}
 	}
 
-	void discover(HttpRequest request, HttpContext context, HttpResponse resp) {
-		String method = request.getRequestLine().getMethod();
-		int status = resp.getStatusLine().getStatusCode();
-		if ("GET".equals(method) || "HEAD".equals(method) || status >= 400) {
-			ResourceOperation trans = CalliContext.adapt(context).getResourceTransaction();
-			addDiscoveryHeaders(trans, resp);
-		}
-	}
-
-	private void addDiscoveryHeaders(ResourceOperation trans, HttpResponse rb) {
+	void addDiscoveryHeaders(ResourceOperation trans,
+			Request request, HttpResponse rb) {
 		StringBuilder sb = new StringBuilder();
 		sb.append("OPTIONS");
-		for (String method : trans.getAllowedMethods()) {
+		for (String method : trans.getAllowedMethods(request.getRequestURL())) {
 			sb.append(", ").append(method);
 		}
-		rb.addHeader("Allow", sb.toString());
-		String acceptPost = getAccept(trans, "POST");
-		if (acceptPost != null && acceptPost.length() > 0) {
+		if (!rb.containsHeader("Allow")) {
+			rb.addHeader("Allow", sb.toString());
+		}
+		String acceptPost = trans.getAccept("POST", request.getRequestURL());
+		if (acceptPost != null && acceptPost.length() > 0 && !rb.containsHeader("Accept-Post")) {
 			rb.addHeader("Accept-Post", acceptPost);
 		}
-		String acceptPatch = getAccept(trans, "PATCH");
-		if (acceptPatch != null && acceptPatch.length() > 0) {
+		String acceptPatch = trans.getAccept("PATCH", request.getRequestURL());
+		if (acceptPatch != null && acceptPatch.length() > 0 && !rb.containsHeader("Accept-Patch")) {
 			rb.addHeader("Accept-Patch", acceptPatch);
 		}
 	}
 
-	private void addPreflightHeaders(ResourceOperation trans,
+	void addPreflightHeaders(ResourceOperation trans, Request req,
 			HttpResponse rb) {
-		String m = trans.getVaryHeader(REQUEST_METHOD);
-		if (m == null) {
-			StringBuilder sb = new StringBuilder();
-			sb.append("OPTIONS");
-			for (String method : trans.getAllowedMethods()) {
-				sb.append(", ").append(method);
+		org.apache.http.Header m = req.getFirstHeader(REQUEST_METHOD);
+		if (!rb.containsHeader("Access-Control-Allow-Methods")) {
+			if (m == null) {
+				StringBuilder sb = new StringBuilder();
+				sb.append("OPTIONS");
+				for (String method : trans.getAllowedMethods(req.getRequestURL())) {
+					sb.append(", ").append(method);
+				}
+				rb.addHeader("Access-Control-Allow-Methods", sb.toString());
+			} else {
+				rb.addHeader("Access-Control-Allow-Methods", m.getValue());
 			}
-			rb.addHeader("Access-Control-Allow-Methods", sb.toString());
-		} else {
-			rb.addHeader("Access-Control-Allow-Methods", m);
 		}
-		StringBuilder headers = new StringBuilder();
-		for (String header : ALLOW_HEADERS) {
-			if (headers.length() > 0) {
-				headers.append(",");
-			}
-			headers.append(header);
-		}
-		for (String header : getAllowedHeaders(m, trans)) {
-			if (!ALLOW_HEADERS.contains(header)) {
-				headers.append(",");
+		if (!rb.containsHeader("Access-Control-Allow-Headers")) {
+			StringBuilder headers = new StringBuilder();
+			for (String header : ALLOW_HEADERS) {
+				if (headers.length() > 0) {
+					headers.append(",");
+				}
 				headers.append(header);
 			}
-		}
-		rb.addHeader("Access-Control-Allow-Headers", headers.toString());
-		String max = getMaxAge(trans.getRequestedResource().getClass());
-		if (max != null) {
-			rb.addHeader("Access-Control-Max-Age", max);
-		}
-	}
-
-	private Collection<String> getAllowedHeaders(String m, ResourceOperation request) {
-		Collection<String> result = null;
-		Class<?> type = request.getRequestedResource().getClass();
-		for (Method method : type.getMethods()) {
-			if (m != null && method.isAnnotationPresent(method.class)) {
-				String[] mm = method.getAnnotation(method.class).value();
-				if (!Arrays.asList(mm).contains(m))
-					continue;
-			}
-			for (Annotation[] anns : method.getParameterAnnotations()) {
-				for (Annotation ann : anns) {
-					if (ann.annotationType().equals(header.class)) {
-						if (result == null) {
-							result = new TreeSet<String>();
-						}
-						result.addAll(Arrays.asList(((header) ann).value()));
-					}
+			String method = m == null ? null : m.getValue();
+			String url = req.getRequestURL();
+			for (String header : trans.getAllowedHeaders(method, url)) {
+				if (!ALLOW_HEADERS.contains(header)) {
+					headers.append(",");
+					headers.append(header);
 				}
 			}
+			rb.addHeader("Access-Control-Allow-Headers", headers.toString());
 		}
-		if (result == null)
-			return Collections.emptyList();
-		return result;
-	}
-
-	private String getMaxAge(Class<?> type) {
-		if (type.isAnnotationPresent(header.class)) {
-			for (String value : type.getAnnotation(header.class).value()) {
-				int m = value.indexOf("max-age=");
-				if (m >= 0) {
-					int idx = value.indexOf(':');
-					if (idx < 0)
-						continue;
-					String name = value.substring(0, idx);
-					if (!name.equalsIgnoreCase("cache-control"))
-						continue;
-					int c = value.indexOf(';', m);
-					if (c < 0) {
-						c = value.length();
-					}
-					String max = value.substring(m, c);
-					return max.trim();
-				}
-			}
-		} else {
-			if (type.getSuperclass() != null) {
-				String max = getMaxAge(type.getSuperclass());
-				if (max != null) {
-					return max;
-				}
-			}
-			for (Class<?> face : type.getInterfaces()) {
-				String max = getMaxAge(face);
-				if (max != null) {
-					return max;
-				}
-			}
-		}
-		return null;
-	}
-
-	private String getAccept(ResourceOperation trans, String req_method) {
-		Collection<String> types = new HashSet<>();
-		for (Method method : trans.findMethodHandlers(req_method)) {
-			for (Annotation[] anns : method.getParameterAnnotations()) {
-				if (trans.getParameterNames(anns) != null
-						|| trans.getHeaderNames(anns) != null)
-					continue;
-				for (String media : trans.getParameterMediaTypes(anns)) {
-					if ("*/*".equals(media))
-						continue;
-					try {
-						MimeType type = new MimeType(media);
-						if (!"*".equals(type.getPrimaryType())
-								|| !"*".equals(type.getSubType())) {
-							type.removeParameter("q");
-							types.add(type.toString());
-						}
-					} catch (MimeTypeParseException e) {
-						continue;
-					}
-				}
-			}
-		}
-		if (types.isEmpty())
-			return null;
-		String string = types.toString();
-		return string.substring(1, string.length() - 1);
 	}
 
 }

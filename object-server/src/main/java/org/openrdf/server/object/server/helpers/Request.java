@@ -27,21 +27,21 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server.helpers;
+package org.openrdf.server.object.server.helpers;
 
 import info.aduna.net.ParsedURI;
 
 import java.net.URISyntaxException;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.Vector;
 
-import org.apache.commons.httpclient.util.DateParseException;
-import org.apache.commons.httpclient.util.DateUtil;
 import org.apache.http.Header;
 import org.apache.http.HttpRequest;
+import org.apache.http.client.utils.DateUtils;
 import org.apache.http.protocol.HttpContext;
-import org.callimachusproject.engine.model.TermFactory;
-import org.callimachusproject.server.exceptions.BadRequest;
+import org.openrdf.server.object.server.exceptions.BadRequest;
+import org.openrdf.server.object.util.URLUtil;
 
 /**
  * Utility class for {@link HttpServletRequest}.
@@ -76,7 +76,7 @@ public class Request extends EditableHttpEntityEnclosingRequest {
 				String host = getAuthority().toLowerCase();
 				ParsedURI parsed = new ParsedURI(scheme, host, path, null, null);
 				String uri = parsed.toString();
-				iri = TermFactory.newInstance(uri).getSystemId();
+				iri = canonicalize(uri);
 				origin = scheme + "://" + host;
 			} else {
 				iri = canonicalize(path);
@@ -99,11 +99,8 @@ public class Request extends EditableHttpEntityEnclosingRequest {
 		String value = getHeader(name);
 		if (value == null)
 			return -1;
-		try {
-			return DateUtil.parseDate(value).getTime();
-		} catch (DateParseException e) {
-			return -1;
-		}
+		Date date = DateUtils.parseDate(value);
+		return date != null ? date.getTime() : -1;
 	}
 
 	public String getResolvedHeader(String name) {
@@ -189,8 +186,7 @@ public class Request extends EditableHttpEntityEnclosingRequest {
 		if (url == null)
 			return null;
 		try {
-			TermFactory tf = TermFactory.newInstance(getRequestURI());
-			return tf.resolve(url);
+			return URLUtil.resolve(url, getRequestURI());
 		} catch (IllegalArgumentException e) {
 			throw new BadRequest(e);
 		}
@@ -247,7 +243,7 @@ public class Request extends EditableHttpEntityEnclosingRequest {
 
 	private String canonicalize(String url) {
 		try {
-			return TermFactory.newInstance(url).getSystemId();
+			return URLUtil.canonicalize(url);
 		} catch (IllegalArgumentException e) {
 			throw new BadRequest(e);
 		}

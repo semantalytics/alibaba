@@ -26,7 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server.util;
+package org.openrdf.server.object.server.util;
 
 import java.io.Closeable;
 import java.io.IOException;

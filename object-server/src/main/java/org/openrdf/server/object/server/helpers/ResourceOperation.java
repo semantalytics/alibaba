@@ -27,64 +27,62 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server.helpers;
+package org.openrdf.server.object.server.helpers;
 
-import static java.lang.Integer.toHexString;
-
+import java.io.Closeable;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
-import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Enumeration;
-import java.util.GregorianCalendar;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
-import javax.tools.FileObject;
-import javax.xml.datatype.XMLGregorianCalendar;
+import javax.activation.MimeType;
+import javax.activation.MimeTypeParseException;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerConfigurationException;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpException;
 import org.apache.http.HttpRequest;
-import org.apache.http.RequestLine;
-import org.callimachusproject.annotations.expect;
-import org.callimachusproject.annotations.header;
-import org.callimachusproject.annotations.method;
-import org.callimachusproject.annotations.query;
-import org.callimachusproject.annotations.rel;
-import org.callimachusproject.annotations.requires;
-import org.callimachusproject.annotations.type;
-import org.callimachusproject.concepts.Activity;
-import org.callimachusproject.fluid.Fluid;
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidFactory;
-import org.callimachusproject.fluid.FluidType;
-import org.callimachusproject.server.exceptions.BadRequest;
-import org.callimachusproject.server.exceptions.MethodNotAllowed;
-import org.callimachusproject.server.exceptions.NotAcceptable;
-import org.callimachusproject.server.exceptions.UnsupportedMediaType;
-import org.callimachusproject.traits.CalliObject;
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpVersion;
+import org.apache.http.StatusLine;
+import org.apache.http.message.BasicHttpResponse;
+import org.apache.http.message.BasicStatusLine;
+import org.apache.http.protocol.HttpContext;
 import org.openrdf.annotations.Iri;
+import org.openrdf.annotations.Param;
 import org.openrdf.annotations.ParameterTypes;
+import org.openrdf.annotations.Path;
 import org.openrdf.model.URI;
 import org.openrdf.model.ValueFactory;
 import org.openrdf.query.QueryEvaluationException;
 import org.openrdf.repository.RepositoryException;
 import org.openrdf.repository.object.ObjectConnection;
 import org.openrdf.repository.object.RDFObject;
+import org.openrdf.repository.object.traits.RDFObjectBehaviour;
+import org.openrdf.server.object.client.HttpUriResponse;
+import org.openrdf.server.object.fluid.Fluid;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidException;
+import org.openrdf.server.object.fluid.FluidFactory;
+import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.server.exceptions.InternalServerError;
+import org.openrdf.server.object.server.exceptions.MethodNotAllowed;
+import org.openrdf.server.object.server.exceptions.NotAcceptable;
+import org.openrdf.server.object.server.exceptions.UnsupportedMediaType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -95,767 +93,227 @@ import org.slf4j.LoggerFactory;
  * 
  */
 public class ResourceOperation {
+	private static final String DEFAULT_PATH = "$|\\?";
+
+	private interface MapStringArray extends Map<String, String[]> {
+	}
+
+	private static final Type mapOfStringArrayType = MapStringArray.class
+			.getGenericInterfaces()[0];
 	private static final String SUB_CLASS_OF = "http://www.w3.org/2000/01/rdf-schema#subClassOf";
 	private final Logger logger = LoggerFactory.getLogger(ResourceOperation.class);
 
 	private final FluidFactory ff = FluidFactory.getInstance();
-	private final Request request;
+	private final CalliContext context;
 	private final ValueFactory vf;
 	private final ObjectConnection con;
-	private CalliObject target;
-	private final URI uri;
+	private RDFObject target;
 	private final FluidBuilder writer;
-	private final FluidType accepter;
-	private final Set<String> vary = new LinkedHashSet<String>();
-	private Method method;
-	private MethodNotAllowed notAllowed;
-	private BadRequest badRequest;
-	private NotAcceptable notAcceptable;
-	private UnsupportedMediaType unsupportedMediaType;
 
-	public ResourceOperation(Request request, ObjectConnection con)
+	public ResourceOperation(RDFObject target, HttpContext context)
 			throws QueryEvaluationException, RepositoryException {
-		this.request = request;
-		List<String> headers = getVaryHeaders("Accept");
-		if (headers.isEmpty()) {
-			accepter = new FluidType(HttpEntity.class);
-		} else {
-			StringBuilder sb = new StringBuilder();
-			for (String hd : headers) {
-				if (sb.length() > 0) {
-					sb.append(",");
-				}
-				sb.append(hd);
-			}
-			accepter = new FluidType(HttpEntity.class, sb.toString().split("\\s*,\\s*"));
-		}
-		this.con = con;
+		this.target = target;
+		this.context = CalliContext.adapt(context);
+		this.con = target.getObjectConnection();
 		this.vf = con.getValueFactory();
 		this.writer = ff.builder(con);
-		try {
-			this.uri = vf.createURI(request.getIRI());
-		} catch (IllegalArgumentException e) {
-			throw new BadRequest(e);
-		}
-		target = con.getObjects(CalliObject.class, uri).singleResult();
-		try {
-			String m = request.getMethod();
-			if ("GET".equals(m) || "HEAD".equals(m)) {
-				method = findMethod("GET", true);
-			} else if ("PUT".equals(m) || "DELETE".equals(m)) {
-				method = findMethod(m, null);
-			} else {
-				method = findMethod();
-			}
-		} catch (MethodNotAllowed e) {
-			notAllowed = e;
-		} catch (BadRequest e) {
-			badRequest = e;
-		} catch (NotAcceptable e) {
-			notAcceptable = e;
-		} catch (UnsupportedMediaType e) {
-			unsupportedMediaType = e;
-		}
 	}
 
-	public String getResponseContentType() {
-		if (method == null || method.getReturnType().equals(Void.TYPE))
-			return null;
-		return getContentType(method);
+	public String toString() {
+		return target.toString();
 	}
 
-	public String getEntityTag(HttpRequest request, String version, String cache, String contentType) {
-		Method m = this.method;
-		int headers = getHeaderCodeFor(m);
-		boolean strong = cache != null && cache.contains("cache-range");
-		String method = request.getRequestLine().getMethod();
-		if (contentType != null) {
-			return variantTag(version, strong, contentType, headers);
-		} else if ("GET".equals(method) || "HEAD".equals(method)) {
-			if (m != null)
-				return revisionTag(version, strong, headers);
-			Method operation;
-			if ((operation = getAlternativeMethod("alternate")) != null) {
-				String type = getContentType(operation);
-				headers = getHeaderCodeFor(operation);
-				return variantTag(version, strong, type, headers);
-			} else if ((operation = getAlternativeMethod("describedby")) != null) {
-				String type = getContentType(operation);
-				headers = getHeaderCodeFor(operation);
-				return variantTag(version,strong,  type, headers);
+	public Set<String> getAllowedMethods(String url) {
+		Set<String> set = new TreeSet<String>();
+		Collection<Method> methods = new ArrayList<Method>();
+		for (Method m : target.getClass().getMethods()) {
+			if (m.isAnnotationPresent(ParameterTypes.class))
+				continue;
+			org.openrdf.annotations.Method ann = m.getAnnotation(org.openrdf.annotations.Method.class);
+			if (ann == null)
+				continue;
+			if (matches(url, getPathRegex(m))) {
+				methods.add(m);
 			}
-		} else {
-			Header putContentType = null;
-			if ("PUT".equals(method)) {
-				putContentType = request.getFirstHeader("Content-Type");
-			}
-			Method get;
-			try {
-				headers = 0;
-				get = findMethodIfPresent("GET", false, true);
-				if (get != null) {
-					headers = getHeaderCodeFor(get);
-				}
-			} catch (MethodNotAllowed e) {
-				get = null;
-			} catch (BadRequest e) {
-				get = null;
-			} catch (NotAcceptable e) {
-				get = null;
-			} catch (UnsupportedMediaType e) {
-				get = null;
-			}
-			if (get == null && putContentType == null) {
-				return revisionTag(version, strong, headers);
-			} else if (get == null) {
-				return variantTag(version, strong, putContentType.getValue(), headers);
-			} else {
-				String get_cache = getResponseCacheControlFor(get);
-				boolean get_strong = get_cache != null && get_cache.contains("cache-range");
-				return variantTag(version, get_strong, getContentType(get), headers);
-			}
+			set.addAll(Arrays.asList(ann.value()));
 		}
-		return null;
-	}
-
-	public String getResponseCacheControl() {
-		return getResponseCacheControlFor(method);
-	}
-
-	private String getResponseCacheControlFor(Method m) {
-		StringBuilder sb = new StringBuilder();
-		if (m != null && m.isAnnotationPresent(header.class)) {
-			for (String value : m.getAnnotation(header.class).value()) {
-				int idx = value.indexOf(':');
-				if (idx < 0)
-					continue;
-				String name = value.substring(0, idx);
-				if (name.equalsIgnoreCase("cache-control")) {
-					if (sb.length() > 0) {
-						sb.append(", ");
-					}
-					sb.append(value.substring(idx + 1));
-				}
-			}
-		}
-		setCacheControl(getRequestedResource().getClass(), sb);
-		if (sb.indexOf("private") < 0 && sb.indexOf("public") < 0 && isPrivate(m)) {
-			if (sb.length() > 0) {
-				sb.append(", ");
-			}
-			sb.append("private");
-		}
-		if (sb.length() > 0)
-			return sb.toString();
-		return null;
-	}
-
-	public String[] getRequires() {
-		if (method == null) {
-			Set<String> list = new HashSet<String>();
-			for (Method m : getRequestedResource().getClass().getMethods()) {
-				requires ann = m.getAnnotation(requires.class);
-				if (ann != null) {
-					list.addAll(Arrays.asList(ann.value()));
-				}
-			}
-			return list.toArray(new String[list.size()]);
-		}
-		requires ann = method.getAnnotation(requires.class);
-		if (ann == null)
-			return null;
-		return ann.value();
-	}
-
-	public Set<String> getAllowedMethods() {
-		Set<String> set = new LinkedHashSet<String>();
-		String name = getOperation();
-		RDFObject target = getRequestedResource();
-		if (getOperationMethods("GET", true).containsKey(name)) {
-			set.add("GET");
+		if (set.contains("GET")) {
 			set.add("HEAD");
-		}
-		if (getOperationMethods("PUT", false).containsKey(name)) {
-			set.add("PUT");
-		}
-		if (getOperationMethods("DELETE", false).containsKey(name)) {
-			set.add("DELETE");
-		}
-		Map<String, List<Method>> map = getPostMethods(target, name);
-		for (String method : map.keySet()) {
-			set.add(method);
-			if ("GET".equals(method)) {
-				set.add("HEAD");
-			}
 		}
 		return set;
 	}
 
-	public Method getJavaMethod() {
-		if (notAllowed != null)
-			throw notAllowed;
-		if (badRequest != null)
-			throw badRequest;
-		if (notAcceptable != null)
-			throw notAcceptable;
-		if (unsupportedMediaType != null)
-			throw unsupportedMediaType;
-		return method;
+	public Collection<String> getAllowedHeaders(String m, String url) {
+		Collection<String> result = new TreeSet<String>();
+		for (Method method : findHandlers(m, url)) {
+			result.addAll(getVaryHeaders(method));
+		}
+		return result;
 	}
 
-	public Collection<Method> findMethodHandlers() {
-		Collection<Method> methods = new ArrayList<Method>();
-		RDFObject target = getRequestedResource();
-		for (Method m : target.getClass().getMethods()) {
-			if (m.isAnnotationPresent(ParameterTypes.class))
-				continue;
-			if (m.isAnnotationPresent(method.class)
-					|| m.isAnnotationPresent(query.class)) {
-				methods.add(m);
-			}
-		}
-		return methods;
-	}
-
-	public Collection<Method> findMethodHandlers(String req_method) {
-		if (req_method == null)
-			return findMethodHandlers();
-		Collection<Method> methods = new ArrayList<Method>();
-		String name = getOperation();
-		RDFObject target = getRequestedResource();
-		if (name != null) {
-			// lookup method
-			List<Method> list = getOperationMethods(req_method, null).get(name);
-			if (list != null) {
-				methods.addAll(list);
-			}
-		}
-		for (Method m : target.getClass().getMethods()) {
-			if (m.isAnnotationPresent(ParameterTypes.class))
-				continue;
-			method ann = m.getAnnotation(method.class);
-			if (ann == null)
-				continue;
-			if (!Arrays.asList(ann.value()).contains(req_method))
-				continue;
-			if (isOperationPresent(m))
-				continue;
-			if (name != null && isOperationProhibited(m))
-				continue;
-			methods.add(m);
-		}
-		return methods;
-	}
-
-	public Method getAlternativeMethod(String rel) {
-		List<Method> methods = new ArrayList<Method>();
-		for (Method m : getRequestedResource().getClass().getMethods()) {
-			if (m.isAnnotationPresent(ParameterTypes.class))
-				continue;
-			if (m.getReturnType().equals(Void.TYPE))
-				continue;
-			if (!m.isAnnotationPresent(rel.class))
-				continue;
-			if (!m.isAnnotationPresent(query.class))
-				continue;
-			if (isRequestBody(m))
-				continue;
-			for (String value : m.getAnnotation(rel.class).value()) {
-				if (!rel.equals(value))
+	public String getAccept(String req_method, String url) {
+		Collection<String> types = new HashSet<String>();
+		for (Method method : findHandlers(req_method, url)) {
+			for (Annotation[] anns : method.getParameterAnnotations()) {
+				if (getParameterNames(anns) != null
+						|| getHeaderNames(anns) != null)
 					continue;
-				if (m.isAnnotationPresent(method.class)) {
-					for (String v : m.getAnnotation(method.class).value()) {
-						if ("GET".equals(v)) {
-							methods.add(m);
-							break;
+				for (String media : getParameterMediaTypes(anns)) {
+					if ("*/*".equals(media))
+						continue;
+					try {
+						MimeType type = new MimeType(media);
+						if (!"*".equals(type.getPrimaryType())
+								|| !"*".equals(type.getSubType())) {
+							type.removeParameter("q");
+							types.add(type.toString());
 						}
-					}
-				} else {
-					methods.add(m);
-				}
-			}
-		}
-		try {
-			return findBestMethod(findAcceptableMethods(methods, false));
-		} catch (NotAcceptable e) {
-			return null;
-		}
-	}
-
-	public Map<String, List<Method>> getOperationMethods(String method,
-			Boolean isRespBody) {
-		Map<String, List<Method>> map = new HashMap<String, List<Method>>();
-		for (Method m : getRequestedResource().getClass().getMethods()) {
-			if (m.isAnnotationPresent(ParameterTypes.class))
-				continue;
-			boolean content = !m.getReturnType().equals(Void.TYPE);
-			if (isRespBody != null && isRespBody != content)
-				continue;
-			String[] query = null;
-			if (m.isAnnotationPresent(query.class)) {
-				query = m.getAnnotation(query.class).value();
-			}
-			if (query == null || query.length == 0) {
-				if (m.isAnnotationPresent(method.class)) {
-					query = new String[]{null};
-				} else {
-					continue;
-				}
-			}
-			if (m.isAnnotationPresent(method.class)) {
-				for (String v : m.getAnnotation(method.class).value()) {
-					if (method.equals(v)) {
-						put(map, query, m);
-						break;
+					} catch (MimeTypeParseException e) {
+						continue;
 					}
 				}
-			} else if ("OPTIONS".equals(method)) {
-				put(map, query, m);
-			} else {
-				boolean body = isRequestBody(m);
-				if (("GET".equals(method) || "HEAD".equals(method)) && content
-						&& !body) {
-					put(map, query, m);
-				} else if (("PUT".equals(method) || "DELETE".equals(method))
-						&& !content && body) {
-					put(map, query, m);
-				} else if ("POST".equals(method) && content && body) {
-					put(map, query, m);
-				}
 			}
 		}
-		return map;
-	}
-
-	public String toString() {
-		return request.toString();
-	}
-
-	public String getVaryHeader(String name) {
-		if (!vary.contains(name)) {
-			vary.add(name);
-		}
-		return request.getHeader(name);
-	}
-
-	public List<String> getVaryHeaders(String... name) {
-		vary.addAll(Arrays.asList(name));
-		List<String> values = new ArrayList<String>();
-		for (Header hd : request.getAllHeaders()) {
-			for (String name1 : name) {
-				if (name1.equalsIgnoreCase(hd.getName())) {
-					values.add(hd.getValue());
-				}
-			}
-		}
-		return values;
-	}
-
-	public Collection<String> getVary() {
-		return vary;
-	}
-
-	public URI createURI(String uriSpec) {
-		return vf.createURI(request.resolve(uriSpec));
-	}
-
-	public void flush() throws RepositoryException, QueryEvaluationException,
-			IOException {
-		con.commit();
-		this.target = con.getObject(CalliObject.class, getRequestedResource().getResource());
-	}
-
-	public Fluid getBody() {
-		Header[] headers = request.getHeaders("Content-Type");
-		String[] mediaType;
-		if (headers == null || headers.length == 0) {
-			mediaType = new String[] { "text/plain",
-					"application/octet-stream", "*/*" };
-		} else {
-			mediaType = new String[headers.length];
-			for (int i = 0; i < headers.length; i++) {
-				mediaType[i] = headers[i].getValue();
-			}
-		}
-		String location = request.getResolvedHeader("Content-Location");
-		if (location == null) {
-			location = request.getRequestURL();
-		} else {
-			location = createURI(location).stringValue();
-		}
-		FluidType ftype = new FluidType(HttpEntity.class, mediaType);
-		return getFluidBuilder().consume(request.getEntity(), location, ftype);
-	}
-
-	public String getContentType(Method method) {
-		Type genericType = method.getGenericReturnType();
-		String[] mediaTypes = getTypes(method);
-		return writer.nil(new FluidType(genericType, mediaTypes)).toMedia(accepter);
-	}
-
-	public String[] getTypes(Method method) {
-		if (method.isAnnotationPresent(type.class))
-			return method.getAnnotation(type.class).value();
-		return new String[0];
-	}
-
-	public FluidBuilder getFluidBuilder() {
-		return FluidFactory.getInstance().builder(con);
-	}
-
-	public String getOperation() {
-		String qs = request.getQueryString();
-		if (qs == null)
+		if (types.isEmpty())
 			return null;
-		int a = qs.indexOf('&');
-		int s = qs.indexOf(';');
-		int e = qs.indexOf('=');
+		String string = types.toString();
+		return string.substring(1, string.length() - 1);
+	}
+
+	public boolean isHandled(HttpRequest request) {
 		try {
-			if (a < 0 && s < 0 && e < 0)
-				return URLDecoder.decode(qs, "UTF-8");
-			if (a > 0 && (a < s || s < 0) && (a < e || e < 0))
-				return URLDecoder.decode(qs.substring(0, a), "UTF-8");
-			if (s > 0 && (s < e || e < 0))
-				return URLDecoder.decode(qs.substring(0, s), "UTF-8");
-			if (e > 0)
-				return URLDecoder.decode(qs.substring(0, e), "UTF-8");
-		} catch (UnsupportedEncodingException exc) {
-			throw new AssertionError(exc);
+			return findMethod(new Request(request, context)) != null;
+		} catch (RepositoryException e) {
+			throw new InternalServerError(e);
 		}
-		return "";
 	}
 
-	public Fluid getHeader(String... names) {
-		List<String> list = getVaryHeaders(names);
-		String[] values = list.toArray(new String[list.size()]);
-		FluidType ftype = new FluidType(String[].class, "text/plain", "text/*");
-		FluidBuilder fb = FluidFactory.getInstance().builder(con);
-		return fb.consume(values, request.getIRI(), ftype);
-	}
-
-	public Fluid getQueryStringParameter() {
-		String value = request.getQueryString();
-		FluidType ftype = new FluidType(String.class, "application/x-www-form-urlencoded", "text/*");
-		FluidBuilder fb = FluidFactory.getInstance().builder(con);
-		return fb.consume(value, request.getIRI(), ftype);
-	}
-
-	public RDFObject getRequestedResource() {
-		return target;
-	}
-
-	public boolean isNoValidate() {
-		String method = request.getMethod();
-		Method m = this.method;
-		if (m != null && !"PUT".equals(method) && !"DELETE".equals(method)
-				&& !"OPTIONS".equals(method)) {
-			if (m.isAnnotationPresent(header.class)) {
-				for (String value : m.getAnnotation(header.class).value()) {
-					int idx = value.indexOf(':');
-					if (idx < 0)
-						continue;
-					String name = value.substring(0, idx);
-					if (!name.equalsIgnoreCase("cache-control"))
-						continue;
-					if (value.contains("must-reevaluate"))
-						return true;
-					if (value.contains("no-validate"))
-						return true;
+	public HttpUriResponse head(HttpRequest request) throws IOException, HttpException {
+		try {
+			Request req = new Request(request, context);
+			Method method = findMethod(req);
+			BasicHttpResponse response = new BasicHttpResponse(getResponseStatus(method));
+			String type = getResponseContentType(req, method);
+			if (type != null) {
+				response.addHeader("Content-Type", type);
+			}
+			Collection<String> headers = getVaryHeaders(method);
+			if (headers != null && !headers.isEmpty()) {
+				StringBuilder sb = new StringBuilder();
+				for (String vary : headers) {
+					if (vary.length() > 0
+							&& !vary.equalsIgnoreCase("Authorization")
+							&& !vary.equalsIgnoreCase("Cookie")) {
+						sb.append(vary).append(',');
+					}
 				}
+				response.addHeader("Vary", sb.substring(0, sb.length() - 1));
 			}
+			return new HttpUriResponse(req.getRequestURL(), response);
+		} catch (RuntimeException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new InternalServerError(e);
 		}
-		RDFObject target = getRequestedResource();
-		return noValidate(target.getClass());
 	}
 
-	public long getLastModified() {
-		if (isNoValidate())
-			return System.currentTimeMillis() / 1000 * 1000;
-		if (target instanceof FileObject) {
-			long lastModified = ((FileObject) target).getLastModified();
-			if (lastModified > 0)
-				return lastModified / 1000 * 1000;
-		}
+	public HttpUriResponse invoke(HttpRequest request) throws IOException, HttpException {
 		try {
-			Activity trans = target.getProvWasGeneratedBy();
-			if (trans != null) {
-				XMLGregorianCalendar xgc = trans.getProvEndedAtTime();
-				if (xgc != null) {
-					GregorianCalendar cal = xgc.toGregorianCalendar();
-					cal.set(Calendar.MILLISECOND, 0);
-					return cal.getTimeInMillis() / 1000 * 1000;
-				}
-			}
-		} catch (ClassCastException e) {
-			logger.warn(e.toString(), e);
-		}
-		return 0;
-	}
-
-	public String getContentVersion() {
-		try {
-			Activity activity = target.getProvWasGeneratedBy();
-			if (activity == null)
-				return null;
-			String uri = ((RDFObject) activity).getResource().stringValue();
-			int f = uri.indexOf('#');
-			if (f >= 0) {
-				uri = uri.substring(0, f);
-			}
-			String origin = request.getOrigin();
-			if (uri.startsWith(origin) && '/' == uri.charAt(origin.length()))
-				return uri.substring(origin.length());
-			return uri;
-		} catch (ClassCastException e) {
-			return null;
+			Request req = new Request(request, context);
+			Method method = findMethod(req);
+			if (method == null)
+				throw new MethodNotAllowed("No such method for " + req.getIRI());
+			return invoke(req, method, req.isSafe(), new ResponseBuilder(req));
+		} catch (Error e) {
+			throw e;
+		} catch (RuntimeException e) {
+			throw e;
+		} catch (IOException e) {
+			throw e;
+		} catch (HttpException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new InternalServerError(e);
 		}
 	}
 
-	public FluidType getAcceptable() {
-		return accepter;
-	}
-
-	public boolean isAcceptable(Type genericType, String... mediaType) {
-		FluidType ftype = new FluidType(genericType, mediaType);
-		return writer.isConsumable(ftype) && writer.nil(ftype).toMedia(accepter) != null;
-	}
-
-	public boolean isQueryStringPresent() {
-		return request.getQueryString() != null;
-	}
-
-	private boolean isRequestBody(Method method) {
-		for (Annotation[] anns : method.getParameterAnnotations()) {
-			if (getParameterNames(anns) == null && getHeaderNames(anns) == null)
-				return true;
-		}
-		return false;
-	}
-
-	private boolean isPrivate(Method method) {
+	private StatusLine getResponseStatus(Method method) {
 		if (method == null)
-			return false;
+			return new BasicStatusLine(HttpVersion.HTTP_1_1, 405, "Method Not Allowed");
+		Class<?> type = method.getReturnType();
+		if (Void.TYPE.equals(type) || Void.class.equals(type))
+			return new BasicStatusLine(HttpVersion.HTTP_1_1, 204, "No Content");
+		else
+			return new BasicStatusLine(HttpVersion.HTTP_1_1, 200, "OK");
+	}
+
+	private Collection<String> getVaryHeaders(Method method) {
+		if (method == null)
+			return Collections.emptySet();
+		Collection<String> result = new TreeSet<String>();
 		for (Annotation[] anns : method.getParameterAnnotations()) {
 			for (Annotation ann : anns) {
-				if (ann.annotationType().equals(header.class)) {
-					for (String hd : ((header)ann).value()) {
-						if (hd.equalsIgnoreCase("Authorization") || hd.equalsIgnoreCase("Cookie"))
-							return true;
-					}
+				if (ann.annotationType().equals(org.openrdf.annotations.Header.class)) {
+					result.addAll(Arrays.asList(((org.openrdf.annotations.Header) ann).value()));
 				}
 			}
 		}
-		return false;
+		return result;
 	}
 
-	private String revisionTag(String version, boolean strong, int code) {
-		if (version == null)
-			return null;
-		String revision = toHexString(version.hashCode());
-		String weak = strong ? "" : "W/";
-		if (code == 0)
-			return weak + '"' + revision + '"';
-		return weak + '"' + revision + '-' + toHexString(code) + '"';
-	}
-
-	private String variantTag(String version, boolean strong, String mediaType, int code) {
-		if (mediaType == null)
-			return revisionTag(version, strong, code);
-		if (version == null)
-			return null;
-		String revision = toHexString(version.hashCode());
-		String weak = strong ? "" : "W/";
-		String cd = toHexString(code);
-		String v = toHexString(mediaType.hashCode());
-		if (code == 0)
-			return weak + '"' + revision + '-' + v + '"';
-		return weak + '"' + revision + '-' + cd + '-' + v + '"';
-	}
-
-	private Method findMethod() throws RepositoryException {
-		Method method = findMethodIfPresent(request.getMethod(), request.isMessageBody(), null);
-		if (method == null)
-			throw new MethodNotAllowed("No such method for " + request.getIRI());
-		return method;
-	}
-
-	private Method findMethod(String req_method, Boolean isResponsePresent)
-			throws RepositoryException {
-		Method method = findMethodIfPresent(req_method, request.isMessageBody(), isResponsePresent);
-		if (method == null)
-			throw new MethodNotAllowed("No such method for " + request.getIRI());
-		return method;
-	}
-
-	private Method findMethodIfPresent(String req_method, boolean messageBody,
-			Boolean isResponsePresent) {
-		String name = getOperation();
-		RDFObject target = getRequestedResource();
-		if (name != null) {
-			// lookup method
-			List<Method> methods = getOperationMethods(req_method,
-					isResponsePresent).get(name);
-			if (methods != null) {
-				Method method = findBestMethod(findAcceptableMethods(methods, messageBody));
-				if (method != null)
-					return method;
-			}
-		}
-		List<Method> methods = new ArrayList<Method>();
-		for (Method m : target.getClass().getMethods()) {
-			if (m.isAnnotationPresent(ParameterTypes.class))
-				continue;
-			method ann = m.getAnnotation(method.class);
-			if (ann == null)
-				continue;
-			if (!Arrays.asList(ann.value()).contains(req_method))
-				continue;
-			if (isOperationPresent(m))
-				continue;
-			if (name != null && isOperationProhibited(m))
-				continue;
-			boolean content = !m.getReturnType().equals(Void.TYPE);
-			if (isResponsePresent != null && isResponsePresent != content)
-				continue;
-			methods.add(m);
-		}
+	private Method findMethod(Request request) throws RepositoryException {
+		boolean messageBody = request.isMessageBody();
+		Collection<Method> methods = findHandlers(request.getMethod(), request.getRequestURL());
 		if (!methods.isEmpty()) {
-			Method method = findBestMethod(findAcceptableMethods(methods, messageBody));
+			Method method = findBestMethod(request, findAcceptableMethods(request, methods, messageBody));
 			if (method != null)
 				return method;
 		}
 		return null;
 	}
 
-	private Method findBestMethod(Collection<Method> methods) {
-		if (methods.isEmpty())
-			return null;
-		if (methods.size() == 1) {
-			return methods.iterator().next();
+	private Collection<Method> findHandlers(String req_method, String url) {
+		assert req_method != null;
+		Collection<Method> methods = new ArrayList<Method>();
+		for (Method m : target.getClass().getMethods()) {
+			if (m.isAnnotationPresent(ParameterTypes.class))
+				continue;
+			org.openrdf.annotations.Method ann = m.getAnnotation(org.openrdf.annotations.Method.class);
+			if (ann == null)
+				continue;
+			if (!Arrays.asList(ann.value()).contains(req_method))
+				continue;
+			if (matches(url, getPathRegex(m))) {
+				methods.add(m);
+			}
 		}
-		Collection<Method> filtered = filterPreferResponseType(methods);
-		if (filtered.size() == 1)
-			return filtered.iterator().next();
-		Collection<Method> submethods = filterSubMethods(filtered);
-		if (submethods.isEmpty())
-			return null;
-		Method best = findBestMethodByRequestType(submethods);
-		if (best == null)
-			return submethods.iterator().next();
-		return best;
+		return methods;
 	}
 
-	private Collection<Method> filterSubMethods(Collection<Method> methods) {
-		Map<String, Method> map = new LinkedHashMap<String, Method>();
-		for (Method m : methods) {
-			String iri;
-			Iri ann = m.getAnnotation(Iri.class);
-			if (ann == null) {
-				iri = m.toString();
-			} else {
-				iri = ann.value();
-			}
-			map.put(iri, m);
-		}
-		for (Method method : methods) {
-			for (String iri : getAnnotationStringValue(method, SUB_CLASS_OF)) {
-				map.remove(iri);
-			}
-		}
-		if (map.isEmpty())
-			return methods;
-		return map.values();
+	private String[] getPathRegex(Method m) {
+		Path path = m.getAnnotation(Path.class);
+		if (path == null)
+			return new String[]{DEFAULT_PATH};
+		return path.value();
 	}
 
-	private Collection<Method> filterPreferResponseType(
-			Collection<Method> methods) {
-		FluidType acceptable = getAcceptable();
-		Collection<Method> filtered = new ArrayList<Method>(methods.size());
-		double quality = Double.MIN_VALUE;
-		for (Method m : methods) {
-			Collection<String> possible = getAllMimeTypesOf(m);
-			String[] media = possible.toArray(new String[possible.size()]);
-			double q = acceptable.as(new FluidType(acceptable.asType(), media))
-					.getQuality();
-			if (q > quality) {
-				quality = q;
-				filtered.clear();
-			}
-			if (q >= quality) {
-				filtered.add(m);
-			}
+	private boolean matches(String url, String... regexes) {
+		String iri = target.getResource().stringValue();
+		if (!url.startsWith(iri))
+			throw new InternalServerError("URL " + url +  " does not start with IRI " + iri);
+		PathMatcher m = new PathMatcher(url, iri.length());
+		for (String regex : regexes) {
+			if (m.matches(regex == null ? DEFAULT_PATH : regex))
+				return true;
 		}
-		return filtered;
+		return false;
 	}
 
-	private String[] getAnnotationStringValue(Method method, String iri) {
-		for (Annotation ann : method.getAnnotations()) {
-			for (Method field : ann.annotationType().getMethods()) {
-				Iri airi = field.getAnnotation(Iri.class);
-				if (airi != null && iri.equals(airi.value()))
-					try {
-						Object arg = field.invoke(ann);
-						if (arg instanceof String[])
-							return (String[]) arg;
-						return new String[] { arg.toString() };
-					} catch (IllegalArgumentException e) {
-						logger.warn(e.toString(), e);
-					} catch (InvocationTargetException e) {
-						logger.warn(e.toString(), e);
-					} catch (IllegalAccessException e) {
-						logger.warn(e.toString(), e);
-					}
-			}
-		}
-		return new String[0];
-	}
-
-	private Collection<String> getAllMimeTypesOf(Method m) {
-		if (m == null)
-			return null;
-		Collection<String> result = new LinkedHashSet<String>();
-		if (m.isAnnotationPresent(type.class)) {
-			for (String media : m.getAnnotation(type.class).value()) {
-				result.add(media);
-			}
-		}
-		if (result.isEmpty()) {
-			result.add("*/*");
-		}
-		return result;
-	}
-
-	private Method findBestMethodByRequestType(Collection<Method> methods) {
-		Method best = null;
-		double quality = Double.MIN_VALUE;
-		Fluid body = getBody();
-		for (Method method : methods) {
-			Type[] gtypes = method.getGenericParameterTypes();
-			Annotation[][] params = method.getParameterAnnotations();
-			for (int i=0; i<params.length; i++) {
-				Type gtype = gtypes[i];
-				Annotation[] anns = params[i];
-				if (getHeaderNames(anns) != null || getParameterNames(anns) != null)
-					continue;
-				String[] types = getParameterMediaTypes(anns);
-				if (types.length == 0)
-					continue;
-				FluidType fluidType = new FluidType(gtype, types);
-				double q = fluidType.as(body.getFluidType()).getQuality();
-				if (q > quality) {
-					quality = q;
-					best = method;
-				}
-			}
-		}
-		return best;
-	}
-
-	private Collection<Method> findAcceptableMethods(Collection<Method> methods, boolean messageBody) {
+	private Collection<Method> findAcceptableMethods(Request request, Collection<Method> methods, boolean messageBody) {
 		String readable = null;
 		String acceptable = null;
 		Collection<Method> list = new LinkedHashSet<Method>(methods.size());
-		Fluid body = getBody();
+		Fluid body = getBody(request);
 		loop: for (Method method : methods) {
 			Collection<String> readableTypes;
 			readableTypes = getReadableTypes(body, method, messageBody);
@@ -882,7 +340,7 @@ public class ResourceOperation {
 					continue loop;
 				}
 			}
-			if (isAcceptable(method)) {
+			if (isAcceptable(request, method)) {
 				list.add(method);
 				continue loop;
 			}
@@ -897,144 +355,71 @@ public class ResourceOperation {
 		return list;
 	}
 
-	private boolean isOperationPresent(Method m) {
-		if (m.isAnnotationPresent(query.class)) {
-			String[] values = m.getAnnotation(query.class).value();
-			return values.length != 0 && (values.length != 1 || values[0].length() != 0);
-		}
-		return false;
-	}
-
-	private boolean isOperationProhibited(Method m) {
-		if (m.isAnnotationPresent(query.class)) {
-			String[] values = m.getAnnotation(query.class).value();
-			return values.length == 0 || values.length == 1 && values[0].length() == 0;
-		}
-		return false;
-	}
-
-	public String[] getParameterNames(Annotation[] annotations) {
-		for (int i = 0; i < annotations.length; i++) {
-			if (annotations[i].annotationType().equals(query.class))
-				return ((query) annotations[i]).value();
-		}
-		return null;
-	}
-
-	public String[] getHeaderNames(Annotation[] annotations) {
-		for (int i = 0; i < annotations.length; i++) {
-			if (annotations[i].annotationType().equals(header.class))
-				return ((header) annotations[i]).value();
-		}
-		return null;
-	}
-
-	public String[] getParameterMediaTypes(Annotation[] annotations) {
-		for (int i = 0; i < annotations.length; i++) {
-			if (annotations[i].annotationType().equals(type.class))
-				return ((type) annotations[i]).value();
-		}
-		return new String[0];
-	}
-
-	private Map<String, List<Method>> getPostMethods(RDFObject target, String name) {
-		Map<String, List<Method>> map = new HashMap<String, List<Method>>();
-		for (Method m : target.getClass().getMethods()) {
-			if (m.isAnnotationPresent(ParameterTypes.class))
-				continue;
-			String[] query = null;
-			if (m.isAnnotationPresent(query.class)) {
-				query = m.getAnnotation(query.class).value();
-			}
-			if (query == null && name != null || query != null
-					&& !Arrays.asList(query).contains(name))
-				continue;
-			method ann = m.getAnnotation(method.class);
-			if (ann == null) {
-				if (m.isAnnotationPresent(query.class)
-						&& !m.getReturnType().equals(Void.TYPE)
-						&& isRequestBody(m)) {
-					put(map, new String[] { "POST" }, m);
-				}
-			} else {
-				put(map, ann.value(), m);
+	private Fluid getBody(Request request) {
+		Header[] headers = request.getHeaders("Content-Type");
+		String[] mediaType;
+		if (headers == null || headers.length == 0) {
+			mediaType = new String[] { "text/plain",
+					"application/octet-stream", "*/*" };
+		} else {
+			mediaType = new String[headers.length];
+			for (int i = 0; i < headers.length; i++) {
+				mediaType[i] = headers[i].getValue();
 			}
 		}
-		return map;
-	}
-
-	private int getHeaderCodeFor(Method method) {
-		if (method == null)
-			return 0;
-		Set<String> names = getHeaderNamesFor(method, new HashSet<String>());
-		if (names.isEmpty())
-			return 0;
-		Map<String, String> headers = new HashMap<String, String>();
-		for (String name : names) {
-			Enumeration e = request.getHeaderEnumeration(name);
-			while (e.hasMoreElements()) {
-				String value = e.nextElement().toString();
-				if (headers.containsKey(name)) {
-					headers.put(name, headers.get(name) + "," + value);
-				} else {
-					headers.put(name, value);
-				}
-			}
+		String location = request.getResolvedHeader("Content-Location");
+		if (location == null) {
+			location = request.getRequestURL();
+		} else {
+			location = createURI(request, location).stringValue();
 		}
-		return headers.hashCode();
+		FluidType ftype = new FluidType(HttpEntity.class, mediaType);
+		return getFluidBuilder().consume(request.getEntity(), location, ftype);
 	}
 
-	private Set<String> getHeaderNamesFor(Method method, Set<String> names) {
-		if (method == null)
-			return names;
-		for (Annotation[] anns : method.getParameterAnnotations()) {
-			String[] ar = getHeaderNames(anns);
-			if (ar != null) {
-				names.addAll(Arrays.asList(ar));
-			}
-		}
-		return names;
+	private URI createURI(Request request, String uriSpec) {
+		return vf.createURI(request.resolve(uriSpec));
 	}
 
-	private boolean isAcceptable(Method method) {
-		if (method == null)
-			return false;
+	private FluidBuilder getFluidBuilder() {
+		return FluidFactory.getInstance().builder(con);
+	}
+
+	private boolean isAcceptable(HttpRequest request, Method method) {
+		assert method != null;
 		if (method.getReturnType().equals(Void.TYPE))
 			return true;
-		if (method.isAnnotationPresent(expect.class)) {
-			for (String expect : method.getAnnotation(expect.class).value()) {
-				if (expect.startsWith("3"))
-					return true; // redirection
-				if (expect.startsWith("201") || expect.startsWith("202"))
-					return true; // created
-				if (expect.startsWith("204") || expect.startsWith("205"))
-					return true; // no content
-			}
-		}
-		return isAcceptable(method.getGenericReturnType(), getTypes(method));
+		FluidType ftype = new FluidType(method.getGenericReturnType(), getTypes(method));
+		return writer.isConsumable(ftype) && writer.nil(ftype).toMedia(getAcceptable(request)) != null;
 	}
 
-	private Collection<String> getReadableTypes(Fluid input, Annotation[] anns, Class<?> ptype,
-			Type gtype, boolean typeRequired) {
-		if (getHeaderNames(anns) != null)
-			return Collections.singleton("*/*");
-		if (getParameterNames(anns) != null)
-			return Collections.singleton("*/*");
-		List<String> readable = new ArrayList<String>();
-		String[] types = getParameterMediaTypes(anns);
-		if (types.length == 0 && typeRequired)
-			return Collections.emptySet();
-		String media = input.toMedia(new FluidType(gtype, types));
-		if (media != null) {
-			readable.add(media);
+	private FluidType getAcceptable(HttpRequest request) {
+		Header[] headers = request.getHeaders("Accept");
+		if (headers == null || headers.length == 0) {
+			return new FluidType(HttpEntity.class);
+		} else {
+			StringBuilder sb = new StringBuilder();
+			for (Header hd : headers) {
+				if (sb.length() > 0) {
+					sb.append(",");
+				}
+				sb.append(hd.getValue());
+			}
+			return new FluidType(HttpEntity.class, sb.toString().split("\\s*,\\s*"));
 		}
-		return readable;
+	}
+
+	private String[] getTypes(Method method) {
+		org.openrdf.annotations.Type t = method
+				.getAnnotation(org.openrdf.annotations.Type.class);
+		if (t == null)
+			return new String[0];
+		return t.value();
 	}
 
 	private Collection<String> getReadableTypes(Fluid input,
 			Method method, boolean typeRequired) {
-		if (method == null)
-			return Collections.emptySet();
+		assert method != null;
 		Class<?>[] ptypes = method.getParameterTypes();
 		Annotation[][] anns = method.getParameterAnnotations();
 		Type[] gtypes = method.getGenericParameterTypes();
@@ -1062,129 +447,439 @@ public class ResourceOperation {
 		return readable;
 	}
 
-	private void setCacheControl(Class<?> type, StringBuilder sb) {
-		if (type.isAnnotationPresent(header.class)) {
-			for (String value : type.getAnnotation(header.class).value()) {
-				int idx = value.indexOf(':');
-				if (idx < 0)
-					continue;
-				String name = value.substring(0, idx);
-				if (name.equalsIgnoreCase("cache-control")) {
-					if (sb.length() > 0) {
-						sb.append(", ");
+	private Collection<String> getReadableTypes(Fluid input, Annotation[] anns, Class<?> ptype,
+			Type gtype, boolean typeRequired) {
+		if (getHeaderNames(anns) != null)
+			return Collections.singleton("*/*");
+		if (getParameterNames(anns) != null)
+			return Collections.singleton("*/*");
+		List<String> readable = new ArrayList<String>();
+		String[] types = getParameterMediaTypes(anns);
+		if (types.length == 0 && typeRequired)
+			return Collections.emptySet();
+		String media = input.toMedia(new FluidType(gtype, types));
+		if (media != null) {
+			readable.add(media);
+		}
+		return readable;
+	}
+
+	private Method findBestMethod(Request request, Collection<Method> methods) {
+		if (methods.isEmpty())
+			return null;
+		if (methods.size() == 1) {
+			return methods.iterator().next();
+		}
+		Collection<Method> filtered = filterPreferResponseType(request, methods);
+		if (filtered.size() == 1)
+			return filtered.iterator().next();
+		Collection<Method> submethods = filterSubMethods(filtered);
+		if (submethods.isEmpty())
+			return null;
+		Collection<Method> longerPath = filterLongestPathMethods(submethods);
+		if (longerPath.size() == 1)
+			return longerPath.iterator().next();
+		Method best = findBestMethodByRequestType(request, longerPath);
+		if (best == null)
+			return submethods.iterator().next();
+		return best;
+	}
+
+	private Collection<Method> filterPreferResponseType(Request request,
+			Collection<Method> methods) {
+		FluidType acceptable = getAcceptable(request);
+		Collection<Method> filtered = new ArrayList<Method>(methods.size());
+		double quality = Double.MIN_VALUE;
+		for (Method m : methods) {
+			Collection<String> possible = getAllMimeTypesOf(m);
+			String[] media = possible.toArray(new String[possible.size()]);
+			double q = acceptable.as(new FluidType(acceptable.asType(), media))
+					.getQuality();
+			if (q > quality) {
+				quality = q;
+				filtered.clear();
+			}
+			if (q >= quality) {
+				filtered.add(m);
+			}
+		}
+		return filtered;
+	}
+
+	private Collection<String> getAllMimeTypesOf(Method m) {
+		if (m == null)
+			return null;
+		Collection<String> result = new LinkedHashSet<String>();
+		if (m.isAnnotationPresent(org.openrdf.annotations.Type.class)) {
+			for (String media : m.getAnnotation(org.openrdf.annotations.Type.class).value()) {
+				result.add(media);
+			}
+		}
+		if (result.isEmpty()) {
+			result.add("*/*");
+		}
+		return result;
+	}
+
+	private Collection<Method> filterSubMethods(Collection<Method> methods) {
+		Map<String, Method> map = new LinkedHashMap<String, Method>();
+		for (Method m : methods) {
+			String iri;
+			Iri ann = m.getAnnotation(Iri.class);
+			if (ann == null) {
+				iri = m.toString();
+			} else {
+				iri = ann.value();
+			}
+			map.put(iri, m);
+		}
+		for (Method method : methods) {
+			for (String iri : getAnnotationStringValue(method, SUB_CLASS_OF)) {
+				map.remove(iri);
+			}
+		}
+		if (map.isEmpty())
+			return methods;
+		return map.values();
+	}
+
+	private String[] getAnnotationStringValue(Method method, String iri) {
+		for (Annotation ann : method.getAnnotations()) {
+			for (Method field : ann.annotationType().getMethods()) {
+				Iri airi = field.getAnnotation(Iri.class);
+				if (airi != null && iri.equals(airi.value()))
+					try {
+						Object arg = field.invoke(ann);
+						if (arg instanceof String[])
+							return (String[]) arg;
+						return new String[] { arg.toString() };
+					} catch (IllegalArgumentException e) {
+						logger.warn(e.toString(), e);
+					} catch (InvocationTargetException e) {
+						logger.warn(e.toString(), e);
+					} catch (IllegalAccessException e) {
+						logger.warn(e.toString(), e);
 					}
-					sb.append(value.substring(idx + 1));
+			}
+		}
+		return new String[0];
+	}
+
+	private Collection<Method> filterLongestPathMethods(
+			Collection<Method> methods) {
+		int longest = 0;
+		Collection<Method> result = new ArrayList<Method>(methods.size());
+		for (Method m : methods) {
+			Path p = m.getAnnotation(org.openrdf.annotations.Path.class);
+			int length = 0;
+			if (p != null) {
+				for (String path : p.value()) {
+					if (path.length() > length) {
+						length = path.length();
+					}
 				}
 			}
-		} else {
-			if (type.getSuperclass() != null) {
-				setCacheControl(type.getSuperclass(), sb);
+			if (length > longest) {
+				result.clear();
+				longest = length;
 			}
-			for (Class<?> face : type.getInterfaces()) {
-				setCacheControl(face, sb);
+			if (length >= longest) {
+				result.add(m);
 			}
 		}
+		return result;
 	}
 
-	private boolean noValidate(Class<?> type) {
-		if (type.isAnnotationPresent(header.class)) {
-			for (String value : type.getAnnotation(header.class).value()) {
-				int idx = value.indexOf(':');
-				if (idx < 0)
+	private Method findBestMethodByRequestType(Request request, Collection<Method> methods) {
+		Method best = null;
+		double quality = Double.MIN_VALUE;
+		Fluid body = getBody(request);
+		for (Method method : methods) {
+			Type[] gtypes = method.getGenericParameterTypes();
+			Annotation[][] params = method.getParameterAnnotations();
+			for (int i=0; i<params.length; i++) {
+				Type gtype = gtypes[i];
+				Annotation[] anns = params[i];
+				if (getHeaderNames(anns) != null || getParameterNames(anns) != null)
 					continue;
-				String name = value.substring(0, idx);
-				if (!name.equalsIgnoreCase("cache-control"))
+				String[] types = getParameterMediaTypes(anns);
+				if (types.length == 0)
 					continue;
-				if (value.contains("no-validate"))
-					return true;
-				if (value.contains("must-reevaluate"))
-					return true;
+				FluidType fluidType = new FluidType(gtype, types);
+				double q = fluidType.as(body.getFluidType()).getQuality();
+				if (q > quality) {
+					quality = q;
+					best = method;
+				}
 			}
+		}
+		return best;
+	}
+
+	private RDFObject getRequestedResource() {
+		return target;
+	}
+
+	private String[] getParameterNames(Annotation[] annotations) {
+		for (int i = 0; i < annotations.length; i++) {
+			if (annotations[i].annotationType().equals(Param.class))
+				return ((Param) annotations[i]).value();
+		}
+		return null;
+	}
+
+	private String[] getHeaderNames(Annotation[] annotations) {
+		for (int i = 0; i < annotations.length; i++) {
+			if (annotations[i].annotationType().equals(org.openrdf.annotations.Header.class))
+				return ((org.openrdf.annotations.Header) annotations[i]).value();
+		}
+		return null;
+	}
+
+	private String[] getParameterMediaTypes(Annotation[] annotations) {
+		for (int i = 0; i < annotations.length; i++) {
+			if (annotations[i].annotationType().equals(org.openrdf.annotations.Type.class))
+				return ((org.openrdf.annotations.Type) annotations[i]).value();
+		}
+		return new String[0];
+	}
+
+	private HttpUriResponse invoke(Request req, Method method, boolean safe, ResponseBuilder builder)
+			throws Exception {
+		Fluid body = getBody(req);
+		try {
+			Object[] args;
+			try {
+				args = getParameters(req, method, body);
+			} catch (ParserConfigurationException e) {
+				throw e;
+			} catch (TransformerConfigurationException e) {
+				throw e;
+			} catch (Exception e) {
+				String message = e.getMessage();
+				if (message == null) {
+					message = e.toString();
+				}
+				return builder.badRequest(message);
+			}
+			try {
+				HttpUriResponse response = invoke(req, method, args, builder);
+				if (!safe && response.getStatusLine().getStatusCode() < 400) {
+					flush();
+				}
+				Collection<String> vary = getVaryHeaders(method);
+				if (vary != null && !vary.isEmpty()) {
+					String str = vary.toString();
+					response.addHeader("Vary", str.substring(1, str.length()-1));
+				}
+				return response;
+			} finally {
+				for (Object arg : args) {
+					if (arg instanceof Closeable) {
+						((Closeable) arg).close();
+					}
+				}
+			}
+		} catch (InvocationTargetException e) {
+			try {
+				throw e.getCause();
+			} catch (Error cause) {
+				throw cause;
+			} catch (Exception cause) {
+				throw cause;
+			} catch (Throwable cause) {
+				throw e;
+			}
+		} finally {
+			if (body != null) {
+				try {
+					body.asVoid();
+				} catch (IOException e) {
+					logger.error(req.toString(), e);
+				}
+			}
+		}
+	}
+
+	private void flush() throws RepositoryException, QueryEvaluationException,
+			IOException {
+		con.commit();
+		this.target = con.getObject(RDFObject.class, getRequestedResource().getResource());
+	}
+
+	private Object[] getParameters(Request req, Method method,
+			Fluid input) throws Exception {
+		Class<?>[] ptypes = method.getParameterTypes();
+		Annotation[][] anns = method.getParameterAnnotations();
+		Type[] gtypes = method.getGenericParameterTypes();
+		Map<String, String> values = getPathVariables(req.getRequestURL(), method);
+		Object[] args = new Object[ptypes.length];
+		for (int i = 0; i < args.length; i++) {
+			Fluid entity = getParameter(req, anns[i], ptypes[i], values, input);
+			if (entity != null) {
+				String[] types = getParameterMediaTypes(anns[i]);
+				args[i] = entity.as(new FluidType(gtypes[i], types));
+			}
+		}
+		return args;
+	}
+
+	private Map<String, String> getPathVariables(String url, Method method) {
+		String iri = target.getResource().stringValue();
+		assert url.startsWith(iri);
+		PathMatcher m = new PathMatcher(url, iri.length());
+		Map<String, String> values = new LinkedHashMap<String, String>();
+		for (String regex : getPathRegex(method)) {
+			values.putAll(m.match(regex));
+		}
+		return values;
+	}
+
+	private Fluid getParameter(Request req, Annotation[] anns, Class<?> ptype,
+			Map<String, String> values, Fluid input) throws Exception {
+		String[] names = getParameterNames(anns);
+		String[] headers = getHeaderNames(anns);
+		String[] types = getParameterMediaTypes(anns);
+		if (names == null && headers == null && types.length == 0) {
+			return getFluidBuilder().media("*/*");
+		} else if (names == null && headers == null) {
+			return input;
+		} else if (headers != null && names != null) {
+			return getHeaderAndQuery(req, headers, names, values);
+		} else if (headers != null) {
+			return getHeader(req, headers);
 		} else {
-			if (type.getSuperclass() != null) {
-				if (noValidate(type.getSuperclass()))
-					return true;
-			}
-			for (Class<?> face : type.getInterfaces()) {
-				if (noValidate(face))
-					return true;
-			}
-		}
-		return false;
-	}
-
-	private void put(Map<String, List<Method>> map, String[] keys, Method m) {
-		for (String key : keys) {
-			List<Method> list = map.get(key);
-			if (list == null) {
-				map.put(key, list = new ArrayList<Method>());
-			}
-			list.add(m);
+			return getParameter(req, names, values);
 		}
 	}
 
-	public String getRequestURL() {
-		return request.getRequestURL();
+	private Fluid getHeaderAndQuery(Request req, String[] headers,
+			String[] queries, Map<String, String> values) {
+		String[] qvalues = getParameterValues(req, queries, values);
+		if (qvalues == null)
+			return getHeader(req, headers);
+		List<String> list = new ArrayList<String>(qvalues.length * 2);
+		if (qvalues.length > 0) {
+			list.addAll(Arrays.asList(qvalues));
+		}
+		for (String name : headers) {
+			for (Header header : req.getHeaders(name)) {
+				list.add(header.getValue());
+			}
+		}
+		String[] array = list.toArray(new String[list.size()]);
+		FluidType ftype = new FluidType(String[].class, "text/plain", "text/*");
+		FluidBuilder fb = getFluidBuilder();
+		return fb.consume(array, req.getIRI(), ftype);
 	}
 
-	public HttpEntity getEntity() {
-		return request.getEntity();
+	private String[] getParameterValues(Request req, String[] names, Map<String, String> values) {
+		if (names.length == 0)
+			return new String[0];
+		Map<String, String[]> map = getParameterMap(req);
+		List<String> list = new ArrayList<String>(names.length * 2);
+		for (String name : names) {
+			if (values.containsKey(name)) {
+				if (values.get(name) != null) {
+					list.add(values.get(name));
+				}
+			} else if (map != null && map.containsKey(name)) {
+				list.addAll(Arrays.asList(map.get(name)));
+			}
+		}
+		return list.toArray(new String[list.size()]);
 	}
 
-	public boolean containsHeader(String name) {
-		return request.containsHeader(name);
+	@SuppressWarnings("unchecked")
+	private Map<String, String[]> getParameterMap(Request req) {
+		try {
+			return (Map<String, String[]>) getQueryStringParameter(req).as(
+					new FluidType(mapOfStringArrayType,
+							"application/x-www-form-urlencoded"));
+		} catch (Exception e) {
+			return Collections.emptyMap();
+		}
 	}
 
-	public Header getFirstHeader(String name) {
-		return request.getFirstHeader(name);
+	private Fluid getQueryStringParameter(Request request) {
+		String value = request.getQueryString();
+		FluidType ftype = new FluidType(String.class, "application/x-www-form-urlencoded", "text/*");
+		FluidBuilder fb = FluidFactory.getInstance().builder(con);
+		return fb.consume(value, request.getIRI(), ftype);
 	}
 
-	public long getDateHeader(String name) {
-		return request.getDateHeader(name);
+	private Fluid getHeader(Request request, String... names) {
+		List<String> list = new ArrayList<String>();
+		for (String name : names) {
+			for (Header header : request.getHeaders(name)) {
+				list.add(header.getValue());
+			}
+		}
+		String[] values = list.toArray(new String[list.size()]);
+		FluidType ftype = new FluidType(String[].class, "text/plain", "text/*");
+		FluidBuilder fb = FluidFactory.getInstance().builder(con);
+		return fb.consume(values, request.getIRI(), ftype);
 	}
 
-	public Header[] getHeaders(String name) {
-		return request.getHeaders(name);
+	private Fluid getParameter(Request req, String[] names, Map<String, String> values) {
+		String[] array = getParameterValues(req, names, values);
+		FluidType ftype = new FluidType(String[].class, "text/plain", "text/*");
+		FluidBuilder fb = getFluidBuilder();
+		return fb.consume(array, req.getIRI(), ftype);
 	}
 
-	public final boolean isSafe() {
-		return request.isSafe();
+	private String[] getResponseTypes(Request req, Method method) {
+		String preferred = getContentType(req, method);
+		String[] types = getTypes(method);
+		if (preferred == null && types.length < 1)
+			return new String[] { "*/*" };
+		if (preferred == null)
+			return types;
+		String[] result = new String[types.length + 1];
+		result[0] = preferred;
+		System.arraycopy(types, 0, result, 1, types.length);
+		return result;
 	}
 
-	public String getMethod() {
-		return request.getMethod();
+	private String getContentType(Request request, Method method) {
+		Type genericType = method.getGenericReturnType();
+		String[] mediaTypes = getTypes(method);
+		return writer.nil(new FluidType(genericType, mediaTypes)).toMedia(getAcceptable(request));
 	}
 
-	public String getIRI() {
-		return request.getIRI();
+	private HttpUriResponse invoke(Request req, Method method, Object[] args,
+			ResponseBuilder rbuilder) throws Exception {
+		Object result = method.invoke(getRequestedResource(), args);
+		if (result instanceof RDFObjectBehaviour) {
+			result = ((RDFObjectBehaviour) result).getBehaviourDelegate();
+		}
+		return new HttpUriResponse(req.getRequestURL(), createResponse(req,
+				result, method, getResponseTypes(req, method), rbuilder));
 	}
 
-	public String getOrigin() {
-		return request.getOrigin();
+	private HttpResponse createResponse(Request req, Object result,
+			Method method, String[] responseTypes, ResponseBuilder rbuilder)
+			throws IOException, FluidException {
+		FluidBuilder builder = getFluidBuilder();
+		Fluid writer = builder.consume(result, req.getRequestURL(),
+				method.getGenericReturnType(), responseTypes);
+		if (!method.isAnnotationPresent(org.openrdf.annotations.Type.class)
+				&& writer.toHttpResponseMedia("message/http") != null)
+			return writer.asHttpResponse("message/http");
+		Class<?> type = method.getReturnType();
+		if (result == null || Set.class.equals(type)
+				&& ((Set<?>) result).isEmpty()) {
+			return rbuilder.noContent(204, "No Content");
+		}
+		HttpEntity entity = writer.asHttpEntity(getResponseContentType(req,
+				method));
+		return rbuilder.content(200, "OK", entity);
 	}
 
-	public String getRequestURI() {
-		return request.getRequestURI();
-	}
-
-	public String resolve(String url) {
-		return request.resolve(url);
-	}
-
-	public boolean isMessageBody() {
-		return request.isMessageBody();
-	}
-
-	public String getScheme() {
-		return request.getScheme();
-	}
-
-	public Enumeration getHeaderEnumeration(String name) {
-		return request.getHeaderEnumeration(name);
-	}
-
-	public RequestLine getRequestLine() {
-		return request.getRequestLine();
+	private String getResponseContentType(Request request, Method method) {
+		if (method == null || method.getReturnType().equals(Void.TYPE))
+			return null;
+		return getContentType(request, method);
 	}
 
 }

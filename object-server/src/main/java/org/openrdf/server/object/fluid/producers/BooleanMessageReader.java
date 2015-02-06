@@ -27,20 +27,20 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.producers;
+package org.openrdf.server.object.fluid.producers;
 
 import java.io.IOException;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.Charset;
 
-import org.callimachusproject.fluid.producers.base.MessageReaderBase;
-import org.callimachusproject.io.ChannelUtil;
 import org.openrdf.query.QueryEvaluationException;
 import org.openrdf.query.TupleQueryResultHandlerException;
 import org.openrdf.query.resultio.BooleanQueryResultFormat;
 import org.openrdf.query.resultio.BooleanQueryResultParserFactory;
 import org.openrdf.query.resultio.BooleanQueryResultParserRegistry;
 import org.openrdf.query.resultio.QueryResultParseException;
+import org.openrdf.server.object.fluid.producers.base.MessageReaderBase;
+import org.openrdf.server.object.io.ChannelUtil;
 
 /**
  * Reads a boolean query result.

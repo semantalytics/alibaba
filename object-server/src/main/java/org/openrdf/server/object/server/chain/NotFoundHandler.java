@@ -26,24 +26,28 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server.chain;
+package org.openrdf.server.object.server.chain;
 
 import java.io.IOException;
 
+import org.apache.http.Header;
 import org.apache.http.HttpException;
+import org.apache.http.HttpVersion;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpExecutionAware;
 import org.apache.http.client.methods.HttpRequestWrapper;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.impl.execchain.ClientExecChain;
-import org.callimachusproject.server.helpers.ResponseBuilder;
+import org.apache.http.message.BasicHttpResponse;
+import org.openrdf.server.object.client.HttpUriResponse;
+import org.openrdf.server.object.server.helpers.Request;
 
 /**
  * Converts a 204 into a 404 for GET and HEAD requests.
  * 
  * @author James Leigh
- *
+ * 
  */
 public class NotFoundHandler implements ClientExecChain {
 	private final ClientExecChain delegate;
@@ -56,10 +60,20 @@ public class NotFoundHandler implements ClientExecChain {
 	public CloseableHttpResponse execute(HttpRoute route,
 			HttpRequestWrapper request, HttpClientContext context,
 			HttpExecutionAware execAware) throws IOException, HttpException {
-		CloseableHttpResponse rb = delegate.execute(route, request, context, execAware);
+		CloseableHttpResponse rb = delegate.execute(route, request, context,
+				execAware);
 		String method = request.getRequestLine().getMethod();
-		if (("GET".equals(method) || "HEAD".equals(method)) && rb.getEntity() == null) {
-			return new ResponseBuilder(request, context).notFound(request.getRequestLine().getUri());
+		int status = rb.getStatusLine().getStatusCode();
+		if ((200 == status || 203 == status || 204 == status)
+				&& "GET".equals(method) && rb.getEntity() == null) {
+			BasicHttpResponse resp = new BasicHttpResponse(
+					HttpVersion.HTTP_1_1, 404, "Not Found");
+			for (Header hd : rb.getAllHeaders()) {
+				resp.addHeader(hd);
+			}
+			rb.close();
+			String url = new Request(request, context).getRequestURL();
+			return new HttpUriResponse(url, resp);
 		}
 		return rb;
 	}

@@ -27,16 +27,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.producers;
+package org.openrdf.server.object.fluid.producers;
 
 import java.io.IOException;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.Charset;
 import java.util.Set;
 
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidType;
-import org.callimachusproject.fluid.Producer;
 import org.openrdf.model.Literal;
 import org.openrdf.model.URI;
 import org.openrdf.model.ValueFactory;
@@ -46,6 +43,9 @@ import org.openrdf.query.resultio.QueryResultParseException;
 import org.openrdf.repository.RepositoryException;
 import org.openrdf.repository.object.ObjectFactory;
 import org.openrdf.repository.object.RDFObject;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.fluid.Producer;
 
 /**
  * Reads RDF Object datatypes from an HTTP message body.

@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.consumers;
+package org.openrdf.server.object.fluid.consumers;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -47,15 +47,15 @@ import javax.xml.stream.XMLEventWriter;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 
-import org.callimachusproject.fluid.Consumer;
-import org.callimachusproject.fluid.Fluid;
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidType;
-import org.callimachusproject.fluid.Vapor;
-import org.callimachusproject.io.ChannelUtil;
-import org.callimachusproject.io.ProducerStream;
-import org.callimachusproject.io.ProducerStream.OutputProducer;
-import org.callimachusproject.xml.DocumentFactory;
+import org.openrdf.server.object.fluid.Consumer;
+import org.openrdf.server.object.fluid.Fluid;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.fluid.Vapor;
+import org.openrdf.server.object.fluid.helpers.DocumentFactory;
+import org.openrdf.server.object.io.ChannelUtil;
+import org.openrdf.server.object.io.ProducerStream;
+import org.openrdf.server.object.io.ProducerStream.OutputProducer;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
@@ -63,8 +63,8 @@ import org.xml.sax.SAXException;
  * Writes an XMLEventReader into an OutputStream.
  */
 public class XMLEventMessageWriter implements Consumer<XMLEventReader> {
-	private final DocumentFactory docFactory = DocumentFactory.newInstance();
-	private XMLOutputFactory factory;
+	final DocumentFactory docFactory = DocumentFactory.newInstance();
+	XMLOutputFactory factory;
 	{
 		factory = XMLOutputFactory.newInstance();
 		// javax.xml.stream.isRepairingNamespaces can cause xmlns=""
@@ -245,7 +245,7 @@ public class XMLEventMessageWriter implements Consumer<XMLEventReader> {
 		}));
 	}
 
-	private void writeTo(FluidType mtype, XMLEventReader result, String base,
+	void writeTo(FluidType mtype, XMLEventReader result, String base,
 			OutputStream out, int bufSize) throws IOException,
 			XMLStreamException {
 		try {

@@ -26,7 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server.exceptions;
+package org.openrdf.server.object.server.exceptions;
 
 /**
  * The 429 status code indicates that the user has sent too many requests in a

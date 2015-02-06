@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.producers;
+package org.openrdf.server.object.fluid.producers;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -54,11 +54,11 @@ import org.apache.http.message.BasicHttpResponse;
 import org.apache.http.message.BasicLineParser;
 import org.apache.http.message.LineParser;
 import org.apache.http.params.BasicHttpParams;
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidType;
-import org.callimachusproject.fluid.MediaType;
-import org.callimachusproject.fluid.Producer;
-import org.callimachusproject.io.ChannelUtil;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.fluid.MediaType;
+import org.openrdf.server.object.fluid.Producer;
+import org.openrdf.server.object.io.ChannelUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

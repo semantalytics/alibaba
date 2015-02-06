@@ -14,63 +14,60 @@
    limitations under the License.
 
  */
-package org.callimachusproject.fluid;
+package org.openrdf.server.object.fluid;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.script.ScriptException;
 import javax.xml.transform.TransformerConfigurationException;
 
-import org.callimachusproject.fluid.consumers.BooleanMessageWriter;
-import org.callimachusproject.fluid.consumers.BufferedImageWriter;
-import org.callimachusproject.fluid.consumers.ByteArrayMessageWriter;
-import org.callimachusproject.fluid.consumers.ByteArrayStreamMessageWriter;
-import org.callimachusproject.fluid.consumers.DOMMessageWriter;
-import org.callimachusproject.fluid.consumers.DatatypeWriter;
-import org.callimachusproject.fluid.consumers.DocumentFragmentMessageWriter;
-import org.callimachusproject.fluid.consumers.FormMapMessageWriter;
-import org.callimachusproject.fluid.consumers.FormStringMessageWriter;
-import org.callimachusproject.fluid.consumers.GraphMessageWriter;
-import org.callimachusproject.fluid.consumers.HttpEntityWriter;
-import org.callimachusproject.fluid.consumers.HttpJavaScriptResponseWriter;
-import org.callimachusproject.fluid.consumers.HttpMessageWriter;
-import org.callimachusproject.fluid.consumers.HttpResponseWriter;
-import org.callimachusproject.fluid.consumers.InputStreamBodyWriter;
-import org.callimachusproject.fluid.consumers.ModelMessageWriter;
-import org.callimachusproject.fluid.consumers.PrimitiveBodyWriter;
-import org.callimachusproject.fluid.consumers.RDFObjectURIWriter;
-import org.callimachusproject.fluid.consumers.ReadableBodyWriter;
-import org.callimachusproject.fluid.consumers.ReadableByteChannelBodyWriter;
-import org.callimachusproject.fluid.consumers.StringBodyWriter;
-import org.callimachusproject.fluid.consumers.TupleMessageWriter;
-import org.callimachusproject.fluid.consumers.URIListWriter;
-import org.callimachusproject.fluid.consumers.VoidWriter;
-import org.callimachusproject.fluid.consumers.XMLEventMessageWriter;
-import org.callimachusproject.fluid.producers.BooleanMessageReader;
-import org.callimachusproject.fluid.producers.BufferedImageReader;
-import org.callimachusproject.fluid.producers.ByteArrayMessageReader;
-import org.callimachusproject.fluid.producers.ByteArrayStreamMessageReader;
-import org.callimachusproject.fluid.producers.DOMMessageReader;
-import org.callimachusproject.fluid.producers.DatatypeReader;
-import org.callimachusproject.fluid.producers.DocumentFragmentMessageReader;
-import org.callimachusproject.fluid.producers.FormMapMessageReader;
-import org.callimachusproject.fluid.producers.FormStringMessageReader;
-import org.callimachusproject.fluid.producers.GraphMessageReader;
-import org.callimachusproject.fluid.producers.HttpEntityReader;
-import org.callimachusproject.fluid.producers.HttpMessageReader;
-import org.callimachusproject.fluid.producers.InputStreamBodyReader;
-import org.callimachusproject.fluid.producers.ModelMessageReader;
-import org.callimachusproject.fluid.producers.PrimitiveBodyReader;
-import org.callimachusproject.fluid.producers.RDFObjectURIReader;
-import org.callimachusproject.fluid.producers.ReadableBodyReader;
-import org.callimachusproject.fluid.producers.ReadableByteChannelBodyReader;
-import org.callimachusproject.fluid.producers.StringBodyReader;
-import org.callimachusproject.fluid.producers.TupleMessageReader;
-import org.callimachusproject.fluid.producers.VoidReader;
-import org.callimachusproject.fluid.producers.XMLEventMessageReader;
-import org.callimachusproject.fluid.producers.base.URIListReader;
 import org.openrdf.repository.object.ObjectConnection;
+import org.openrdf.server.object.fluid.consumers.BooleanMessageWriter;
+import org.openrdf.server.object.fluid.consumers.BufferedImageWriter;
+import org.openrdf.server.object.fluid.consumers.ByteArrayMessageWriter;
+import org.openrdf.server.object.fluid.consumers.ByteArrayStreamMessageWriter;
+import org.openrdf.server.object.fluid.consumers.DOMMessageWriter;
+import org.openrdf.server.object.fluid.consumers.DatatypeWriter;
+import org.openrdf.server.object.fluid.consumers.DocumentFragmentMessageWriter;
+import org.openrdf.server.object.fluid.consumers.FormMapMessageWriter;
+import org.openrdf.server.object.fluid.consumers.FormStringMessageWriter;
+import org.openrdf.server.object.fluid.consumers.GraphMessageWriter;
+import org.openrdf.server.object.fluid.consumers.HttpEntityWriter;
+import org.openrdf.server.object.fluid.consumers.HttpMessageWriter;
+import org.openrdf.server.object.fluid.consumers.InputStreamBodyWriter;
+import org.openrdf.server.object.fluid.consumers.ModelMessageWriter;
+import org.openrdf.server.object.fluid.consumers.PrimitiveBodyWriter;
+import org.openrdf.server.object.fluid.consumers.RDFObjectURIWriter;
+import org.openrdf.server.object.fluid.consumers.ReadableBodyWriter;
+import org.openrdf.server.object.fluid.consumers.ReadableByteChannelBodyWriter;
+import org.openrdf.server.object.fluid.consumers.StringBodyWriter;
+import org.openrdf.server.object.fluid.consumers.TupleMessageWriter;
+import org.openrdf.server.object.fluid.consumers.URIListWriter;
+import org.openrdf.server.object.fluid.consumers.VoidWriter;
+import org.openrdf.server.object.fluid.consumers.XMLEventMessageWriter;
+import org.openrdf.server.object.fluid.producers.BooleanMessageReader;
+import org.openrdf.server.object.fluid.producers.BufferedImageReader;
+import org.openrdf.server.object.fluid.producers.ByteArrayMessageReader;
+import org.openrdf.server.object.fluid.producers.ByteArrayStreamMessageReader;
+import org.openrdf.server.object.fluid.producers.DOMMessageReader;
+import org.openrdf.server.object.fluid.producers.DatatypeReader;
+import org.openrdf.server.object.fluid.producers.DocumentFragmentMessageReader;
+import org.openrdf.server.object.fluid.producers.FormMapMessageReader;
+import org.openrdf.server.object.fluid.producers.FormStringMessageReader;
+import org.openrdf.server.object.fluid.producers.GraphMessageReader;
+import org.openrdf.server.object.fluid.producers.HttpEntityReader;
+import org.openrdf.server.object.fluid.producers.HttpMessageReader;
+import org.openrdf.server.object.fluid.producers.InputStreamBodyReader;
+import org.openrdf.server.object.fluid.producers.ModelMessageReader;
+import org.openrdf.server.object.fluid.producers.PrimitiveBodyReader;
+import org.openrdf.server.object.fluid.producers.RDFObjectURIReader;
+import org.openrdf.server.object.fluid.producers.ReadableBodyReader;
+import org.openrdf.server.object.fluid.producers.ReadableByteChannelBodyReader;
+import org.openrdf.server.object.fluid.producers.StringBodyReader;
+import org.openrdf.server.object.fluid.producers.TupleMessageReader;
+import org.openrdf.server.object.fluid.producers.VoidReader;
+import org.openrdf.server.object.fluid.producers.XMLEventMessageReader;
+import org.openrdf.server.object.fluid.producers.base.URIListReader;
 
 /**
  * Creates {@link FluidBuilder} to convert between media types.
@@ -102,7 +99,6 @@ public class FluidFactory {
 		consumers.add(new VoidWriter());
 		consumers.add(new PrimitiveBodyWriter());
 		consumers.add(new HttpMessageWriter());
-		consumers.add(new HttpResponseWriter());
 		consumers.add(new InputStreamBodyWriter());
 		consumers.add(new ReadableBodyWriter());
 		consumers.add(new ReadableByteChannelBodyWriter());
@@ -119,10 +115,7 @@ public class FluidFactory {
 		try {
 			consumers.add(new DocumentFragmentMessageWriter());
 			consumers.add(new DOMMessageWriter());
-			consumers.add(new HttpJavaScriptResponseWriter());
 		} catch (TransformerConfigurationException e) {
-			throw new AssertionError(e);
-		} catch (ScriptException e) {
 			throw new AssertionError(e);
 		}
 		producers.add(URIListReader.RDF_URI);

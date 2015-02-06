@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.consumers;
+package org.openrdf.server.object.fluid.consumers;
 
 import static javax.xml.transform.OutputKeys.ENCODING;
 
@@ -50,16 +50,16 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
-import org.callimachusproject.fluid.Consumer;
-import org.callimachusproject.fluid.Fluid;
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidType;
-import org.callimachusproject.fluid.Vapor;
-import org.callimachusproject.io.ChannelUtil;
-import org.callimachusproject.io.ProducerStream;
-import org.callimachusproject.io.ProducerStream.OutputProducer;
-import org.callimachusproject.xml.DocumentFactory;
 import org.openrdf.OpenRDFException;
+import org.openrdf.server.object.fluid.Consumer;
+import org.openrdf.server.object.fluid.Fluid;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.fluid.Vapor;
+import org.openrdf.server.object.fluid.helpers.DocumentFactory;
+import org.openrdf.server.object.io.ChannelUtil;
+import org.openrdf.server.object.io.ProducerStream;
+import org.openrdf.server.object.io.ProducerStream.OutputProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -73,10 +73,10 @@ import org.xml.sax.SAXException;
  * Prints DOM Node into an OutputStream.
  */
 public class DOMMessageWriter implements Consumer<Node> {
-	private static final DocumentFactory docFactory = DocumentFactory
+	static final DocumentFactory docFactory = DocumentFactory
 			.newInstance();
 
-	private static class ErrorCatcher implements ErrorListener {
+	static class ErrorCatcher implements ErrorListener {
 		private Logger logger = LoggerFactory.getLogger(ErrorCatcher.class);
 		private TransformerException fatal;
 
@@ -104,7 +104,7 @@ public class DOMMessageWriter implements Consumer<Node> {
 		}
 	}
 
-	private TransformerFactory factory = TransformerFactory.newInstance();
+	TransformerFactory factory = TransformerFactory.newInstance();
 
 	public boolean isConsumable(FluidType mtype, FluidBuilder builder) {
 		Class<?> type = mtype.asClass();

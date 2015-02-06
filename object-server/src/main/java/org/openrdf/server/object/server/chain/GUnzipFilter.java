@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server.chain;
+package org.openrdf.server.object.server.chain;
 
 import java.util.concurrent.Future;
 
@@ -40,13 +40,13 @@ import org.apache.http.HttpVersion;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.message.BasicStatusLine;
 import org.apache.http.protocol.HttpContext;
-import org.callimachusproject.client.CloseableEntity;
-import org.callimachusproject.client.GUnzipEntity;
-import org.callimachusproject.client.GZipEntity;
-import org.callimachusproject.server.AsyncExecChain;
-import org.callimachusproject.server.helpers.Request;
-import org.callimachusproject.server.helpers.ResponseCallback;
-import org.callimachusproject.util.DomainNameSystemResolver;
+import org.openrdf.server.object.client.CloseableEntity;
+import org.openrdf.server.object.client.GUnzipEntity;
+import org.openrdf.server.object.client.GZipEntity;
+import org.openrdf.server.object.server.AsyncExecChain;
+import org.openrdf.server.object.server.helpers.Request;
+import org.openrdf.server.object.server.helpers.ResponseCallback;
+import org.openrdf.server.object.util.DomainNameSystemResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

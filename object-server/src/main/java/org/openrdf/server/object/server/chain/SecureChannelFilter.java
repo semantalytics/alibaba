@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  */
-package org.callimachusproject.server.chain;
+package org.openrdf.server.object.server.chain;
 
 import java.nio.charset.Charset;
 import java.util.concurrent.Future;
@@ -27,9 +27,10 @@ import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.message.BasicHttpResponse;
 import org.apache.http.protocol.HttpContext;
-import org.callimachusproject.server.AsyncExecChain;
-import org.callimachusproject.server.helpers.CalliContext;
-import org.callimachusproject.server.helpers.CompletedResponse;
+import org.openrdf.server.object.server.AsyncExecChain;
+import org.openrdf.server.object.server.helpers.CalliContext;
+import org.openrdf.server.object.server.helpers.CompletedResponse;
+import org.openrdf.server.object.server.helpers.Request;
 
 public class SecureChannelFilter implements AsyncExecChain {
 	private final AsyncExecChain delegate;
@@ -41,7 +42,7 @@ public class SecureChannelFilter implements AsyncExecChain {
 	@Override
 	public Future<HttpResponse> execute(HttpHost target, HttpRequest request,
 			HttpContext context, FutureCallback<HttpResponse> callback) {
-		String scheme = target.getSchemeName();
+		String scheme = new Request(request, context).getScheme();
 		String protocol = CalliContext.adapt(context).getProtocolScheme();
 		if ("https".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(protocol))
 			return new CompletedResponse(callback, insecure());

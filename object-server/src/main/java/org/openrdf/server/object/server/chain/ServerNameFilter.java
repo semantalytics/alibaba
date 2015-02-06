@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server.chain;
+package org.openrdf.server.object.server.chain;
 
 import java.io.IOException;
 
@@ -35,7 +35,7 @@ import org.apache.http.HttpException;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpResponseInterceptor;
 import org.apache.http.protocol.HttpContext;
-import org.callimachusproject.util.DomainNameSystemResolver;
+import org.openrdf.server.object.util.DomainNameSystemResolver;
 
 /**
  * Add a Server header to the response.

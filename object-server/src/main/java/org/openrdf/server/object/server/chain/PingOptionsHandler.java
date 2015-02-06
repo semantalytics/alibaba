@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.server.chain;
+package org.openrdf.server.object.server.chain;
 
 import java.util.concurrent.Future;
 
@@ -41,9 +41,9 @@ import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.message.BasicHttpResponse;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.protocol.HttpDateGenerator;
-import org.callimachusproject.client.HttpUriResponse;
-import org.callimachusproject.server.AsyncExecChain;
-import org.callimachusproject.server.helpers.CompletedResponse;
+import org.openrdf.server.object.client.HttpUriResponse;
+import org.openrdf.server.object.server.AsyncExecChain;
+import org.openrdf.server.object.server.helpers.CompletedResponse;
 
 /**
  * Handles the OPTIONS * requests.

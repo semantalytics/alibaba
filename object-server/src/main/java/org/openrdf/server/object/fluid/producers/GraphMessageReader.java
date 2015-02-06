@@ -27,25 +27,25 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.producers;
+package org.openrdf.server.object.fluid.producers;
 
 import java.io.InputStream;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.Charset;
 import java.util.concurrent.Executor;
 
-import org.callimachusproject.concurrent.ManagedExecutors;
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidType;
-import org.callimachusproject.fluid.producers.base.MessageReaderBase;
-import org.callimachusproject.io.ChannelUtil;
-import org.callimachusproject.server.util.BackgroundGraphResult;
 import org.openrdf.query.GraphQueryResult;
 import org.openrdf.rio.RDFFormat;
 import org.openrdf.rio.RDFParser;
 import org.openrdf.rio.RDFParserFactory;
 import org.openrdf.rio.RDFParserRegistry;
 import org.openrdf.rio.turtle.TurtleParserFactory;
+import org.openrdf.server.object.concurrent.ManagedExecutors;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.fluid.producers.base.MessageReaderBase;
+import org.openrdf.server.object.io.ChannelUtil;
+import org.openrdf.server.object.server.util.BackgroundGraphResult;
 
 /**
  * Reads RDF graph messages.

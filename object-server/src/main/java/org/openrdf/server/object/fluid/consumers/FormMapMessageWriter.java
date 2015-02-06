@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.callimachusproject.fluid.consumers;
+package org.openrdf.server.object.fluid.consumers;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -41,13 +41,13 @@ import java.nio.charset.Charset;
 import java.util.Iterator;
 import java.util.Map;
 
-import org.callimachusproject.fluid.Consumer;
-import org.callimachusproject.fluid.Fluid;
-import org.callimachusproject.fluid.FluidBuilder;
-import org.callimachusproject.fluid.FluidException;
-import org.callimachusproject.fluid.FluidType;
-import org.callimachusproject.fluid.Vapor;
-import org.callimachusproject.io.ChannelUtil;
+import org.openrdf.server.object.fluid.Consumer;
+import org.openrdf.server.object.fluid.Fluid;
+import org.openrdf.server.object.fluid.FluidBuilder;
+import org.openrdf.server.object.fluid.FluidException;
+import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.fluid.Vapor;
+import org.openrdf.server.object.io.ChannelUtil;
 
 /**
  * Writes a percent encoded form from a {@link Map}.
@@ -150,15 +150,15 @@ public class FormMapMessageWriter implements Consumer<Map<String, Object>> {
 					} else {
 						writer.append("&");
 					}
-					if (!iter.hasNext()) {
-						writer.append(name);
-					}
+					writer.append(name);
 					while (iter.hasNext()) {
-						writer.append("&").append(name);
 						Object value = iter.next();
 						if (value != null) {
 							String str = writeTo(vctype, value, base, builder);
 							writer.append("=").append(enc(str));
+						}
+						if (iter.hasNext()) {
+							writer.append("&").append(name);
 						}
 					}
 				}
