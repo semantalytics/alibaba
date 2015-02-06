@@ -63,7 +63,7 @@ import org.openrdf.server.object.concurrent.ManagedExecutors;
 import org.openrdf.server.object.exceptions.BadGateway;
 import org.openrdf.server.object.exceptions.GatewayTimeout;
 import org.openrdf.server.object.exceptions.ResponseException;
-import org.openrdf.server.object.helpers.CalliContext;
+import org.openrdf.server.object.helpers.ObjectContext;
 import org.openrdf.server.object.helpers.HttpRequestChainInterceptorExecChain;
 import org.openrdf.server.object.helpers.PooledExecChain;
 import org.openrdf.server.object.helpers.ResponseBuilder;
@@ -185,7 +185,7 @@ public class RequestExecChain implements AsyncExecChain, ClientExecChain {
 	@Override
 	public Future<HttpResponse> execute(HttpHost target, HttpRequest request,
 			HttpContext context, FutureCallback<HttpResponse> callback) {
-		CalliContext cc = initContext(context, target);
+		ObjectContext cc = initContext(context, target);
 		return chain.execute(target, request, cc, callback);
 	}
 
@@ -200,7 +200,7 @@ public class RequestExecChain implements AsyncExecChain, ClientExecChain {
 				foreground.set(true);
 			}
 			HttpHost target = route.getTargetHost();
-			CalliContext cc = initContext(context, target);
+			ObjectContext cc = initContext(context, target);
 			try {
 				response = chain.execute(target, request, cc,
 						new FutureCallback<HttpResponse>() {
@@ -275,8 +275,8 @@ public class RequestExecChain implements AsyncExecChain, ClientExecChain {
 				.setMaxObjectSize(1024 * 1024).build();
 	}
 
-	private CalliContext initContext(HttpContext context, HttpHost target) {
-		CalliContext cc = CalliContext.adapt(new BasicHttpContext(context));
+	private ObjectContext initContext(HttpContext context, HttpHost target) {
+		ObjectContext cc = ObjectContext.adapt(new BasicHttpContext(context));
 		cc.setProtocolScheme(target.getSchemeName());
 		cc.setReceivedOn(System.currentTimeMillis());
 		cc.setClientAddr(LOCALHOST);

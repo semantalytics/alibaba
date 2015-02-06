@@ -37,52 +37,50 @@ import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
 import org.openrdf.repository.object.ObjectConnection;
 
-public class CalliContext implements HttpContext {
+public class ObjectContext implements HttpContext {
 
 	private static final String PROTOCOL_SCHEME = "http.protocol.scheme";
-	private static final String NS = CalliContext.class.getName() + "#";
+	private static final String NS = ObjectContext.class.getName() + "#";
     private static final String CLIENT_ATTR = NS + "clientAddr";
     private static final String CONNECTION_ATTR = NS + "connection";
     private static final String CREDENTIAL_ATTR = NS + "credential";
     private static final String EXCHANGE_ATTR = NS + "exchange";
 	private static final String PROCESSING_ATTR = NS + "processing";
-	private static final String PUBLIC_ATTR = NS + "public";
 	private static final String RECEIVED_ATTR = NS + "receivedOn";
 	private static final String TRANSACTION_ATTR = NS + "resourceTransaction";
 	private static final String HEAD_ATTR = NS + "headResponse";
 
-    public static CalliContext adapt(HttpContext context) {
-        if (context instanceof CalliContext) {
-            return (CalliContext) context;
+    public static ObjectContext adapt(HttpContext context) {
+        if (context instanceof ObjectContext) {
+            return (ObjectContext) context;
         } else {
-            return new CalliContext(context);
+            return new ObjectContext(context);
         }
     }
 
-    public static CalliContext fork(HttpContext context) {
-    	CalliContext forked = adapt(new BasicHttpContext(context));
+    public static ObjectContext fork(HttpContext context) {
+    	ObjectContext forked = adapt(new BasicHttpContext(context));
     	forked.setClientAddr(forked.getClientAddr());
     	forked.setCredential(forked.getCredential());
     	forked.setExchange(forked.getExchange());
     	forked.setObjectConnection(forked.getObjectConnection());
     	forked.setProtocolScheme(forked.getProtocolScheme());
-    	forked.setPublic(forked.isPublic());
     	forked.setReceivedOn(forked.getReceivedOn());
-    	forked.setResourceTransaction(forked.getResourceTransaction());
+    	forked.setResourceTarget(forked.getResourceTarget());
     	return forked;
     }
 
-    public static CalliContext create() {
-        return new CalliContext(new BasicHttpContext());
+    public static ObjectContext create() {
+        return new ObjectContext(new BasicHttpContext());
     }
 
     private final HttpContext context;
 
-    public CalliContext() {
+    public ObjectContext() {
         this.context = new BasicHttpContext();
     }
 
-    public CalliContext(final HttpContext context) {
+    public ObjectContext(final HttpContext context) {
         this.context = context;
     }
 
@@ -138,15 +136,6 @@ public class CalliContext implements HttpContext {
 		setAttribute(CREDENTIAL_ATTR, credential);
 	}
 
-	public synchronized boolean isPublic() {
-		Boolean bool = getAttribute(PUBLIC_ATTR, Boolean.class);
-		return bool != null && bool;
-	}
-
-	public synchronized void setPublic(boolean bool) {
-		setAttribute(PUBLIC_ATTR, bool);
-	}
-
 	public synchronized ObjectConnection getObjectConnection() {
 		return getAttribute(CONNECTION_ATTR, ObjectConnection.class);
 	}
@@ -155,11 +144,11 @@ public class CalliContext implements HttpContext {
 		setAttribute(CONNECTION_ATTR, con);
 	}
 
-	public ResourceOperation getResourceTransaction() {
-		return getAttribute(TRANSACTION_ATTR, ResourceOperation.class);
+	public ResourceTarget getResourceTarget() {
+		return getAttribute(TRANSACTION_ATTR, ResourceTarget.class);
 	}
 
-	public void setResourceTransaction(ResourceOperation trans) {
+	public void setResourceTarget(ResourceTarget trans) {
 		setAttribute(TRANSACTION_ATTR, trans);
 	}
 

@@ -38,8 +38,8 @@ import org.apache.http.client.methods.HttpRequestWrapper;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.impl.execchain.ClientExecChain;
-import org.openrdf.server.object.helpers.CalliContext;
-import org.openrdf.server.object.helpers.ResourceOperation;
+import org.openrdf.server.object.helpers.ObjectContext;
+import org.openrdf.server.object.helpers.ResourceTarget;
 
 /**
  * Executes a Java Method on the request target and response with the result.
@@ -53,8 +53,8 @@ public class InvokeHandler implements ClientExecChain {
 	public CloseableHttpResponse execute(HttpRoute route,
 			HttpRequestWrapper request, HttpClientContext clientContext,
 			HttpExecutionAware execAware) throws IOException, HttpException {
-		CalliContext context = CalliContext.adapt(clientContext);
-		ResourceOperation trans = context.getResourceTransaction();
+		ObjectContext context = ObjectContext.adapt(clientContext);
+		ResourceTarget trans = context.getResourceTarget();
 		return trans.invoke(request);
 	}
 

@@ -32,8 +32,8 @@ import org.openrdf.repository.sail.SailRepository;
 import org.openrdf.sail.memory.MemoryStore;
 import org.openrdf.server.object.client.HttpUriResponse;
 import org.openrdf.server.object.exceptions.MethodNotAllowed;
-import org.openrdf.server.object.helpers.CalliContext;
-import org.openrdf.server.object.helpers.ResourceOperation;
+import org.openrdf.server.object.helpers.ObjectContext;
+import org.openrdf.server.object.helpers.ResourceTarget;
 
 public class TestResourceOperation extends TestCase {
 	private static final String RESOURCE = "http://example.com/";
@@ -163,12 +163,12 @@ public class TestResourceOperation extends TestCase {
 		}
 	}
 
-	private CalliContext context;
+	private ObjectContext context;
 	private ObjectRepository repository;
 	private ObjectConnection con;
 
 	public void setUp() throws Exception {
-		context = CalliContext.create();
+		context = ObjectContext.create();
 		context.setProtocolScheme("http");
 		SailRepository memory = new SailRepository(new MemoryStore());
 		memory.initialize();
@@ -189,23 +189,23 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testAccept() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		assertEquals("text/plain", target.getAccept("POST", RESOURCE));
 	}
 
 	public void testAllowedHeaders() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		assertEquals(Collections.singleton("Cookie"), target.getAllowedHeaders("GET", RESOURCE + "cookie"));
 		assertEquals(Collections.singleton("Accept"), target.getAllowedHeaders("GET", RESOURCE + "accept"));
 	}
 
 	public void testAllowedMethods() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		assertEquals(new HashSet<String>(Arrays.asList("GET", "HEAD", "POST")), target.getAllowedMethods(RESOURCE));
 	}
 
 	public void testInvokeGetText() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE, HttpVersion.HTTP_1_1);
 		request.setHeader("Accept", "text/plain");
 		HttpUriResponse resp = target.invoke(request);
@@ -214,7 +214,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testInvokeGetXML() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE, HttpVersion.HTTP_1_1);
 		request.setHeader("Accept", "text/xml");
 		HttpUriResponse resp = target.invoke(request);
@@ -223,7 +223,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testInvokePreferText() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE, HttpVersion.HTTP_1_1);
 		request.setHeader("Accept", "text/plain;q=0.9, text/xml;q=0.8");
 		HttpUriResponse resp = target.invoke(request);
@@ -232,7 +232,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testInvokePreferXML() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE, HttpVersion.HTTP_1_1);
 		request.setHeader("Accept", "text/plain;q=0.7, text/xml;q=0.8");
 		HttpUriResponse resp = target.invoke(request);
@@ -241,7 +241,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testInvokeGetAnything() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE, HttpVersion.HTTP_1_1);
 		request.setHeader("Accept", "text/xml, text/plain");
 		HttpUriResponse resp = target.invoke(request);
@@ -250,7 +250,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testInvokePost() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpEntityEnclosingRequest request = new BasicHttpEntityEnclosingRequest("POST", RESOURCE, HttpVersion.HTTP_1_1);
 		request.setEntity(new StringEntity("text"));
 		HttpUriResponse resp = target.invoke(request);
@@ -259,7 +259,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testInvokeUnknown() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpRequest request = new BasicHttpRequest("UNKNOWN", RESOURCE, HttpVersion.HTTP_1_1);
 		try {
 			target.invoke(request);
@@ -270,7 +270,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testInvokePostText() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpEntityEnclosingRequest request = new BasicHttpEntityEnclosingRequest("POST", RESOURCE + "text", HttpVersion.HTTP_1_1);
 		request.setHeader("Accept", "text/plain");
 		request.setHeader("Content-Type", "text/plain");
@@ -281,7 +281,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testInvokePostXML() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpEntityEnclosingRequest request = new BasicHttpEntityEnclosingRequest("POST", RESOURCE + "text", HttpVersion.HTTP_1_1);
 		request.setHeader("Accept", "text/plain");
 		request.setHeader("Content-Type", "text/xml");
@@ -292,7 +292,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testInvokeHeader() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE + "cookie", HttpVersion.HTTP_1_1);
 		request.setHeader("Cookie", "yum");
 		HttpUriResponse resp = target.invoke(request);
@@ -301,7 +301,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testInvokeMultiHeader() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE + "cookie2", HttpVersion.HTTP_1_1);
 		request.addHeader("Cookie", "hum");
 		request.addHeader("Cookie", "yum");
@@ -311,7 +311,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testInvokeQueryParam() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE + "?param=value", HttpVersion.HTTP_1_1);
 		HttpUriResponse resp = target.invoke(request);
 		assertEquals(resp.getStatusLine().getReasonPhrase(), 200, resp.getStatusLine().getStatusCode());
@@ -319,7 +319,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testInvokeMultiQueryParam() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE + "?multi=1&multi=2", HttpVersion.HTTP_1_1);
 		HttpUriResponse resp = target.invoke(request);
 		assertEquals(resp.getStatusLine().getReasonPhrase(), 200, resp.getStatusLine().getStatusCode());
@@ -327,7 +327,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testInvokeQueryAndHeader() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE + "accept?accept=text/xml", HttpVersion.HTTP_1_1);
 		request.setHeader("Accept", "text/plain");
 		HttpUriResponse resp = target.invoke(request);
@@ -336,7 +336,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testInvokeQueryString() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE + "query?q=value", HttpVersion.HTTP_1_1);
 		HttpUriResponse resp = target.invoke(request);
 		assertEquals(resp.getStatusLine().getReasonPhrase(), 200, resp.getStatusLine().getStatusCode());
@@ -344,7 +344,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testInvokeNoQueryString() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE + "query", HttpVersion.HTTP_1_1);
 		HttpUriResponse resp = target.invoke(request);
 		assertEquals(resp.getStatusLine().getReasonPhrase(), 204, resp.getStatusLine().getStatusCode());
@@ -352,7 +352,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testInvokePathVariable() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE + "path/segment?param=value", HttpVersion.HTTP_1_1);
 		HttpUriResponse resp = target.invoke(request);
 		assertEquals(resp.getStatusLine().getReasonPhrase(), 200, resp.getStatusLine().getStatusCode());
@@ -360,7 +360,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testInvokeEmptyPathVariable() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE + "path?param=value", HttpVersion.HTTP_1_1);
 		HttpUriResponse resp = target.invoke(request);
 		assertEquals(resp.getStatusLine().getReasonPhrase(), 204, resp.getStatusLine().getStatusCode());
@@ -368,7 +368,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testParentOfSubMethod() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE + "name", HttpVersion.HTTP_1_1);
 		request.setHeader("Accept", "text/plain");
 		HttpUriResponse resp = target.invoke(request);
@@ -377,7 +377,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testSubMethod() throws Exception {
-		ResourceOperation target = getResource(MARK);
+		ResourceTarget target = getResource(MARK);
 		BasicHttpRequest request = new BasicHttpRequest("GET", MARK + "name", HttpVersion.HTTP_1_1);
 		request.setHeader("Accept", "text/plain");
 		HttpUriResponse resp = target.invoke(request);
@@ -386,7 +386,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testInvokePostAtom() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpEntityEnclosingRequest request = new BasicHttpEntityEnclosingRequest("POST", RESOURCE + "data", HttpVersion.HTTP_1_1);
 		request.setHeader("Accept", "text/plain");
 		request.setHeader("Content-Type", "application/xml");
@@ -397,7 +397,7 @@ public class TestResourceOperation extends TestCase {
 	}
 
 	public void testInvokePostRDF() throws Exception {
-		ResourceOperation target = getResource(RESOURCE);
+		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpEntityEnclosingRequest request = new BasicHttpEntityEnclosingRequest("POST", RESOURCE + "data", HttpVersion.HTTP_1_1);
 		request.setHeader("Accept", "text/plain");
 		request.setHeader("Content-Type", "application/xml+rdf");
@@ -407,10 +407,10 @@ public class TestResourceOperation extends TestCase {
 		assertEquals("rdf", EntityUtils.toString(resp.getEntity()));
 	}
 
-	private ResourceOperation getResource(String iri)
+	private ResourceTarget getResource(String iri)
 			throws QueryEvaluationException, RepositoryException {
 		RDFObject object = con.getObjects(RDFObject.class,
 				con.getValueFactory().createURI(iri)).singleResult();
-		return new ResourceOperation(object, context);
+		return new ResourceTarget(object, context);
 	}
 }

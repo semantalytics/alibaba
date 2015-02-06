@@ -27,7 +27,7 @@ import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.message.BasicHttpResponse;
 import org.apache.http.protocol.HttpContext;
-import org.openrdf.server.object.helpers.CalliContext;
+import org.openrdf.server.object.helpers.ObjectContext;
 import org.openrdf.server.object.helpers.CompletedResponse;
 import org.openrdf.server.object.helpers.Request;
 
@@ -42,7 +42,7 @@ public class SecureChannelFilter implements AsyncExecChain {
 	public Future<HttpResponse> execute(HttpHost target, HttpRequest request,
 			HttpContext context, FutureCallback<HttpResponse> callback) {
 		String scheme = new Request(request, context).getScheme();
-		String protocol = CalliContext.adapt(context).getProtocolScheme();
+		String protocol = ObjectContext.adapt(context).getProtocolScheme();
 		if ("https".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(protocol))
 			return new CompletedResponse(callback, insecure());
 		return delegate.execute(target, request, context, callback);

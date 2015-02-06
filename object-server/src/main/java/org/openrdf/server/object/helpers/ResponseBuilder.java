@@ -75,7 +75,7 @@ public class ResponseBuilder {
 	private final String systemId;
 
 	public ResponseBuilder(HttpRequest request, HttpContext context) {
-		this(new Request(request, CalliContext.adapt(context)));
+		this(new Request(request, ObjectContext.adapt(context)));
 	}
 
 	public ResponseBuilder(Request request) {

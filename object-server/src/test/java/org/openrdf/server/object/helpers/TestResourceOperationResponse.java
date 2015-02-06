@@ -23,8 +23,8 @@ import org.openrdf.repository.object.config.ObjectRepositoryFactory;
 import org.openrdf.repository.sail.SailRepository;
 import org.openrdf.sail.memory.MemoryStore;
 import org.openrdf.server.object.client.HttpUriResponse;
-import org.openrdf.server.object.helpers.CalliContext;
-import org.openrdf.server.object.helpers.ResourceOperation;
+import org.openrdf.server.object.helpers.ObjectContext;
+import org.openrdf.server.object.helpers.ResourceTarget;
 
 public class TestResourceOperationResponse extends TestCase {
 	private static final String RESOURCE = "http://example.com/";
@@ -46,12 +46,12 @@ public class TestResourceOperationResponse extends TestCase {
 		}
 	}
 
-	private CalliContext context;
+	private ObjectContext context;
 	private ObjectRepository repository;
 	private ObjectConnection con;
 
 	public void setUp() throws Exception {
-		context = CalliContext.create();
+		context = ObjectContext.create();
 		context.setProtocolScheme("http");
 		SailRepository memory = new SailRepository(new MemoryStore());
 		memory.initialize();
@@ -71,7 +71,7 @@ public class TestResourceOperationResponse extends TestCase {
 	}
 
 	public void testEchoResponse() throws Exception {
-		ResourceOperation target = getResource();
+		ResourceTarget target = getResource();
 		BasicHttpEntityEnclosingRequest request = new BasicHttpEntityEnclosingRequest(
 				"POST", RESOURCE + "echo", HttpVersion.HTTP_1_1);
 		request.setHeader("Accept", "*/*");
@@ -82,15 +82,15 @@ public class TestResourceOperationResponse extends TestCase {
 		assertEquals(line.getReasonPhrase(), 202, line.getStatusCode());
 	}
 
-	private ResourceOperation getResource() throws QueryEvaluationException,
+	private ResourceTarget getResource() throws QueryEvaluationException,
 			RepositoryException {
 		RDFObject object = con.getObjects(RDFObject.class,
 				con.getValueFactory().createURI(RESOURCE)).singleResult();
-		return new ResourceOperation(object, context);
+		return new ResourceTarget(object, context);
 	}
 
 	public void testRedirect() throws Exception {
-		ResourceOperation target = getResource();
+		ResourceTarget target = getResource();
 		BasicHttpEntityEnclosingRequest request = new BasicHttpEntityEnclosingRequest(
 				"GET", RESOURCE + "redirect", HttpVersion.HTTP_1_1);
 		HttpUriResponse resp = target.invoke(request);

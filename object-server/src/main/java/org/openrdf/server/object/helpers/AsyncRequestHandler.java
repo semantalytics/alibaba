@@ -86,7 +86,7 @@ public class AsyncRequestHandler implements HttpAsyncRequestHandlerMapper,
 			HttpRequest request, HttpContext context) throws HttpException,
 			IOException {
 		logger.debug("Request received {}", request.getRequestLine());
-		CalliContext cc = CalliContext.adapt(context);
+		ObjectContext cc = ObjectContext.adapt(context);
 		final Request req = new Request(request, context);
 		final Queue<Exchange> queue = cc.getOrCreateProcessingQueue();
 		final Exchange exchange = new Exchange(req, queue);
@@ -99,7 +99,7 @@ public class AsyncRequestHandler implements HttpAsyncRequestHandlerMapper,
 	public void handle(HttpRequest request, HttpAsyncExchange trigger,
 			HttpContext context) throws HttpException, IOException {
 		logger.debug("Request consumed {}", request.getRequestLine());
-		CalliContext ctx = CalliContext.adapt(context);
+		ObjectContext ctx = ObjectContext.adapt(context);
 		Exchange exchange = ctx.getExchange();
 		assert exchange != null;
 		exchange.setHttpAsyncExchange(trigger);
@@ -110,7 +110,7 @@ public class AsyncRequestHandler implements HttpAsyncRequestHandlerMapper,
 			final Exchange exchange) {
 		InetAddress remoteAddress = getRemoteAddress(context);
 		// fork HttpContext so it can be used in other threads
-		CalliContext cc = CalliContext.fork(context);
+		ObjectContext cc = ObjectContext.fork(context);
 		cc.setReceivedOn(System.currentTimeMillis());
 		cc.setClientAddr(remoteAddress);
 		HttpHost host = URIUtils.extractHost(URI.create(req.getOrigin() + "/"));

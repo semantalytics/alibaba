@@ -56,8 +56,8 @@ import org.openrdf.repository.object.config.ObjectRepositoryFactory;
 import org.openrdf.repository.sail.SailRepository;
 import org.openrdf.sail.memory.MemoryStore;
 import org.openrdf.server.object.client.HttpUriResponse;
-import org.openrdf.server.object.helpers.CalliContext;
-import org.openrdf.server.object.helpers.ResourceOperation;
+import org.openrdf.server.object.helpers.ObjectContext;
+import org.openrdf.server.object.helpers.ResourceTarget;
 import org.w3c.dom.Document;
 import org.w3c.dom.DocumentFragment;
 
@@ -310,12 +310,12 @@ public class TestResourceOperationResponseBody extends TestCase {
 		}
 	}
 
-	private CalliContext context;
+	private ObjectContext context;
 	private ObjectRepository repository;
 	private ObjectConnection con;
 
 	public void setUp() throws Exception {
-		context = CalliContext.create();
+		context = ObjectContext.create();
 		context.setProtocolScheme("http");
 		SailRepository memory = new SailRepository(new MemoryStore());
 		memory.initialize();
@@ -479,7 +479,7 @@ public class TestResourceOperationResponseBody extends TestCase {
 
 	private void assertPostRoundTrip(String url, String type, byte[] data)
 			throws OpenRDFException, IOException, HttpException {
-		ResourceOperation target = getResource();
+		ResourceTarget target = getResource();
 		BasicHttpEntityEnclosingRequest request = new BasicHttpEntityEnclosingRequest(
 				"POST", url, HttpVersion.HTTP_1_1);
 		request.setHeader("Accept", type);
@@ -495,7 +495,7 @@ public class TestResourceOperationResponseBody extends TestCase {
 
 	private void assertPostRoundTrip(String url, String type, String data)
 			throws OpenRDFException, IOException, HttpException {
-		ResourceOperation target = getResource();
+		ResourceTarget target = getResource();
 		BasicHttpEntityEnclosingRequest request = new BasicHttpEntityEnclosingRequest(
 				"POST", url, HttpVersion.HTTP_1_1);
 		request.setHeader("Accept", type);
@@ -508,10 +508,10 @@ public class TestResourceOperationResponseBody extends TestCase {
 		assertEquals(data, echo);
 	}
 
-	private ResourceOperation getResource() throws QueryEvaluationException,
+	private ResourceTarget getResource() throws QueryEvaluationException,
 			RepositoryException {
 		RDFObject object = con.getObjects(RDFObject.class,
 				con.getValueFactory().createURI(RESOURCE)).singleResult();
-		return new ResourceOperation(object, context);
+		return new ResourceTarget(object, context);
 	}
 }

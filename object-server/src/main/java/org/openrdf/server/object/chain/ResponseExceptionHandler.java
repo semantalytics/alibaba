@@ -40,10 +40,10 @@ import org.apache.http.protocol.HttpContext;
 import org.openrdf.server.object.client.HttpUriResponse;
 import org.openrdf.server.object.exceptions.InternalServerError;
 import org.openrdf.server.object.exceptions.ResponseException;
-import org.openrdf.server.object.helpers.CalliContext;
+import org.openrdf.server.object.helpers.ObjectContext;
 import org.openrdf.server.object.helpers.CompletedResponse;
 import org.openrdf.server.object.helpers.Request;
-import org.openrdf.server.object.helpers.ResourceOperation;
+import org.openrdf.server.object.helpers.ResourceTarget;
 import org.openrdf.server.object.helpers.ResponseBuilder;
 import org.openrdf.server.object.helpers.ResponseCallback;
 import org.slf4j.Logger;
@@ -92,7 +92,7 @@ public class ResponseExceptionHandler implements AsyncExecChain {
 	HttpUriResponse handle(final HttpRequest request,
 			final HttpContext context, ResponseException e) {
 		String url = new Request(request, context).getRequestURL();
-		ResourceOperation trans = CalliContext.adapt(context).getResourceTransaction();
+		ResourceTarget trans = ObjectContext.adapt(context).getResourceTarget();
 		HttpUriResponse resp = new ResponseBuilder(request, context).exception(e);
 		if (trans == null || trans.getAllowedMethods(url).isEmpty())
 			return resp;

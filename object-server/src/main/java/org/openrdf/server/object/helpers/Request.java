@@ -55,7 +55,7 @@ public class Request extends EditableHttpEntityEnclosingRequest {
 	private final String iri;
 
 	public Request(HttpRequest request, HttpContext context) {
-		this(request, CalliContext.adapt(context).getProtocolScheme());
+		this(request, ObjectContext.adapt(context).getProtocolScheme());
 	}
 
 	public Request(HttpRequest request, String protocol) {

@@ -47,7 +47,7 @@ import org.openrdf.sail.memory.MemoryStore;
 import org.openrdf.server.object.chain.RequestExecChain;
 import org.openrdf.server.object.exceptions.BadGateway;
 import org.openrdf.server.object.exceptions.BadRequest;
-import org.openrdf.server.object.helpers.CalliContext;
+import org.openrdf.server.object.helpers.ObjectContext;
 import org.openrdf.server.object.io.ChannelUtil;
 
 public class TestRequestExecChain extends TestCase {
@@ -179,13 +179,13 @@ public class TestRequestExecChain extends TestCase {
 		}
 	}
 
-	private CalliContext context;
+	private ObjectContext context;
 	private ObjectRepository repository;
 	private RequestExecChain chain;
 	static InputStream body;
 
 	public void setUp() throws Exception {
-		context = CalliContext.create();
+		context = ObjectContext.create();
 		context.setProtocolScheme("http");
 		SailRepository memory = new SailRepository(new MemoryStore());
 		memory.initialize();

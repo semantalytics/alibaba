@@ -41,7 +41,7 @@ import org.apache.http.client.utils.DateUtils;
 import org.apache.http.concurrent.BasicFuture;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.protocol.HttpContext;
-import org.openrdf.server.object.helpers.CalliContext;
+import org.openrdf.server.object.helpers.ObjectContext;
 import org.openrdf.server.object.helpers.Request;
 import org.openrdf.server.object.helpers.ResponseBuilder;
 
@@ -61,7 +61,7 @@ public class UnmodifiedSinceHandler implements AsyncExecChain {
 	@Override
 	public Future<HttpResponse> execute(HttpHost target, HttpRequest request,
 			HttpContext context, FutureCallback<HttpResponse> callback) {
-		HttpResponse head = CalliContext.adapt(context)
+		HttpResponse head = ObjectContext.adapt(context)
 				.getDerivedFromHeadResponse();
 		Request req = new Request(request, context);
 		if (head == null

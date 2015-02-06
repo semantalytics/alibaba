@@ -38,7 +38,7 @@ import org.apache.http.nio.reactor.IOReactorStatus;
 import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.HttpContext;
 import org.openrdf.server.object.helpers.AutoClosingAsyncClient;
-import org.openrdf.server.object.helpers.CalliContext;
+import org.openrdf.server.object.helpers.ObjectContext;
 import org.openrdf.server.object.helpers.ResponseCallback;
 import org.openrdf.server.object.util.HTTPDateFormat;
 import org.slf4j.Logger;
@@ -170,7 +170,7 @@ public class CacheHandler implements AsyncExecChain {
 	}
 
 	private void setCacheControl(HttpResponse response, final HttpContext context) {
-		long now = CalliContext.adapt(context).getReceivedOn();
+		long now = ObjectContext.adapt(context).getReceivedOn();
 		Header lastMod = response.getLastHeader("Last-Modified");
 		Header[] headers = response.getHeaders("Cache-Control");
 		if (headers != null && headers.length > 0 && now > 0 && lastMod != null) {

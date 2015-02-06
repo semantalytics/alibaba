@@ -92,7 +92,7 @@ import org.slf4j.LoggerFactory;
  * @author James Leigh
  * 
  */
-public class ResourceOperation {
+public class ResourceTarget {
 	private static final String DEFAULT_PATH = "$|\\?";
 
 	private interface MapStringArray extends Map<String, String[]> {
@@ -101,19 +101,19 @@ public class ResourceOperation {
 	private static final Type mapOfStringArrayType = MapStringArray.class
 			.getGenericInterfaces()[0];
 	private static final String SUB_CLASS_OF = "http://www.w3.org/2000/01/rdf-schema#subClassOf";
-	private final Logger logger = LoggerFactory.getLogger(ResourceOperation.class);
+	private final Logger logger = LoggerFactory.getLogger(ResourceTarget.class);
 
 	private final FluidFactory ff = FluidFactory.getInstance();
-	private final CalliContext context;
+	private final ObjectContext context;
 	private final ValueFactory vf;
 	private final ObjectConnection con;
 	private RDFObject target;
 	private final FluidBuilder writer;
 
-	public ResourceOperation(RDFObject target, HttpContext context)
+	public ResourceTarget(RDFObject target, HttpContext context)
 			throws QueryEvaluationException, RepositoryException {
 		this.target = target;
-		this.context = CalliContext.adapt(context);
+		this.context = ObjectContext.adapt(context);
 		this.con = target.getObjectConnection();
 		this.vf = con.getValueFactory();
 		this.writer = ff.builder(con);

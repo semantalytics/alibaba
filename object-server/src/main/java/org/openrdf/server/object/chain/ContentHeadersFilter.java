@@ -46,9 +46,9 @@ import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.message.BasicHttpRequest;
 import org.apache.http.protocol.HttpContext;
 import org.openrdf.server.object.client.HttpUriResponse;
-import org.openrdf.server.object.helpers.CalliContext;
+import org.openrdf.server.object.helpers.ObjectContext;
 import org.openrdf.server.object.helpers.Request;
-import org.openrdf.server.object.helpers.ResourceOperation;
+import org.openrdf.server.object.helpers.ResourceTarget;
 import org.openrdf.server.object.helpers.ResponseCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,7 +76,7 @@ public class ContentHeadersFilter implements AsyncExecChain {
 	public Future<HttpResponse> execute(HttpHost target,
 			final HttpRequest request, final HttpContext context,
 			FutureCallback<HttpResponse> callback) {
-		CalliContext ctx = CalliContext.adapt(context);
+		ObjectContext ctx = ObjectContext.adapt(context);
 		final Request req = new Request(request, ctx);
 		if ("HEAD".equals(req.getMethod()))
 			delegate.execute(target, request, context, callback);
@@ -94,8 +94,8 @@ public class ContentHeadersFilter implements AsyncExecChain {
 		});
 	}
 
-	private HttpUriResponse getHeadResponse(final HttpRequest request, CalliContext ctx) {
-		ResourceOperation trans = ctx.getResourceTransaction();
+	private HttpUriResponse getHeadResponse(final HttpRequest request, ObjectContext ctx) {
+		ResourceTarget trans = ctx.getResourceTarget();
 		RequestLine line = request.getRequestLine();
 		try {
 			ProtocolVersion ver = line.getProtocolVersion();

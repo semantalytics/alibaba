@@ -41,9 +41,9 @@ import org.apache.http.concurrent.BasicFuture;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.protocol.HttpContext;
 import org.openrdf.server.object.client.HttpUriResponse;
-import org.openrdf.server.object.helpers.CalliContext;
+import org.openrdf.server.object.helpers.ObjectContext;
 import org.openrdf.server.object.helpers.Request;
-import org.openrdf.server.object.helpers.ResourceOperation;
+import org.openrdf.server.object.helpers.ResourceTarget;
 import org.openrdf.server.object.helpers.ResponseBuilder;
 import org.openrdf.server.object.helpers.ResponseCallback;
 
@@ -72,7 +72,7 @@ public class OptionsHandler implements AsyncExecChain {
 	public Future<HttpResponse> execute(HttpHost target,
 			final HttpRequest request, final HttpContext context,
 			final FutureCallback<HttpResponse> callback) {
-		final ResourceOperation trans = CalliContext.adapt(context).getResourceTransaction();
+		final ResourceTarget trans = ObjectContext.adapt(context).getResourceTarget();
 		final Request req = new Request(request, context);
 		final String m = req.getMethod();
 		if ("OPTIONS".equals(m) && !trans.isHandled(request)) {
@@ -105,7 +105,7 @@ public class OptionsHandler implements AsyncExecChain {
 		}
 	}
 
-	void addDiscoveryHeaders(ResourceOperation trans,
+	void addDiscoveryHeaders(ResourceTarget trans,
 			Request request, HttpResponse rb) {
 		StringBuilder sb = new StringBuilder();
 		sb.append("OPTIONS");
@@ -125,7 +125,7 @@ public class OptionsHandler implements AsyncExecChain {
 		}
 	}
 
-	void addPreflightHeaders(ResourceOperation trans, Request req,
+	void addPreflightHeaders(ResourceTarget trans, Request req,
 			HttpResponse rb) {
 		org.apache.http.Header m = req.getFirstHeader(REQUEST_METHOD);
 		if (!rb.containsHeader("Access-Control-Allow-Methods")) {

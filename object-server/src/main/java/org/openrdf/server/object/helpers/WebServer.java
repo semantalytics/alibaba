@@ -473,7 +473,7 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 				bean.setResponse(resp.getStatusLine().toString() + " "
 						+ resp.getEntity());
 			}
-			CalliContext ctx = CalliContext.adapt(conn.getContext());
+			ObjectContext ctx = ObjectContext.adapt(conn.getContext());
 			Exchange[] array = ctx.getPendingExchange();
 			if (array != null) {
 				String[] pending = new String[array.length];

@@ -42,7 +42,7 @@ import org.apache.http.concurrent.BasicFuture;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.protocol.HttpContext;
 import org.openrdf.server.object.client.HttpUriResponse;
-import org.openrdf.server.object.helpers.CalliContext;
+import org.openrdf.server.object.helpers.ObjectContext;
 import org.openrdf.server.object.helpers.Request;
 import org.openrdf.server.object.helpers.ResponseBuilder;
 import org.openrdf.server.object.helpers.ResponseCallback;
@@ -81,7 +81,7 @@ public class ModifiedSinceHandler implements AsyncExecChain {
 				}
 			}
 		};
-		HttpResponse head = CalliContext.adapt(context).getDerivedFromHeadResponse();
+		HttpResponse head = ObjectContext.adapt(context).getDerivedFromHeadResponse();
 		Request req = new Request(request, context);
 		String method = req.getMethod();
 		Header eTag = head == null ? null : head.getFirstHeader("ETag");

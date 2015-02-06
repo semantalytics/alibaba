@@ -45,10 +45,10 @@ import org.openrdf.server.object.client.CloseableEntity;
 import org.openrdf.server.object.client.HttpUriResponse;
 import org.openrdf.server.object.exceptions.InternalServerError;
 import org.openrdf.server.object.exceptions.ServiceUnavailable;
-import org.openrdf.server.object.helpers.CalliContext;
+import org.openrdf.server.object.helpers.ObjectContext;
 import org.openrdf.server.object.helpers.CompletedResponse;
 import org.openrdf.server.object.helpers.Request;
-import org.openrdf.server.object.helpers.ResourceOperation;
+import org.openrdf.server.object.helpers.ResourceTarget;
 import org.openrdf.server.object.helpers.ResponseBuilder;
 import org.openrdf.server.object.helpers.ResponseCallback;
 import org.openrdf.server.object.io.ChannelUtil;
@@ -59,7 +59,7 @@ import org.slf4j.LoggerFactory;
 public class TransactionHandler implements AsyncExecChain {
 	private static final int ONE_PACKET = 1024;
 
-	private final Logger logger = LoggerFactory.getLogger(ResourceOperation.class);
+	private final Logger logger = LoggerFactory.getLogger(ResourceTarget.class);
 	private final PrefixMap<ObjectRepository> repositories = new PrefixMap<ObjectRepository>();
 	private final AsyncExecChain handler;
 	final Executor executor;
@@ -89,7 +89,7 @@ public class TransactionHandler implements AsyncExecChain {
 		ObjectRepository repo = getRepository(req.getRequestURL());
 		if (repo == null || !repo.isInitialized())
 			return notSetup(req, ctx, callback);
-		final CalliContext context = CalliContext.adapt(ctx);
+		final ObjectContext context = ObjectContext.adapt(ctx);
 		try {
 			final ObjectConnection con = repo.getConnection();
 			boolean success = false;
@@ -97,8 +97,8 @@ public class TransactionHandler implements AsyncExecChain {
 				con.begin();
 				context.setObjectConnection(con);
 				RDFObject object = getRequestedObject(con, req.getIRI());
-				final ResourceOperation op = new ResourceOperation(object, context);
-				context.setResourceTransaction(op);
+				final ResourceTarget op = new ResourceTarget(object, context);
+				context.setResourceTarget(op);
 				Future<HttpResponse> future = handler.execute(target, request, context, new ResponseCallback(callback) {
 					public void completed(HttpResponse result) {
 						try {
@@ -111,21 +111,21 @@ public class TransactionHandler implements AsyncExecChain {
 						} catch (RuntimeException ex) {
 							failed(ex);
 						} finally {
-							context.setResourceTransaction(null);
+							context.setResourceTarget(null);
 							context.setObjectConnection(null);
 						}
 					}
 
 					public void failed(Exception ex) {
 						endTransaction(con);
-						context.setResourceTransaction(null);
+						context.setResourceTarget(null);
 						context.setObjectConnection(null);
 						super.failed(ex);
 					}
 
 					public void cancelled() {
 						endTransaction(con);
-						context.setResourceTransaction(null);
+						context.setResourceTarget(null);
 						context.setObjectConnection(null);
 						super.cancelled();
 					}

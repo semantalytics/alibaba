@@ -38,7 +38,7 @@ import org.apache.http.HttpVersion;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.message.BasicHttpResponse;
 import org.apache.http.protocol.HttpContext;
-import org.openrdf.server.object.helpers.CalliContext;
+import org.openrdf.server.object.helpers.ObjectContext;
 import org.openrdf.server.object.helpers.Exchange;
 
 public class ExpectContinueHandler implements AsyncExecChain {
@@ -52,7 +52,7 @@ public class ExpectContinueHandler implements AsyncExecChain {
 	@Override
 	public Future<HttpResponse> execute(HttpHost target, HttpRequest request,
 			HttpContext context, FutureCallback<HttpResponse> callback) {
-		Exchange exchange = CalliContext.adapt(context).getExchange();
+		Exchange exchange = ObjectContext.adapt(context).getExchange();
 		if (exchange != null) {
 			Header expect = request.getFirstHeader("Expect");
 			if (expect != null
