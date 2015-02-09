@@ -61,7 +61,7 @@ import org.openrdf.server.object.helpers.ResourceTarget;
 import org.w3c.dom.Document;
 import org.w3c.dom.DocumentFragment;
 
-public class TestResourceOperationResponseBody extends TestCase {
+public class TestResourceTargetResponseBody extends TestCase {
 	private static final String RESOURCE = "http://example.com/";
 
 	public static class TestEcho {

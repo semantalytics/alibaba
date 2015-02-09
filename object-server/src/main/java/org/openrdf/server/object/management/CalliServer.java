@@ -407,6 +407,7 @@ public class CalliServer implements CalliServerMXBean {
 
 	private synchronized WebServer createServer() throws OpenRDFException,
 			IOException, NoSuchAlgorithmException {
+		serverCacheDir.mkdirs();
 		WebServer server = new WebServer(serverCacheDir);
 		server.setName(getServerName());
 		server.listen(getPortArray(), getSSLPortArray());

@@ -113,7 +113,7 @@ public class HttpAuthenticator {
         HttpHost proxy = route.getProxyHost();
         if (this.needAuthentication(target, proxy, targetAuthState,
                 proxyAuthState, response, context)) {
-            // discard previous auth headers
+            // discard previous auth responseHeaders
             request.removeHeaders(AUTH.WWW_AUTH_RESP);
             request.removeHeaders(AUTH.PROXY_AUTH_RESP);
             return true;

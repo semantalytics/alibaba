@@ -42,13 +42,6 @@ public class SystemProperties {
 		return new File(keyStore);
 	}
 
-	public static File getMailPropertiesFile() {
-		String mail = getProperty("java.mail.properties");
-		if (mail == null)
-			return new File("etc/mail.properties");
-		return new File(mail);
-	}
-
 	public static File getLoggingPropertiesFile() {
 		String file = System.getProperty("java.util.logging.config.file");
 		if (file == null)
@@ -75,27 +68,6 @@ public class SystemProperties {
 		if (defaultFile != null)
 			return new File(defaultFile);
 		return new File(SERVER_DEFAULT_CONF);
-	}
-
-	public static File getBackupDirectory() {
-		String defaultFile = getProperty("org.callimachusproject.config.backups");
-		if (defaultFile != null)
-			return new File(defaultFile);
-		return null;
-	}
-
-	public static int getUnlockAfter() {
-		String unlockAfter = getProperty("org.callimachusproject.auth.unlockAfter");
-		if (unlockAfter != null && Pattern.matches("\\d+", unlockAfter))
-			return Math.abs(Integer.parseInt(unlockAfter));
-		return 12 * 60 * 60;
-	}
-
-	public static int getMaxLoginAttempts() {
-		String maxLoginAttempts = getProperty("org.callimachusproject.auth.maxLoginAttempts");
-		if (maxLoginAttempts != null && Pattern.matches("\\d+", maxLoginAttempts))
-			return Math.abs(Integer.parseInt(maxLoginAttempts));
-		return 1000;
 	}
 
 	public static long getClientKeepAliveTimeout() {

@@ -200,7 +200,6 @@ public class Server {
 			registerMBean(new CalliKeyStore(etc), CalliKeyStore.class);
 			if (!line.has("trust")) {
 				File[] writable = { confFile, backupDir,
-						SystemProperties.getMailPropertiesFile(),
 						SystemProperties.getLoggingPropertiesFile(),
 						new File(baseDir, "repositories") };
 				CallimachusPolicy.apply(new String[0], writable);

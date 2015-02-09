@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Collection;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -124,12 +125,20 @@ public class RequestExecChain implements AsyncExecChain, ClientExecChain {
 		chain = filter = new AccessLog(filter);
 	}
 
-	public void addRepository(String origin, ObjectRepository repository) {
-		transaction.addRepository(origin, repository);
+	public void addRepository(String prefix, ObjectRepository repository) {
+		transaction.addRepository(prefix, repository);
 	}
 
-	public void removeRepository(String origin) {
-		transaction.removeRepository(origin);
+	public void removeRepository(String prefix) {
+		transaction.removeRepository(prefix);
+	}
+
+	public Collection<String> getRepositoryPrefixes() {
+		return transaction.getRepositoryPrefixes();
+	}
+
+	public ObjectRepository getRepository(String prefix) {
+		return transaction.getRepository(prefix);
 	}
 
 	public void removeAllRepositories() {

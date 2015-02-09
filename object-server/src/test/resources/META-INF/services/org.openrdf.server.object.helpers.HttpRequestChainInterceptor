@@ -1,1 +1,1 @@
-org.openrdf.server.object.helpers.InterceptorTester
+org.openrdf.server.object.chain.InterceptorTester

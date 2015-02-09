@@ -39,7 +39,7 @@ public class ProxyClientExecDecorator {
 		return proxies.get(host);
 	}
 
-	public ClientExecChain setProxy(HttpHost host, ClientExecChain proxy) {
+	public ClientExecChain putProxy(HttpHost host, ClientExecChain proxy) {
 		if (proxy == null) {
 			return proxies.remove(key(host));
 		} else {
@@ -47,7 +47,7 @@ public class ProxyClientExecDecorator {
 		}
 	}
 
-	public ClientExecChain setProxyIfAbsent(HttpHost host, ClientExecChain proxy) {
+	public ClientExecChain putProxyIfAbsent(HttpHost host, ClientExecChain proxy) {
 		assert proxy != null;
 		return proxies.putIfAbsent(key(host), proxy);
 	}

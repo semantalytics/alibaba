@@ -32,7 +32,7 @@ package org.openrdf.server.object.exceptions;
 /**
  * The resource identified by the request is only capable of generating response
  * entities which have content characteristics not acceptable according to the
- * accept headers sent in the request.
+ * accept responseHeaders sent in the request.
  */
 public class NotAcceptable extends ResponseException {
 	private static final long serialVersionUID = 630976310525141097L;

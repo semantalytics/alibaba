@@ -38,7 +38,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -51,6 +51,7 @@ import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLSession;
 
 import org.apache.http.HttpException;
+import org.apache.http.HttpHost;
 import org.apache.http.HttpInetConnection;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpRequestFactory;
@@ -61,6 +62,7 @@ import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpExecutionAware;
 import org.apache.http.client.methods.HttpRequestWrapper;
 import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.client.utils.URIUtils;
 import org.apache.http.config.ConnectionConfig;
 import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.impl.client.cache.FileResourceFactory;
@@ -92,6 +94,8 @@ import org.openrdf.server.object.Version;
 import org.openrdf.server.object.chain.HeadRequestFilter;
 import org.openrdf.server.object.chain.RequestExecChain;
 import org.openrdf.server.object.chain.ServerNameFilter;
+import org.openrdf.server.object.client.HttpClientFactory;
+import org.openrdf.server.object.client.UnavailableRequestDirector;
 import org.openrdf.server.object.concurrent.NamedThreadFactory;
 import org.openrdf.server.object.util.AnyHttpMethodRequestFactory;
 import org.slf4j.Logger;
@@ -107,21 +111,9 @@ import org.slf4j.LoggerFactory;
 public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, ClientExecChain {
 	protected static final String DEFAULT_NAME = Version.getInstance().getVersion();
 	private static NamedThreadFactory executor = new NamedThreadFactory("WebServer", false);
-	private static final Set<WebServer> instances = new HashSet<WebServer>();
-
-	public static WebServer[] getInstances() {
-		synchronized (instances) {
-			return instances.toArray(new WebServer[instances.size()]);
-		}
-	}
-
-	public static void resetAllCache() {
-		for (WebServer server : getInstances()) {
-			server.resetCache();
-		}
-	}
 
 	final Logger logger = LoggerFactory.getLogger(WebServer.class);
+	private final UnavailableRequestDirector unavailable = new UnavailableRequestDirector();
 	final Map<NHttpConnection, Boolean> connections = new WeakHashMap<NHttpConnection, Boolean>();
 	final DefaultListeningIOReactor server;
 	final IOEventDispatch dispatch;
@@ -137,10 +129,19 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 	private int timeout = 0;
 	private final HttpResponseInterceptor[] interceptors;
 
-	public WebServer(File cacheDir)
-			throws IOException, NoSuchAlgorithmException {
-		cacheDir.mkdirs();
-		chain = new RequestExecChain(new FileResourceFactory(cacheDir));
+	public WebServer() throws IOException,
+			NoSuchAlgorithmException {
+		this(new RequestExecChain());
+	}
+
+	public WebServer(File cacheDir) throws IOException,
+			NoSuchAlgorithmException {
+		this(new RequestExecChain(new FileResourceFactory(cacheDir)));
+	}
+
+	private WebServer(RequestExecChain chain) throws IOException,
+			NoSuchAlgorithmException {
+		this.chain = chain;
 		service = new AsyncRequestHandler(chain);
 		interceptors = new HttpResponseInterceptor[] { new ResponseDate(),
 				new ResponseContent(true), new ResponseConnControl(),
@@ -168,12 +169,20 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 		}
 	}
 
-	public synchronized void addRepository(String origin, ObjectRepository repository) {
-		chain.addRepository(origin, repository);
+	public synchronized void addRepository(String prefix, ObjectRepository repository) {
+		chain.addRepository(prefix, repository);
+		HttpHost host = URIUtils.extractHost(java.net.URI.create(prefix));
+		if (isRunning()) {
+			HttpClientFactory.getInstance().putProxy(host, this);
+		} else {
+			HttpClientFactory.getInstance().putProxyIfAbsent(host, unavailable);
+		}
 	}
 
-	public synchronized void removeRepository(String origin) {
-		chain.removeRepository(origin);
+	public synchronized void removeRepository(String prefix) {
+		chain.removeRepository(prefix);
+		HttpHost host = URIUtils.extractHost(java.net.URI.create(prefix));
+		HttpClientFactory.getInstance().removeProxy(host, this);
 	}
 
 	public String getName() {
@@ -306,9 +315,6 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 		}
-		synchronized (instances) {
-			instances.add(this);
-		}
 	}
 
 	public synchronized void start() throws IOException {
@@ -317,6 +323,9 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 		}
 		if (sslserver != null && sslports.length > 0) {
 			sslserver.resume();
+		}
+		for (HttpHost host : getOrigins()) {
+			HttpClientFactory.getInstance().putProxy(host, this);
 		}
 	}
 
@@ -332,6 +341,9 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 	}
 
 	public synchronized void stop() throws IOException {
+		for (HttpHost host : getOrigins()) {
+			HttpClientFactory.getInstance().putProxy(host, unavailable);
+		}
 		if (ports.length > 0) {
 			server.pause();
 		}
@@ -376,9 +388,10 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 			}
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
-		}
-		synchronized (instances) {
-			instances.remove(this);
+		} finally {
+			for (HttpHost host : getOrigins()) {
+				HttpClientFactory.getInstance().removeProxy(host, unavailable);
+			}
 		}
 	}
 
@@ -517,6 +530,15 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 			writer.close();
 		}
 		logger.info("Connection dump: {}", outputFile);
+	}
+
+	private Collection<HttpHost> getOrigins() {
+		Collection<HttpHost> result = new LinkedHashSet<HttpHost>();
+		for (String prefix : chain.getRepositoryPrefixes()) {
+			HttpHost host = URIUtils.extractHost(java.net.URI.create(prefix));
+			result.add(host);
+		}
+		return result;
 	}
 
 	private DefaultHttpServerIODispatch createIODispatch(

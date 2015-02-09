@@ -26,7 +26,7 @@ import org.openrdf.server.object.client.HttpUriResponse;
 import org.openrdf.server.object.helpers.ObjectContext;
 import org.openrdf.server.object.helpers.ResourceTarget;
 
-public class TestResourceOperationResponse extends TestCase {
+public class TestResourceTargetResponse extends TestCase {
 	private static final String RESOURCE = "http://example.com/";
 
 	public static class TestResponse {

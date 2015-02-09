@@ -1,4 +1,4 @@
-package org.openrdf.server.object.helpers;
+package org.openrdf.server.object.chain;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -412,6 +412,24 @@ public class TestRequestExecChain extends TestCase {
 	}
 
 	public void testCache() throws Exception {
+		TestETagResponse.counter = 0;
+		BasicHttpRequest request = new BasicHttpRequest("GET", MATCH,
+				HttpVersion.HTTP_1_1);
+		request.setHeader("Accept", "text/plain");
+		HttpResponse resp = execute(request);
+		assertEquals(resp.getStatusLine().getReasonPhrase(), 200, resp
+				.getStatusLine().getStatusCode());
+		assertEquals("Hello World!", EntityUtils.toString(resp.getEntity()));
+		assertEquals(Integer.toString("Hello World!".length()), resp.getFirstHeader("Content-Length").getValue());
+		resp = execute(request);
+		assertEquals(resp.getStatusLine().getReasonPhrase(), 200, resp
+				.getStatusLine().getStatusCode());
+		assertEquals("Hello World!", EntityUtils.toString(resp.getEntity()));
+		assertEquals(Integer.toString("Hello World!".length()), resp.getFirstHeader("Content-Length").getValue());
+		assertEquals(1, TestETagResponse.counter);
+	}
+
+	public void testPublicCache() throws Exception {
 		TestETagResponse.counter = 0;
 		BasicHttpRequest request = new BasicHttpRequest("GET", MATCH,
 				HttpVersion.HTTP_1_1);

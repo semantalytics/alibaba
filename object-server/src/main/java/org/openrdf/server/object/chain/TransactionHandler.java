@@ -20,6 +20,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executor;
@@ -45,8 +47,8 @@ import org.openrdf.server.object.client.CloseableEntity;
 import org.openrdf.server.object.client.HttpUriResponse;
 import org.openrdf.server.object.exceptions.InternalServerError;
 import org.openrdf.server.object.exceptions.ServiceUnavailable;
-import org.openrdf.server.object.helpers.ObjectContext;
 import org.openrdf.server.object.helpers.CompletedResponse;
+import org.openrdf.server.object.helpers.ObjectContext;
 import org.openrdf.server.object.helpers.Request;
 import org.openrdf.server.object.helpers.ResourceTarget;
 import org.openrdf.server.object.helpers.ResponseBuilder;
@@ -69,12 +71,20 @@ public class TransactionHandler implements AsyncExecChain {
 		this.executor = executor;
 	}
 
-	public synchronized void addRepository(String origin, ObjectRepository repository) {
-		repositories.put(origin, repository);
+	public synchronized void addRepository(String prefix, ObjectRepository repository) {
+		repositories.put(prefix, repository);
 	}
 
-	public synchronized void removeRepository(String origin) {
-		repositories.remove(origin);
+	public synchronized void removeRepository(String prefix) {
+		repositories.remove(prefix);
+	}
+
+	public synchronized Collection<String> getRepositoryPrefixes() {
+		return new ArrayList<String>(repositories.keySet());
+	}
+
+	public synchronized ObjectRepository getRepository(String prefix) {
+		return repositories.getClosest(prefix);
 	}
 
 	public synchronized void removeAllRepositories() {
@@ -140,10 +150,6 @@ public class TransactionHandler implements AsyncExecChain {
 		} catch (OpenRDFException ex) {
 			throw new InternalServerError(ex);
 		}
-	}
-
-	private synchronized ObjectRepository getRepository(String origin) {
-		return repositories.getClosest(origin);
 	}
 
 	private RDFObject getRequestedObject(final ObjectConnection con, String iri)

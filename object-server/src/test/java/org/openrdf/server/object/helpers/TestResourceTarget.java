@@ -35,7 +35,7 @@ import org.openrdf.server.object.exceptions.MethodNotAllowed;
 import org.openrdf.server.object.helpers.ObjectContext;
 import org.openrdf.server.object.helpers.ResourceTarget;
 
-public class TestResourceOperation extends TestCase {
+public class TestResourceTarget extends TestCase {
 	private static final String RESOURCE = "http://example.com/";
 	private static final String MARK = "http://example.com/mark/";
 
