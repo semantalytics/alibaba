@@ -49,10 +49,10 @@ public class AntiDeadlockThreadPool extends ManagedThreadPool {
 			.getInstance().getTimeoutThreadPool();
 	private final long delay;
 	private final TimeUnit delayUnit;
-	private int corePoolSize;
-	private int maximumPoolSize;
-	private BlockingQueue<Runnable> queue;
-	private ScheduledFuture<?> schedule;
+	int corePoolSize;
+	int maximumPoolSize;
+	BlockingQueue<Runnable> queue;
+	ScheduledFuture<?> schedule;
 
 	public AntiDeadlockThreadPool(int corePoolSize, int maximumPoolSize,
 			BlockingQueue<Runnable> queue, String name) {
@@ -82,7 +82,7 @@ public class AntiDeadlockThreadPool extends ManagedThreadPool {
 	}
 
 	@Override
-	public Future<?> submit(Runnable task) {
+	public synchronized Future<?> submit(Runnable task) {
 		try {
 			return super.submit(task);
 		} finally {
@@ -91,7 +91,7 @@ public class AntiDeadlockThreadPool extends ManagedThreadPool {
 	}
 
 	@Override
-	public <T> Future<T> submit(Runnable task, T result) {
+	public synchronized <T> Future<T> submit(Runnable task, T result) {
 		try {
 			return super.submit(task, result);
 		} finally {
@@ -108,7 +108,7 @@ public class AntiDeadlockThreadPool extends ManagedThreadPool {
 		}
 	}
 
-	private void checkQueue() {
+	private synchronized void checkQueue() {
 		if (corePoolSize >= maximumPoolSize)
 			return;
 		final Runnable top = queue.peek();
@@ -124,8 +124,10 @@ public class AntiDeadlockThreadPool extends ManagedThreadPool {
 					synchronized (AntiDeadlockThreadPool.this) {
 						Runnable peek = queue.peek();
 						if (peek == null || corePoolSize >= maximumPoolSize) {
-							schedule.cancel(false);
-							schedule = null;
+							if (schedule != null) {
+								schedule.cancel(false);
+								schedule = null;
+							}
 						} else if (previous == peek) {
 							setCorePoolSize(++corePoolSize);
 						} else {
