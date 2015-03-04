@@ -20,9 +20,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Collections;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Queue;
 
 import junit.framework.ComparisonFailure;
@@ -36,7 +34,6 @@ import org.apache.http.HttpResponse;
 import org.apache.http.HttpVersion;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.auth.params.AuthPNames;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.CookieStore;
 import org.apache.http.client.CredentialsProvider;
@@ -46,11 +43,7 @@ import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpExecutionAware;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpRequestWrapper;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.client.params.AuthPolicy;
 import org.apache.http.client.params.ClientPNames;
-import org.apache.http.client.params.CookiePolicy;
-import org.apache.http.client.protocol.ClientContext;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.entity.ByteArrayEntity;
@@ -60,9 +53,6 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.execchain.ClientExecChain;
 import org.apache.http.message.BasicHttpResponse;
 import org.apache.http.message.BasicStatusLine;
-import org.apache.http.protocol.BasicHttpContext;
-import org.apache.http.protocol.ExecutionContext;
-import org.apache.http.protocol.HttpContext;
 import org.apache.http.protocol.HttpCoreContext;
 import org.apache.http.util.EntityUtils;
 import org.openrdf.server.object.fluid.consumers.HttpMessageWriter;
@@ -174,7 +164,6 @@ public class HttpClientFactoryTest extends TestCase {
 
 	public void test302Redirect() throws Exception {
 		HttpGet get = new HttpGet("http://example.com/302");
-		get.getParams().setBooleanParameter(ClientPNames.HANDLE_REDIRECTS, true);
 		BasicHttpResponse redirect = new BasicHttpResponse(_302);
 		redirect.setHeader("Location", "http://example.com/200");
 		responses.add(redirect);
@@ -193,7 +182,6 @@ public class HttpClientFactoryTest extends TestCase {
 	public void test302RedirectTarget() throws Exception {
 		HttpCoreContext localContext = HttpCoreContext.create();
 		HttpGet get = new HttpGet("http://example.com/302");
-		get.getParams().setBooleanParameter(ClientPNames.HANDLE_REDIRECTS, true);
 		BasicHttpResponse redirect = new BasicHttpResponse(_302);
 		redirect.setHeader("Location", "http://example.com/200");
 		responses.add(redirect);
@@ -216,7 +204,6 @@ public class HttpClientFactoryTest extends TestCase {
 	public void test302CachedRedirectTarget() throws Exception {
 		do {
 			HttpGet get = new HttpGet("http://example.com/302");
-			get.getParams().setBooleanParameter(ClientPNames.HANDLE_REDIRECTS, true);
 			BasicHttpResponse redirect = new BasicHttpResponse(_302);
 			redirect.setHeader("Location", "http://example.com/200");
 			redirect.setHeader("Cache-Control", "public,max-age=3600");
@@ -262,9 +249,8 @@ public class HttpClientFactoryTest extends TestCase {
 		CookieStore cookieStore = new BasicCookieStore();
 		do {
 			HttpGet get = new HttpGet("http://example.com/setcookie");
-			HttpCoreContext localContext = HttpCoreContext.create();
-			localContext.setAttribute(ClientContext.COOKIE_STORE, cookieStore);
-			get.getParams().setParameter(ClientPNames.COOKIE_POLICY, CookiePolicy.RFC_2109);
+			HttpClientContext localContext = HttpClientContext.create();
+			localContext.setCookieStore(cookieStore);
 			BasicHttpResponse setcookie = new BasicHttpResponse(_200);
 			setcookie.addHeader("Set-Cookie", "oat=meal");
 			setcookie.addHeader("Cache-Control", "no-store");
@@ -282,9 +268,8 @@ public class HttpClientFactoryTest extends TestCase {
 		} while (false);
 		do {
 			HttpGet get = new HttpGet("http://example.com/getcookie");
-			HttpContext localContext = new BasicHttpContext();
-			localContext.setAttribute(ClientContext.COOKIE_STORE, cookieStore);
-			get.getParams().setParameter(ClientPNames.COOKIE_POLICY, CookiePolicy.RFC_2109);
+			HttpClientContext localContext = HttpClientContext.create();
+			localContext.setCookieStore(cookieStore);
 			BasicHttpResponse getcookie = new BasicHttpResponse(_200);
 			responses.add(getcookie);
 			client.execute(get,
@@ -302,15 +287,12 @@ public class HttpClientFactoryTest extends TestCase {
 
 	public void testAuthentication() throws Exception {
 		HttpGet get = new HttpGet("http://example.com/protected");
-		HttpContext localContext = new BasicHttpContext();
-		List<String> authpref = Collections.singletonList(AuthPolicy.BASIC);
+		HttpClientContext localContext = HttpClientContext.create();
 		AuthScope scope = new AuthScope("example.com", -1);
 		UsernamePasswordCredentials cred = new UsernamePasswordCredentials("Aladdin", "open sesame");
 		CredentialsProvider credsProvider = new BasicCredentialsProvider();
 		credsProvider.setCredentials(scope, cred);
-		localContext.setAttribute(ClientContext.CREDS_PROVIDER, credsProvider);
-		get.getParams().setBooleanParameter(ClientPNames.HANDLE_AUTHENTICATION, true);
-		get.getParams().setParameter(AuthPNames.TARGET_AUTH_PREF, authpref);
+		localContext.setCredentialsProvider(credsProvider);
 		BasicHttpResponse unauth = new BasicHttpResponse(_401);
 		unauth.setHeader("WWW-Authenticate", "Basic realm=\"insert realm\"");
 		responses.add(unauth);

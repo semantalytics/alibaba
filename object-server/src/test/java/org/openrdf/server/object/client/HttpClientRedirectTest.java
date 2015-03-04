@@ -56,10 +56,10 @@ import org.openrdf.server.object.util.URLUtil;
  */
 public class HttpClientRedirectTest extends TestCase {
 	private static final String ORIGIN = "http://example.com";
-	private static final BasicStatusLine _200 = new BasicStatusLine(
+	static final BasicStatusLine _200 = new BasicStatusLine(
 			HttpVersion.HTTP_1_1, 200, "OK");
 	private final HttpClient httpclient = HttpClientFactory.getInstance().createHttpClient(ORIGIN);
-	private final Map<String, HttpRequestHandler> handlers = new HashMap<String, HttpRequestHandler>();
+	final Map<String, HttpRequestHandler> handlers = new HashMap<String, HttpRequestHandler>();
 	private final ClientExecChain director = new ClientExecChain() {
 		public CloseableHttpResponse execute(HttpRoute route,
 				HttpRequestWrapper request, HttpClientContext context,

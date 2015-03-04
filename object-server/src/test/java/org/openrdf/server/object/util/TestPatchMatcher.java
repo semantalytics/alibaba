@@ -1,8 +1,8 @@
-package org.openrdf.server.object.helpers;
+package org.openrdf.server.object.util;
 
 import java.util.Map;
 
-import org.openrdf.server.object.helpers.PathMatcher;
+import org.openrdf.server.object.util.PathMatcher;
 
 import junit.framework.TestCase;
 
