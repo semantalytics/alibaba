@@ -19,7 +19,7 @@
 package org.openrdf.server.object.management;
 
 
-public interface JVMSummaryMXBean {
+public interface JVMUsageMXBean {
 
-	String[] showVMSummary() throws Exception;
+	String[] getJVMUsage() throws Exception;
 }

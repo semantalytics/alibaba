@@ -17,21 +17,10 @@
 package org.openrdf.server.object.management;
 
 import java.io.IOException;
-import java.util.Map;
 
 import org.openrdf.OpenRDFException;
 
-public interface CalliServerMXBean {
-
-	boolean isRunning();
-
-	void init() throws IOException, OpenRDFException;
-
-	void start() throws IOException, OpenRDFException;
-
-	void stop() throws IOException, OpenRDFException;
-
-	void destroy() throws OpenRDFException, IOException;
+public interface ObjectServerMXBean {
 
 	String getServerName() throws IOException;
 
@@ -45,24 +34,45 @@ public interface CalliServerMXBean {
 
 	void setSSLPorts(String ports) throws IOException;
 
+	int getTimeout();
+
+	void setTimeout(int timeout);
+
+	boolean isRunning();
+
 	boolean isStartingInProgress();
 
 	boolean isStoppingInProgress();
 
-	boolean isWebServiceRunning();
+	boolean isCompilingInProgress();
 
-	boolean isSetupInProgress();
+	String getStatus();
 
-	void checkForErrors() throws Exception;
+	void poke();
 
-	void startWebService() throws Exception;
+	void resetCache();
 
-	void restartWebService() throws Exception;
+	void recompileSchema() throws IOException, OpenRDFException;
 
-	void stopWebService() throws Exception;
+	void resetConnections() throws IOException;
 
-	Map<String, String> getLoggingProperties() throws IOException;
+	ConnectionBean[] getConnections();
 
-	void setLoggingProperties(Map<String, String> lines) throws IOException;
+	void connectionDumpToFile(String outputFile) throws IOException;
+
+	void addRepository(String base, String config) throws OpenRDFException,
+			IOException;
+
+	boolean removeRepository(String id) throws OpenRDFException;
+
+	void init() throws IOException, OpenRDFException;
+
+	void start() throws IOException, OpenRDFException;
+
+	void stop() throws IOException, OpenRDFException;
+
+	void destroy() throws OpenRDFException, IOException;
+
+	void restart() throws IOException, OpenRDFException;
 
 }

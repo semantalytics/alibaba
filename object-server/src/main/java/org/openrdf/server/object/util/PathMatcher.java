@@ -1,4 +1,4 @@
-package org.openrdf.server.object.helpers;
+package org.openrdf.server.object.util;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

@@ -19,7 +19,7 @@ package org.openrdf.server.object.management;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 
-public interface CalliKeyStoreMXBean {
+public interface KeyStoreMXBean {
 
 	long getCertificateExperation() throws GeneralSecurityException,
 			IOException;

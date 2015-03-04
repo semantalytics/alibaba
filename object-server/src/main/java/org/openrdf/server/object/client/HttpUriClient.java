@@ -136,8 +136,7 @@ public abstract class HttpUriClient extends CloseableHttpClient implements HttpC
 		try {
 			URI original = request.getURI();
 			HttpHost target = ctx.getTargetHost();
-			RedirectLocations redirects = (RedirectLocations) ctx.getAttribute(DefaultRedirectStrategy.REDIRECT_LOCATIONS);
-			List<URI> list = redirects == null ? null : redirects.getAll();
+			List<URI> list = ctx.getRedirectLocations();
 			URI absolute = URIUtils.resolve(original, target, list);
 			return new URI(URLUtil.canonicalize(absolute.toASCIIString()));
 		} catch (URISyntaxException e) {

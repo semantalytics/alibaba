@@ -29,20 +29,22 @@
  */
 package org.openrdf.server.object.fluid.producers;
 
+import java.io.FilterInputStream;
 import java.io.IOException;
+import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.Charset;
 
+import org.openrdf.query.QueryResultHandlerException;
 import org.openrdf.query.TupleQueryResult;
-import org.openrdf.query.TupleQueryResultHandlerException;
-import org.openrdf.query.impl.TupleQueryResultBuilder;
+import org.openrdf.query.impl.TupleQueryResultImpl;
 import org.openrdf.query.resultio.QueryResultParseException;
 import org.openrdf.query.resultio.TupleQueryResultFormat;
 import org.openrdf.query.resultio.TupleQueryResultParser;
 import org.openrdf.query.resultio.TupleQueryResultParserFactory;
 import org.openrdf.query.resultio.TupleQueryResultParserRegistry;
+import org.openrdf.query.resultio.helpers.QueryResultCollector;
 import org.openrdf.server.object.fluid.producers.base.MessageReaderBase;
-import org.openrdf.server.object.io.ChannelUtil;
 
 /**
  * Reads tuple results.
@@ -61,16 +63,33 @@ public class TupleMessageReader
 
 	@Override
 	public TupleQueryResult readFrom(TupleQueryResultParserFactory factory,
-			ReadableByteChannel in, Charset charset, String base)
-			throws QueryResultParseException, TupleQueryResultHandlerException,
+			final ReadableByteChannel ch, Charset charset, String base)
+			throws QueryResultParseException, QueryResultHandlerException,
 			IOException {
-		if (in == null)
+		if (ch == null)
 			return null;
-		TupleQueryResultBuilder builder = new TupleQueryResultBuilder();
+		QueryResultCollector col = new QueryResultCollector();
 		TupleQueryResultParser parser = factory.getParser();
-		parser.setTupleQueryResultHandler(builder);
-		parser.parse(ChannelUtil.newInputStream(in));
-		return builder.getQueryResult();
+		parser.setQueryResultHandler(col);
+		parser.parseQueryResult(new FilterInputStream(Channels.newInputStream(ch)) {
+			@Override
+			public int available() throws IOException {
+				int available = super.available();
+				// https://sourceforge.net/p/opencsv/bugs/108/
+				if (available == 0 && ch.isOpen())
+					return 1; // stream is closed if nothing is available
+				return available;
+			}
+
+			@Override
+			public String toString() {
+				return in.toString();
+			}
+		});
+		col.endQueryResult();
+		if (col.getBindingNames().isEmpty())
+			return null;
+		return new TupleQueryResultImpl(col.getBindingNames(), col.getBindingSets());
 	}
 
 }

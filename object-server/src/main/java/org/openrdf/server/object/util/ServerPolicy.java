@@ -67,9 +67,9 @@ import org.slf4j.LoggerFactory;
  *
  * @author James Leigh
  */
-public class CallimachusPolicy extends Policy {
-	private static Logger logger = LoggerFactory.getLogger(CallimachusPolicy.class);
-	private static CodeSource source = CallimachusPolicy.class
+public class ServerPolicy extends Policy {
+	private static Logger logger = LoggerFactory.getLogger(ServerPolicy.class);
+	private static CodeSource source = ServerPolicy.class
 			.getProtectionDomain().getCodeSource();
 	/** loaded from a writable location */
 	private final PermissionCollection plugins;
@@ -79,7 +79,7 @@ public class CallimachusPolicy extends Policy {
 
 	public static boolean apply(String[] readable, File... writable) {
 		try {
-			Policy.setPolicy(new CallimachusPolicy(readable, writable));
+			Policy.setPolicy(new ServerPolicy(readable, writable));
 			System.setSecurityManager(new SecurityManager());
 			logger.info("Restricted file system access in effect");
 			return true;
@@ -106,7 +106,7 @@ public class CallimachusPolicy extends Policy {
 		return copy(jars);
 	}
 
-	private CallimachusPolicy(String[] readable, File... directories) {
+	private ServerPolicy(String[] readable, File... directories) {
 		plugins = new Permissions();
 		plugins.add(new PropertyPermission("*", "read"));
 		plugins.add(new PropertyPermission("apple.awt.graphics.*", "write"));

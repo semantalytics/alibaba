@@ -27,14 +27,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.openrdf.server.object.helpers;
+package org.openrdf.server.object.management;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.net.BindException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -52,11 +49,8 @@ import javax.net.ssl.SSLSession;
 
 import org.apache.http.HttpException;
 import org.apache.http.HttpHost;
-import org.apache.http.HttpInetConnection;
-import org.apache.http.HttpRequest;
 import org.apache.http.HttpRequestFactory;
 import org.apache.http.HttpRequestInterceptor;
-import org.apache.http.HttpResponse;
 import org.apache.http.HttpResponseInterceptor;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpExecutionAware;
@@ -97,6 +91,8 @@ import org.openrdf.server.object.chain.ServerNameFilter;
 import org.openrdf.server.object.client.HttpClientFactory;
 import org.openrdf.server.object.client.UnavailableRequestDirector;
 import org.openrdf.server.object.concurrent.NamedThreadFactory;
+import org.openrdf.server.object.helpers.AsyncRequestHandler;
+import org.openrdf.server.object.helpers.ObjectContextInterceptor;
 import org.openrdf.server.object.util.AnyHttpMethodRequestFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,9 +104,20 @@ import org.slf4j.LoggerFactory;
  * @param <a>
  * 
  */
-public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, ClientExecChain {
+public class WebServer implements IOReactorExceptionHandler, ClientExecChain {
 	protected static final String DEFAULT_NAME = Version.getInstance().getVersion();
 	private static NamedThreadFactory executor = new NamedThreadFactory("WebServer", false);
+
+	private static SSLContext getOptionalSSLContext() {
+		try {
+			if (System.getProperty("javax.net.ssl.keyStore") == null)
+				return null;
+			return SSLContext.getDefault();
+		} catch (NoSuchAlgorithmException e) {
+			LoggerFactory.getLogger(WebServer.class).warn(e.toString(), e);
+			return null;
+		}
+	}
 
 	final Logger logger = LoggerFactory.getLogger(WebServer.class);
 	private final UnavailableRequestDirector unavailable = new UnavailableRequestDirector();
@@ -125,47 +132,64 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 	private final RequestExecChain chain;
 	volatile boolean listening;
 	volatile boolean ssllistening;
-	private final AsyncRequestHandler service;
-	private int timeout = 0;
 	private final HttpResponseInterceptor[] interceptors;
 
 	public WebServer() throws IOException,
 			NoSuchAlgorithmException {
-		this(new RequestExecChain());
+		this(new RequestExecChain(), getOptionalSSLContext(), 0);
 	}
 
-	public WebServer(File cacheDir) throws IOException,
-			NoSuchAlgorithmException {
-		this(new RequestExecChain(new FileResourceFactory(cacheDir)));
+	public WebServer(File cacheDir) throws IOException {
+		this(new RequestExecChain(new FileResourceFactory(cacheDir)), getOptionalSSLContext(), 0);
 	}
 
-	private WebServer(RequestExecChain chain) throws IOException,
+	public WebServer(int timeout) throws IOException,
 			NoSuchAlgorithmException {
+		this(new RequestExecChain(), getOptionalSSLContext(), timeout);
+	}
+
+	public WebServer(File cacheDir, int timeout) throws IOException {
+		this(new RequestExecChain(new FileResourceFactory(cacheDir)), getOptionalSSLContext(), timeout);
+	}
+
+	public WebServer(SSLContext sslcontext) throws IOException,
+			NoSuchAlgorithmException {
+		this(new RequestExecChain(), sslcontext, 0);
+	}
+
+	public WebServer(File cacheDir, SSLContext sslcontext) throws IOException {
+		this(new RequestExecChain(new FileResourceFactory(cacheDir)), sslcontext, 0);
+	}
+
+	public WebServer(SSLContext sslcontext, int timeout) throws IOException,
+			NoSuchAlgorithmException {
+		this(new RequestExecChain(), sslcontext, timeout);
+	}
+
+	public WebServer(File cacheDir, SSLContext sslcontext, int timeout) throws IOException {
+		this(new RequestExecChain(new FileResourceFactory(cacheDir)), sslcontext, timeout);
+	}
+
+	private WebServer(RequestExecChain chain, SSLContext sslcontext, int timeout) throws IOException {
 		this.chain = chain;
-		service = new AsyncRequestHandler(chain);
 		interceptors = new HttpResponseInterceptor[] { new ResponseDate(),
 				new ResponseContent(true), new ResponseConnControl(),
 				name = new ServerNameFilter(DEFAULT_NAME),
 				new HeadRequestFilter() };
 		HttpRequestFactory rfactory = new AnyHttpMethodRequestFactory();
 		HeapByteBufferAllocator allocator = new HeapByteBufferAllocator();
-		IOReactorConfig config = createIOReactorConfig();
+		IOReactorConfig config = createIOReactorConfig(timeout);
 		// Create server-side I/O event dispatch
 		dispatch = createIODispatch(rfactory, allocator);
 		// Create server-side I/O reactor
 		server = new DefaultListeningIOReactor(config);
 		server.setExceptionHandler(this);
-		if (System.getProperty("javax.net.ssl.keyStore") != null) {
-			try {
-				SSLContext sslcontext = SSLContext.getDefault();
-				// Create server-side I/O event dispatch
-				ssldispatch = createSSLDispatch(sslcontext, rfactory, allocator);
-				// Create server-side I/O reactor
-				sslserver = new DefaultListeningIOReactor(config);
-				sslserver.setExceptionHandler(this);
-			} catch (NoSuchAlgorithmException e) {
-				logger.warn(e.toString(), e);
-			}
+		if (sslcontext != null) {
+			// Create server-side I/O event dispatch
+			ssldispatch = createSSLDispatch(sslcontext, rfactory, allocator);
+			// Create server-side I/O reactor
+			sslserver = new DefaultListeningIOReactor(config);
+			sslserver.setExceptionHandler(this);
 		}
 	}
 
@@ -191,24 +215,6 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 
 	public void setName(String serverName) {
 		this.name.setServerName(serverName);
-	}
-
-	/**
-	 * Defines the keep alive timeout in milliseconds, which is the timeout for
-	 * waiting for data. A timeout value of zero is interpreted as an infinite
-	 * timeout.
-	 */
-	public int getTimeout() {
-		return timeout;
-	}
-
-	/**
-	 * Defines the keep alive timeout in milliseconds, which is the timeout for
-	 * waiting for data. A timeout value of zero is interpreted as an infinite
-	 * timeout.
-	 */
-	public void setTimeout(int timeout) {
-		this.timeout = timeout;
 	}
 
 	public void resetCache() {
@@ -330,13 +336,13 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 	}
 
 	public boolean isRunning() {
-		if (ports == null || sslports == null)
+		if (ports == null || sslports == null || chain.isShutdown())
 			return false;
 		if (ports.length > 0 && server.getStatus() == IOReactorStatus.ACTIVE)
-			return !chain.isShutdown();
+			return !server.getEndpoints().isEmpty();
 		if (sslports.length > 0 && sslserver != null
 				&& sslserver.getStatus() == IOReactorStatus.ACTIVE)
-			return !chain.isShutdown();
+			return !sslserver.getEndpoints().isEmpty();
 		return false;
 	}
 
@@ -430,106 +436,21 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 		return sb.toString();
 	}
 
+	public NHttpConnection[] getOpenConnections() {
+		synchronized (connections) {
+			return connections.keySet().toArray(new NHttpConnection[connections.size()]);
+		}
+	}
+
 	@Override
 	public CloseableHttpResponse execute(HttpRoute route,
 			HttpRequestWrapper request, HttpClientContext context,
 			HttpExecutionAware execAware) throws IOException, HttpException {
-		HttpProcessor httpproc = getHttpProcessor();
+		HttpProcessor httpproc = getHttpProcessor(route.getTargetHost().getSchemeName());
 		httpproc.process(request, context);
 		CloseableHttpResponse resp = chain.execute(route, request, context, execAware);
 		httpproc.process(resp, context);
 		return resp;
-	}
-
-	public ConnectionBean[] getConnections() {
-		NHttpConnection[] connections = getOpenConnections();
-		ConnectionBean[] beans = new ConnectionBean[connections.length];
-		for (int i = 0; i < beans.length; i++) {
-			ConnectionBean bean = new ConnectionBean();
-			NHttpConnection conn = connections[i];
-			beans[i] = bean;
-			switch (conn.getStatus()) {
-			case NHttpConnection.ACTIVE:
-				if (conn.isOpen()) {
-					bean.setStatus("OPEN");
-				} else if (conn.isStale()) {
-					bean.setStatus("STALE");
-				} else {
-					bean.setStatus("ACTIVE");
-				}
-				break;
-			case NHttpConnection.CLOSING:
-				bean.setStatus("CLOSING");
-				break;
-			case NHttpConnection.CLOSED:
-				bean.setStatus("CLOSED");
-				break;
-			}
-			if (conn instanceof HttpInetConnection) {
-				HttpInetConnection inet = (HttpInetConnection) conn;
-				InetAddress ra = inet.getRemoteAddress();
-				int rp = inet.getRemotePort();
-				InetAddress la = inet.getLocalAddress();
-				int lp = inet.getLocalPort();
-				if (ra != null && la != null) {
-					InetSocketAddress remote = new InetSocketAddress(ra, rp);
-					InetSocketAddress local = new InetSocketAddress(la, lp);
-					bean.setStatus(bean.getStatus() + " " + remote + "->" + local);
-				}
-			}
-			HttpRequest req = conn.getHttpRequest();
-			if (req != null) {
-				bean.setRequest(req.getRequestLine().toString());
-			}
-			HttpResponse resp = conn.getHttpResponse();
-			if (resp != null) {
-				bean.setResponse(resp.getStatusLine().toString() + " "
-						+ resp.getEntity());
-			}
-			ObjectContext ctx = ObjectContext.adapt(conn.getContext());
-			Exchange[] array = ctx.getPendingExchange();
-			if (array != null) {
-				String[] pending = new String[array.length];
-				for (int j=0;j<pending.length;j++) {
-					pending[j] = array[j].toString();
-					if (array[j].isReadingRequest()) {
-						bean.setConsuming(array[j].toString());
-					}
-				}
-				bean.setPending(pending);
-			}
-		}
-		return beans;
-	}
-
-	public void connectionDumpToFile(String outputFile) throws IOException {
-		PrintWriter writer = new PrintWriter(new FileWriter(outputFile, true));
-		try {
-			writer.println("status,request,consuming,response,pending");
-			for (ConnectionBean connection : getConnections()) {
-				writer.print(toString(connection.getStatus()));
-				writer.print(",");
-				writer.print(toString(connection.getRequest()));
-				writer.print(",");
-				writer.print(toString(connection.getConsuming()));
-				writer.print(",");
-				writer.print(toString(connection.getResponse()));
-				writer.print(",");
-				String[] pending = connection.getPending();
-				if (pending != null) {
-					for(String p : pending) {
-						writer.print(toString(p));
-						writer.print(",");
-					}
-				}
-				writer.println();
-			}
-			writer.println();
-			writer.println();
-		} finally {
-			writer.close();
-		}
-		logger.info("Connection dump: {}", outputFile);
 	}
 
 	private Collection<HttpHost> getOrigins() {
@@ -546,7 +467,7 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 		HttpAsyncService handler;
 		DefaultNHttpServerConnectionFactory factory;
 		ConnectionConfig params = getDefaultConnectionConfig();
-		handler = createProtocolHandler(getHttpProcessor(), service);
+		handler = createProtocolHandler(getHttpProcessor("http"), new AsyncRequestHandler(chain));
 		DefaultHttpRequestParserFactory rparser = new DefaultHttpRequestParserFactory(null, requestFactory);
 		factory = new DefaultNHttpServerConnectionFactory(allocator, rparser, null, params);
 		return new DefaultHttpServerIODispatch(handler, factory);
@@ -558,7 +479,7 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 		HttpAsyncService handler;
 		SSLNHttpServerConnectionFactory factory;
 		ConnectionConfig params = getDefaultConnectionConfig();
-		handler = createProtocolHandler(getHttpProcessor(), service);
+		handler = createProtocolHandler(getHttpProcessor("https"), new AsyncRequestHandler(chain));
 		DefaultHttpRequestParserFactory rparser = new DefaultHttpRequestParserFactory(null, requestFactory);
 		factory = new SSLNHttpServerConnectionFactory(sslcontext, getSSLSetupHandler(), rparser, null, allocator, params);
 		return new DefaultHttpServerIODispatch(handler, factory);
@@ -596,16 +517,17 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 		};
 	}
 
-	private ImmutableHttpProcessor getHttpProcessor() {
-		return new ImmutableHttpProcessor(new HttpRequestInterceptor[0],
-				interceptors);
+	private ImmutableHttpProcessor getHttpProcessor(String protocol) {
+		return new ImmutableHttpProcessor(
+				new HttpRequestInterceptor[] { new ObjectContextInterceptor(
+						protocol) }, interceptors);
 	}
 
 	private ConnectionConfig getDefaultConnectionConfig() {
 		return ConnectionConfig.DEFAULT;
 	}
 
-	private IOReactorConfig createIOReactorConfig() {
+	private IOReactorConfig createIOReactorConfig(int timeout) {
 		return IOReactorConfig.custom().setConnectTimeout(timeout)
 				.setIoThreadCount(Runtime.getRuntime().availableProcessors())
 				.setSndBufSize(8 * 1024).setSoKeepAlive(true)
@@ -672,18 +594,6 @@ public class WebServer implements WebServerMXBean, IOReactorExceptionHandler, Cl
 			newPorts.remove(p);
 		}
 		return newPorts;
-	}
-
-	private NHttpConnection[] getOpenConnections() {
-		synchronized (connections) {
-			return connections.keySet().toArray(new NHttpConnection[connections.size()]);
-		}
-	}
-
-	private String toString(String string) {
-		if (string == null)
-			return "";
-		return string;
 	}
 
 }

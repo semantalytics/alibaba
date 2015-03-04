@@ -39,7 +39,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 import org.openrdf.query.QueryEvaluationException;
-import org.openrdf.query.TupleQueryResultHandlerException;
+import org.openrdf.query.QueryResultHandlerException;
 import org.openrdf.query.resultio.QueryResultParseException;
 import org.openrdf.server.object.fluid.FluidBuilder;
 import org.openrdf.server.object.fluid.FluidType;
@@ -86,7 +86,7 @@ public abstract class MessageReaderBase<FF extends FileFormat, S, T> implements
 
 	public Object produce(FluidType ftype, ReadableByteChannel in,
 			Charset charset, String base, FluidBuilder builder)
-			throws QueryResultParseException, TupleQueryResultHandlerException,
+			throws QueryResultParseException, QueryResultHandlerException,
 			IOException, QueryEvaluationException {
 		FluidType possible = new FluidType(ftype.asType(), mimeTypes).as(ftype);
 		return readFrom(getFactory(possible.preferred()), in, charset, base);
@@ -94,7 +94,7 @@ public abstract class MessageReaderBase<FF extends FileFormat, S, T> implements
 
 	public abstract T readFrom(S factory, ReadableByteChannel in,
 			Charset charset, String base) throws QueryResultParseException,
-			TupleQueryResultHandlerException, IOException,
+			QueryResultHandlerException, IOException,
 			QueryEvaluationException;
 
 	protected boolean classEquals(Class<?> type) {

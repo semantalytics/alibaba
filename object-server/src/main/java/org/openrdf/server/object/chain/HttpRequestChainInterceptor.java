@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, Zepheira LLC, Some rights reserved.
+ * Copyright (c) 2015 3 Round Stones Inc., Some rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -26,39 +26,20 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.openrdf.server.object.helpers;
+package org.openrdf.server.object.chain;
 
 import java.io.IOException;
 
-/**
- * MXBean interface for client and server.
- * 
- * @author James Leigh
- * 
- */
-public interface WebServerMXBean {
+import org.apache.http.HttpException;
+import org.apache.http.HttpRequest;
+import org.apache.http.HttpResponse;
+import org.apache.http.protocol.HttpContext;
 
-	String getName();
+public interface HttpRequestChainInterceptor {
+	HttpResponse intercept(HttpRequest request, HttpContext context)
+			throws HttpException, IOException;
 
-	void setName(String name);
+	void process(HttpResponse response, HttpContext context)
+			throws HttpException, IOException;
 
-	String getStatus();
-
-	ConnectionBean[] getConnections();
-
-	void connectionDumpToFile(String outputFile) throws IOException;
-
-	void poke();
-
-	void resetCache() throws Exception;
-
-	void resetConnections() throws IOException;
-
-	boolean isRunning();
-
-	void start() throws Exception;
-
-	void stop() throws Exception;
-
-	void destroy() throws Exception;
 }

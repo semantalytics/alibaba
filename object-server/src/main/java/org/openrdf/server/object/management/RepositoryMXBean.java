@@ -14,34 +14,21 @@
  * limitations under the License.
  *
  */
-package org.openrdf.server.object.repository;
+package org.openrdf.server.object.management;
 
 import java.io.IOException;
 
 import org.openrdf.OpenRDFException;
 
-public interface CalliRepositoryMXBean {
+public interface RepositoryMXBean {
 
-	int getMaxQueryTime();
+	int getMaxQueryTime() throws OpenRDFException;
 
-	void setMaxQueryTime(int maxQueryTime);
+	void setMaxQueryTime(int maxQueryTime) throws OpenRDFException;
 
-	boolean isIncludeInferred();
+	boolean isIncludeInferred() throws OpenRDFException;
 
-	void setIncludeInferred(boolean includeInferred);
-
-	/**
-	 * Resolves the relative path to the callimachus webapp context installed at
-	 * the origin.
-	 * 
-	 * @param origin
-	 *            scheme and authority
-	 * @param path
-	 *            relative path from the Callimachus webapp context
-	 * @return absolute URL of the root + webapp context + path (or null)
-	 */
-	String getCallimachusUrl(String origin, String path)
-			throws OpenRDFException;
+	void setIncludeInferred(boolean includeInferred) throws OpenRDFException;
 
 	String[] sparqlQuery(String query) throws OpenRDFException, IOException;
 

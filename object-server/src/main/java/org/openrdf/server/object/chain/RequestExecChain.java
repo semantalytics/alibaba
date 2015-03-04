@@ -29,7 +29,6 @@
 package org.openrdf.server.object.chain;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collection;
@@ -65,17 +64,13 @@ import org.openrdf.server.object.exceptions.BadGateway;
 import org.openrdf.server.object.exceptions.GatewayTimeout;
 import org.openrdf.server.object.exceptions.ResponseException;
 import org.openrdf.server.object.helpers.ObjectContext;
-import org.openrdf.server.object.helpers.HttpRequestChainInterceptorExecChain;
-import org.openrdf.server.object.helpers.PooledExecChain;
 import org.openrdf.server.object.helpers.ResponseBuilder;
-import org.openrdf.server.object.util.DomainNameSystemResolver;
 import org.openrdf.server.object.util.InlineExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class RequestExecChain implements AsyncExecChain, ClientExecChain {
 	private static final int MAX_QUEUE_SIZE = 32;
-	private static final InetAddress LOCALHOST = DomainNameSystemResolver.getInstance().getLocalHost();
 	final Logger logger = LoggerFactory.getLogger(RequestExecChain.class);
 	private final ThreadLocal<Boolean> foreground = new ThreadLocal<Boolean>();
 	private final ExecutorService triaging = new InlineExecutorService(
@@ -194,7 +189,7 @@ public class RequestExecChain implements AsyncExecChain, ClientExecChain {
 	@Override
 	public Future<HttpResponse> execute(HttpHost target, HttpRequest request,
 			HttpContext context, FutureCallback<HttpResponse> callback) {
-		ObjectContext cc = initContext(context, target);
+		ObjectContext cc = ObjectContext.adapt(new BasicHttpContext(context));
 		return chain.execute(target, request, cc, callback);
 	}
 
@@ -209,7 +204,7 @@ public class RequestExecChain implements AsyncExecChain, ClientExecChain {
 				foreground.set(true);
 			}
 			HttpHost target = route.getTargetHost();
-			ObjectContext cc = initContext(context, target);
+			ObjectContext cc = ObjectContext.adapt(new BasicHttpContext(context));
 			try {
 				response = chain.execute(target, request, cc,
 						new FutureCallback<HttpResponse>() {
@@ -280,16 +275,8 @@ public class RequestExecChain implements AsyncExecChain, ClientExecChain {
 				.setWeakETagOnPutDeleteAllowed(true)
 				.setHeuristicCachingEnabled(true)
 				.setHeuristicDefaultLifetime(60 * 60 * 24)
-				// TODO in HttpClient 4.4: .setAdditionalNotModifiedHeaders("Last-Modified")
+				// TODO HTTPCLIENT-1469 5.0: .setAdditionalNotModifiedHeaders("Last-Modified")
 				.setMaxObjectSize(1024 * 1024).build();
-	}
-
-	private ObjectContext initContext(HttpContext context, HttpHost target) {
-		ObjectContext cc = ObjectContext.adapt(new BasicHttpContext(context));
-		cc.setProtocolScheme(target.getSchemeName());
-		cc.setReceivedOn(System.currentTimeMillis());
-		cc.setClientAddr(LOCALHOST);
-		return cc;
 	}
 
 }

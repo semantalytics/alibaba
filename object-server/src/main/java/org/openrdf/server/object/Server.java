@@ -27,30 +27,30 @@ import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.util.Arrays;
+import java.util.Set;
 
+import javax.management.InstanceAlreadyExistsException;
+import javax.management.JMException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import javax.management.Query;
 import javax.management.QueryExp;
 
-import org.openrdf.repository.manager.LocalRepositoryManager;
-import org.openrdf.repository.manager.RepositoryProvider;
+import org.openrdf.OpenRDFException;
+import org.openrdf.repository.RepositoryException;
+import org.openrdf.repository.config.RepositoryConfigException;
 import org.openrdf.server.object.cli.Command;
 import org.openrdf.server.object.cli.CommandSet;
 import org.openrdf.server.object.concurrent.ManagedExecutors;
 import org.openrdf.server.object.concurrent.ManagedThreadPool;
 import org.openrdf.server.object.concurrent.ManagedThreadPoolListener;
-import org.openrdf.server.object.helpers.WebServer;
-import org.openrdf.server.object.management.CalliKeyStore;
-import org.openrdf.server.object.management.CalliServer;
-import org.openrdf.server.object.management.JVMSummary;
-import org.openrdf.server.object.management.LogEmitter;
-import org.openrdf.server.object.management.CalliServer.ServerListener;
-import org.openrdf.server.object.repository.CalliRepository;
-import org.openrdf.server.object.util.CallimachusConf;
-import org.openrdf.server.object.util.CallimachusPolicy;
-import org.openrdf.server.object.util.SystemProperties;
+import org.openrdf.server.object.logging.LoggingProperties;
+import org.openrdf.server.object.management.JVMUsage;
+import org.openrdf.server.object.management.KeyStoreImpl;
+import org.openrdf.server.object.management.ObjectServer;
+import org.openrdf.server.object.management.RepositoryMXBean;
+import org.openrdf.server.object.util.ServerPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,11 +65,11 @@ public class Server {
 
 	private static final CommandSet commands = new CommandSet(NAME);
 	static {
-		commands.require("c", "conf")
-				.arg("file")
-				.desc("The local etc/callimachus.conf file to read settings from");
-		commands.option("b", "basedir").arg("directory")
-				.desc("Base directory used for local storage");
+		commands.require("d", "dataDir").arg("directory")
+				.desc("Sesame data dir to 'connect' to");
+		commands.option("n", "serverName").arg("name").desc("Web server name");
+		commands.option("p", "port").arg("number").desc("HTTP port number");
+		commands.option("s", "ssl").arg("number").desc("HTTPS port number");
 		commands.option("trust").desc(
 				"Allow all server code to read, write, and execute all files and directories "
 						+ "according to the file system's ACL");
@@ -82,7 +82,8 @@ public class Server {
 				"Print version information and exit");
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException, OpenRDFException {
+		final Server node = new Server();
 		try {
 			Command line = commands.parse(args);
 			if (line.has("pid")) {
@@ -98,7 +99,6 @@ public class Server {
 				}
 				file.deleteOnExit();
 			}
-			final Server node = new Server();
 			Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
 				public void run() {
 					try {
@@ -120,13 +120,16 @@ public class Server {
 			System.err.println(e.toString());
 			e.printStackTrace(System.err);
 			System.exit(1);
+		} finally {
+			node.destroy();
 		}
 	}
 
 	private final Logger logger = LoggerFactory.getLogger(Server.class);
-	private CalliServer node;
+	private String name;
+	private ObjectServer node;
 
-	public void init(String[] args) {
+	public void init(String... args) {
 		try {
 			Command line = commands.parse(args);
 			if (line.has("help")) {
@@ -148,23 +151,19 @@ public class Server {
 					// ignore
 				}
 			}
-			File baseDir = new File(".");
-			if (line.has("basedir")) {
-				baseDir = new File(line.get("basedir"));
+			File dataDir = new File(".");
+			if (line.has("dataDir")) {
+				dataDir = new File(line.get("dataDir"));
 			}
-			File confFile = new File("etc/callimachus.conf");
-			if (line.has("conf")) {
-				confFile = new File(line.get("conf"));
-			}
-			File backupDir = new File("backups");
-			if (line.has("backups")) {
-				backupDir = new File(line.get("backups"));
-			}
+			String serverName = line.get("serverName");
+			String ports = line.has("port") ? Arrays.toString(line.getAll("port")) : null;
+			String ssl = line.has("ssl") ? Arrays.toString(line.getAll("ssl")) : null;
+			name = line.has("port") ? line.get("port") : line.has("ssl") ? line.get("ssl") : "0";
 			ManagedExecutors.getInstance().addListener(
 					new ManagedThreadPoolListener() {
 						public void threadPoolStarted(String name,
 								ManagedThreadPool pool) {
-							registerMBean(name, pool, ManagedThreadPool.class);
+							registerMBean(pool, mbean(ManagedThreadPool.class, name));
 
 						}
 
@@ -172,37 +171,25 @@ public class Server {
 							unregisterMBean(name, ManagedThreadPool.class);
 						}
 					});
-			CallimachusConf conf = new CallimachusConf(confFile);
-			LocalRepositoryManager manager = RepositoryProvider.getRepositoryManager(baseDir);
-			node = new CalliServer(conf, manager, new ServerListener() {
-				public void repositoryInitialized(String repositoryID,
-						CalliRepository repository) {
-					unregisterMBean(repositoryID, CalliRepository.class);
-					registerMBean(repositoryID, repository, CalliRepository.class);
-				}
-
-				public void repositoryShutDown(String repositoryID) {
-					unregisterMBean(repositoryID, CalliRepository.class);
-				}
-
-				public void webServiceStarted(WebServer server) {
-					registerMBean(server, WebServer.class);
-				}
-
-				public void webServiceStopping(WebServer server) {
-					unregisterMBean(WebServer.class);
-				}
-			});
-			registerMBean(node, CalliServer.class);
-			registerMBean(new JVMSummary(), JVMSummary.class);
-			registerMBean(new LogEmitter(), LogEmitter.class);
-			File etc = new File(baseDir, "etc");
-			registerMBean(new CalliKeyStore(etc), CalliKeyStore.class);
+			if (node != null) {
+				node.destroy();
+			}
+			node = new ObjectServer(dataDir);
+			node.setServerName(serverName);
+			node.setPorts(ports);
+			node.setSSLPorts(ssl);
+			registerMBean(node, mbean(ObjectServer.class, name));
+			registerRepositoryMBeans();
+			registerMBean(new JVMUsage(), mbean(JVMUsage.class));
+			LoggingProperties loggingBean = new LoggingProperties();
+			registerMBean(loggingBean, mbean(LoggingProperties.class));
+			File etc = new File(dataDir, "etc");
+			KeyStoreImpl keystore = new KeyStoreImpl(etc);
+			registerMBean(keystore, mbean(KeyStoreImpl.class));
 			if (!line.has("trust")) {
-				File[] writable = { confFile, backupDir,
-						SystemProperties.getLoggingPropertiesFile(),
-						new File(baseDir, "repositories") };
-				CallimachusPolicy.apply(new String[0], writable);
+				ServerPolicy.apply(new String[0], loggingBean
+						.getLoggingPropertiesFile(), new File(dataDir,
+						"repositories"));
 			}
 			node.init();
 		} catch (Throwable e) {
@@ -220,47 +207,70 @@ public class Server {
 		node.start();
 	}
 
-	public void await() throws InterruptedException {
-		synchronized (node) {
-			while (node.isRunning()) {
-				node.wait();
-			}
-		}
-	}
-
 	public void stop() throws Exception {
 		if (node != null) {
 			node.stop();
 		}
 	}
 
-	public void destroy() throws Exception {
+	public synchronized void destroy() throws IOException, OpenRDFException {
 		try {
 			if (node != null) {
 				node.destroy();
 			}
 		} finally {
-			unregisterMBean(CalliServer.class);
-			unregisterMBean(JVMSummary.class);
-			unregisterMBean(LogEmitter.class);
-			unregisterMBean(CalliKeyStore.class);
+			unregisterMBean(JVMUsage.class);
+			unregisterMBean(LoggingProperties.class);
+			unregisterMBean(KeyStoreImpl.class);
 			ManagedExecutors.getInstance().cleanup();
+			MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+			try {
+				if (name != null) {
+					mbs.unregisterMBean(new ObjectName(mbean(ObjectServer.class, name)));
+				}
+				QueryExp instanceOf = Query.isInstanceOf(Query.value(RepositoryMXBean.class.getName()));
+				ObjectName rn = new ObjectName(getRepositoryMBeanPrefix() + ",*");
+				for (ObjectName on : mbs.queryNames(rn, instanceOf)) {
+					mbs.unregisterMBean(on);
+				}
+			} catch (JMException e) {
+				logger.error(e.toString(), e);
+			}
 		}
 	}
 
-	<T> void registerMBean(T bean, Class<T> beanClass) {
-		registerMBean(null, bean, beanClass);
+	public void await() throws InterruptedException, OpenRDFException {
+		synchronized (node) {
+			while (node.isRunning()) {
+				registerRepositoryMBeans();
+				node.wait();
+			}
+		}
+	}
+
+	<T> void registerMBean(T bean, String oname) {
+		try {
+			MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+			mbs.registerMBean(bean, new ObjectName(oname));
+		} catch (InstanceAlreadyExistsException e) {
+			logger.debug(e.toString(), e);
+		} catch (Exception e) {
+			logger.error(e.toString(), e);
+		}
 	}
 
 	void unregisterMBean(Class<?> beanClass) {
-		unregisterMBean(null, beanClass);
-	}
-
-	<T> void registerMBean(String name, T bean, Class<T> beanClass) {
 		try {
-			ObjectName oname = getMBeanName(name, beanClass);
 			MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-			mbs.registerMBean(bean, oname);
+			ObjectName oname = new ObjectName("*:type=" + beanClass.getSimpleName() + ",*");
+			for (Class<?> mx : beanClass.getInterfaces()) {
+				if (mx.getName().endsWith("Bean")) {
+					QueryExp instanceOf = Query.isInstanceOf(Query.value(beanClass.getName()));
+					for (ObjectName on : mbs.queryNames(oname, instanceOf)) {
+						mbs.unregisterMBean(on);
+					}
+				}
+			}
 		} catch (Exception e) {
 			logger.error(e.toString(), e);
 		}
@@ -269,34 +279,66 @@ public class Server {
 	void unregisterMBean(String name, Class<?> beanClass) {
 		try {
 			MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-			if (name == null) {
-				ObjectName oname = new ObjectName("*:type=" + beanClass.getSimpleName() + ",*");
-				for (Class<?> mx : beanClass.getInterfaces()) {
-					if (mx.getName().endsWith("Bean")) {
-						QueryExp instanceOf = Query.isInstanceOf(Query.value(beanClass.getName()));
-						for (ObjectName on : mbs.queryNames(oname, instanceOf)) {
-							mbs.unregisterMBean(on);
-						}
-					}
-				}
-			} else if (mbs.isRegistered(getMBeanName(name, beanClass))) {
-				mbs.unregisterMBean(getMBeanName(name, beanClass));
+			if (mbs.isRegistered(new ObjectName(mbean(beanClass, name)))) {
+				mbs.unregisterMBean(new ObjectName(mbean(beanClass, name)));
 			}
 		} catch (Exception e) {
 			// ignore
 		}
 	}
 
-	private ObjectName getMBeanName(String name, Class<?> beanClass)
-			throws MalformedObjectNameException {
+	String mbean(Class<?> beanClass) {
 		String pkg = Server.class.getPackage().getName();
 		String simple = beanClass.getSimpleName();
 		StringBuilder sb = new StringBuilder();
 		sb.append(pkg).append(":type=").append(simple);
-		if (name != null) {
-			sb.append(",name=").append(name);
+		return sb.toString();
+	}
+
+	String mbean(Class<?> beanClass, String name) {
+		String pkg = Server.class.getPackage().getName();
+		String simple = beanClass.getSimpleName();
+		StringBuilder sb = new StringBuilder();
+		sb.append(pkg).append(":type=").append(simple);
+		sb.append(",name=").append(name);
+		return sb.toString();
+	}
+
+	private void registerRepositoryMBeans() throws RepositoryException,
+			RepositoryConfigException {
+		Set<String> active = node.getRepositoryIDs();
+		String repositories = getRepositoryMBeanPrefix();
+		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+		try {
+			QueryExp instanceOf = Query.isInstanceOf(Query.value(RepositoryMXBean.class.getName()));
+			for (ObjectName on : mbs.queryNames(new ObjectName(repositories + ",*"), instanceOf)) {
+				if (!active.contains(on.getKeyProperty("name"))) {
+					mbs.unregisterMBean(on);
+				}
+			}
+		} catch (JMException e) {
+			logger.error(e.toString(), e);
 		}
-		return new ObjectName(sb.toString());
+		for (String id : active) {
+			try {
+				String oname = repositories + ",name=" + id;
+				if (!mbs.isRegistered(new ObjectName(oname))) {
+					registerMBean(node.getRepositoryMXBean(id), oname);
+				}
+			} catch (MalformedObjectNameException e) {
+				logger.error(e.toString(), e);
+			}
+		}
+	}
+
+	private String getRepositoryMBeanPrefix() {
+		String pkg = Server.class.getPackage().getName();
+		String simple = ObjectServer.class.getSimpleName();
+		StringBuilder sb = new StringBuilder();
+		sb.append(pkg).append(":type=").append(simple).append(".").append("Repository");
+		sb.append(",").append(simple).append("=").append(name);
+		String repositories = sb.toString();
+		return repositories;
 	}
 
 	private void logStdout() {

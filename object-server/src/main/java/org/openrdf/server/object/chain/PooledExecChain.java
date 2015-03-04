@@ -26,7 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.openrdf.server.object.helpers;
+package org.openrdf.server.object.chain;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -38,7 +38,8 @@ import org.apache.http.HttpResponse;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.impl.execchain.ClientExecChain;
 import org.apache.http.protocol.HttpContext;
-import org.openrdf.server.object.chain.AsyncExecChain;
+import org.openrdf.server.object.helpers.CompletedResponse;
+import org.openrdf.server.object.helpers.DelegatingFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

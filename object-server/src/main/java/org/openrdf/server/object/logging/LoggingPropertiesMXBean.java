@@ -14,18 +14,23 @@
  * limitations under the License.
  *
  */
-package org.openrdf.server.object.management;
+package org.openrdf.server.object.logging;
 
-public interface LogEmitterMXBean {
+import java.io.IOException;
+
+public interface LoggingPropertiesMXBean {
 
 	void startNotifications(String prefix);
 
 	void stopNotifications();
 
-	void logAll(String prefix);
+	void logAll(String prefix) throws IOException;
 
-	void logInfo(String prefix);
+	void logInfo(String prefix) throws IOException;
 
-	void logWarn(String prefix);
+	void logWarn(String prefix) throws IOException;
 
+	String getLoggingProperties() throws IOException;
+
+	void setLoggingProperties(String properties) throws IOException;
 }

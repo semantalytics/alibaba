@@ -37,7 +37,7 @@ import org.apache.http.nio.protocol.HttpAsyncResponseConsumer;
 import org.apache.http.nio.reactor.IOReactorStatus;
 import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.HttpContext;
-import org.openrdf.server.object.helpers.AutoClosingAsyncClient;
+import org.openrdf.server.object.client.AutoClosingAsyncClient;
 import org.openrdf.server.object.helpers.ObjectContext;
 import org.openrdf.server.object.helpers.ResponseCallback;
 import org.openrdf.server.object.util.HTTPDateFormat;

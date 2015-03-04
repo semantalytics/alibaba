@@ -29,6 +29,7 @@
 package org.openrdf.server.object.io;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -39,7 +40,22 @@ import java.util.Collection;
  * 
  */
 public class FileUtil {
-	private static final Collection<File> temporary = new ArrayList<File>();
+	static final Collection<File> temporary = new ArrayList<File>();
+
+	public static File createTempDir(String prefix) throws IOException {
+		String tmpDirStr = System.getProperty("java.io.tmpdir");
+		if (tmpDirStr == null) {
+			tmpDirStr = "tmp";
+		}
+		File tmpDir = new File(tmpDirStr);
+		if (!tmpDir.exists()) {
+			tmpDir.mkdirs();
+		}
+		File dir = File.createTempFile(prefix, "", tmpDir);
+		dir.delete();
+		dir.mkdirs();
+		return dir;
+	}
 
 	public static void deleteOnExit(File dir) {
 		synchronized (temporary) {
@@ -58,7 +74,7 @@ public class FileUtil {
 		}
 	}
 
-	private static void deleteFileOrDir(File dir, int max) {
+	static void deleteFileOrDir(File dir, int max) {
 		File[] listFiles = dir.listFiles();
 		if (listFiles != null && max > 0) {
 			for (File file : listFiles) {

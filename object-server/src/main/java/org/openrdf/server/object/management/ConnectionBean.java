@@ -26,7 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.openrdf.server.object.helpers;
+package org.openrdf.server.object.management;
 
 import java.beans.ConstructorProperties;
 import java.io.Serializable;

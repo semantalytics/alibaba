@@ -30,14 +30,12 @@ import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.Enumeration;
 
-import org.openrdf.server.object.util.SystemProperties;
-
-public class CalliKeyStore implements CalliKeyStoreMXBean {
+public class KeyStoreImpl implements KeyStoreMXBean {
 	private static final int CERT_EXPIRE_DAYS = 31;
 
 	private final File cerDir;
 
-	public CalliKeyStore(File cerDir) {
+	public KeyStoreImpl(File cerDir) {
 		this.cerDir = cerDir;
 	}
 
@@ -48,8 +46,8 @@ public class CalliKeyStore implements CalliKeyStoreMXBean {
 	public long getCertificateExperation() throws GeneralSecurityException,
 			IOException {
 		String alias = getKeyAlias();
-		char[] password = SystemProperties.getKeyStorePassword();
-		return getCertificateExperation(CERT_EXPIRE_DAYS, alias, SystemProperties.getKeyStoreFile(),
+		char[] password = getKeyStorePassword();
+		return getCertificateExperation(CERT_EXPIRE_DAYS, alias, getKeyStoreFile(),
 				password);
 	}
 
@@ -65,9 +63,9 @@ public class CalliKeyStore implements CalliKeyStoreMXBean {
 	public boolean isCertificateSigned() throws IOException,
 			GeneralSecurityException {
 		String alias = getKeyAlias();
-		char[] password = SystemProperties.getKeyStorePassword();
+		char[] password = getKeyStorePassword();
 		KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
-		File file = SystemProperties.getKeyStoreFile();
+		File file = getKeyStoreFile();
 		if (!file.exists())
 			return false;
 		FileInputStream in = new FileInputStream(file);
@@ -90,9 +88,9 @@ public class CalliKeyStore implements CalliKeyStoreMXBean {
 	}
 
 	private String getKeyAlias() throws IOException, GeneralSecurityException {
-		char[] password = SystemProperties.getKeyStorePassword();
+		char[] password = getKeyStorePassword();
 		KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
-		File file = SystemProperties.getKeyStoreFile();
+		File file = getKeyStoreFile();
 		if (!file.exists())
 			return null;
 		FileInputStream in = new FileInputStream(file);
@@ -156,5 +154,28 @@ public class CalliKeyStore implements CalliKeyStoreMXBean {
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		transfer(new FileInputStream(file), out);
 		return new String(out.toByteArray());
+	}
+
+	private char[] getKeyStorePassword() throws IOException {
+		String password = getProperty("javax.net.ssl.keyStorePassword");
+		if (password == null)
+			return "changeit".toCharArray();
+		return password.toCharArray();
+	}
+
+	private File getKeyStoreFile() throws IOException {
+		String keyStore = getProperty("javax.net.ssl.keyStore");
+		if (keyStore == null)
+			return new File(System.getProperty("user.home"), ".keystore");
+		return new File(keyStore);
+	}
+
+	private String getProperty(String key) {
+		try {
+			return System.getProperty(key);
+		} catch (SecurityException e) {
+			e.printStackTrace(System.err);
+		}
+		return null;
 	}
 }

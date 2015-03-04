@@ -16,106 +16,165 @@
  */
 package org.openrdf.server.object.logging;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
+import java.io.FileInputStream;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.io.StringWriter;
+import java.util.Enumeration;
+import java.util.logging.Formatter;
+import java.util.logging.Handler;
+import java.util.logging.Level;
 import java.util.logging.LogManager;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
-import org.openrdf.server.object.util.SystemProperties;
+import javax.management.Notification;
+import javax.management.NotificationBroadcasterSupport;
 
-public class LoggingProperties {
-	private static final Pattern KEY_VALUE_REGEX = Pattern
-			.compile("\\s*(.*)\\s*=\\s*(.*)\\s*$");
-	private static final LoggingProperties system = new LoggingProperties(SystemProperties.getLoggingPropertiesFile());
 
-	public static LoggingProperties getInstance() {
-		return system;
-	}
-
+public class LoggingProperties extends NotificationBroadcasterSupport implements LoggingPropertiesMXBean {
 	private final File file;
+	private Formatter formatter;
+	private Handler nh;
 
-	public LoggingProperties(File file) {
-		this.file = file;
-	}
+	public final class NotificationHandler extends Handler {
 
-	public synchronized Map<String, String> getLoggingProperties()
-			throws IOException {
-		if (file == null || !file.isFile())
-			return Collections.emptyMap();
-		Map<String, String> properties = getAllLoggingProperties();
-		Iterator<String> iter = properties.keySet().iterator();
-		while (iter.hasNext()) {
-			if (iter.next().contains("password")) {
-				iter.remove();
-			}
-		}
-		return properties;
-	}
-
-	public synchronized void setLoggingProperties(Map<String, String> lines)
-			throws IOException {
-		if (file != null && file.canRead()) {
-			Map<String, String> map = getAllLoggingProperties();
-			map.putAll(lines);
-			lines = map;
-		}
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		try {
-			PrintWriter writer = new PrintWriter(out);
-			try {
-				for (Map.Entry<String, String> line : lines.entrySet()) {
-					if (line.getValue() == null) {
-						writer.println(line.getKey());
-					} else {
-						writer.println(line.getKey() + "=" + line.getValue());
-					}
+		@Override
+		public void publish(LogRecord record) {
+			String type = record.getLevel().toString();
+			String source = record.getLoggerName();
+			long sequenceNumber = record.getSequenceNumber();
+			long timeStamp = record.getMillis();
+			if (source.startsWith("javax.management")
+					|| source.startsWith("sun.rmi"))
+				return; // recursive
+			String message = getFormatter().formatMessage(record);
+			Notification note = new Notification(type, source, sequenceNumber,
+					timeStamp, message);
+			if (record.getThrown() != null) {
+				try {
+					StringWriter sw = new StringWriter();
+					PrintWriter pw = new PrintWriter(sw);
+					record.getThrown().printStackTrace(pw);
+					pw.close();
+					note.setUserData(sw.toString());
+				} catch (Exception ex) {
 				}
-			} finally {
-				writer.close();
 			}
-		} finally {
-			out.close();
+			sendNotification(note);
 		}
-		byte[] data = out.toByteArray();
-		LogManager.getLogManager().readConfiguration(new ByteArrayInputStream(data));
-		if (file != null) {
-			file.getParentFile().mkdirs();
-			FileOutputStream stream = new FileOutputStream(file);
-			try {
-				stream.write(data);
-			} finally {
-				stream.close();
-			}
+
+		@Override
+		public void close() throws SecurityException {
+			// no-op
+		}
+
+		@Override
+		public void flush() {
+			// no-op
+		}
+
+	}
+
+	public LoggingProperties() {
+		this(getDefaultLoggingPropertiesFile());
+	}
+
+	public LoggingProperties(File loggingProperties) {
+		this.file = loggingProperties;
+		formatter = new LogMessageFormatter();
+		nh = new NotificationHandler();
+		nh.setFormatter(formatter);
+		nh.setLevel(Level.ALL);
+	}
+
+	public File getLoggingPropertiesFile() {
+		return file;
+	}
+
+	@Override
+	public void startNotifications(String loggerName) {
+		Logger logger = LogManager.getLogManager().getLogger(loggerName);
+		if (logger == null)
+			throw new IllegalArgumentException("No such logger: " + loggerName);
+		logger.removeHandler(nh);
+		logger.addHandler(nh);
+	}
+
+	@Override
+	public void stopNotifications() {
+		Enumeration<String> names = LogManager.getLogManager().getLoggerNames();
+		while (names.hasMoreElements()) {
+			String name = names.nextElement();
+			Logger.getLogger(name).removeHandler(nh);
 		}
 	}
 
-	private Map<String, String> getAllLoggingProperties()
-			throws FileNotFoundException, IOException {
-		FileReader fileReader = new FileReader(file);
-		BufferedReader bufferedReader = new BufferedReader(fileReader);
-		Map<String, String> lines = new LinkedHashMap<String, String>();
-		String line = null;
-		while ((line = bufferedReader.readLine()) != null) {
-			Matcher m = KEY_VALUE_REGEX.matcher(line);
-			if (m.matches()) {
-				lines.put(m.group(1), m.group(2));
-			} else {
-				lines.put(line, null);
-			}
-		}
-		bufferedReader.close();
-		return lines;
+	@Override
+	public void logAll(String pkg) throws IOException {
+		appendLoggingProperties("\n" + pkg + ".level=ALL\n");
 	}
+
+	@Override
+	public void logInfo(String pkg) throws IOException {
+		appendLoggingProperties("\n" + pkg + ".level=INFO\n");
+	}
+
+	@Override
+	public void logWarn(String pkg) throws IOException {
+		appendLoggingProperties("\n" + pkg + ".level=WARN\n");
+	}
+
+	@Override
+	public synchronized String getLoggingProperties() throws IOException {
+		if (!file.isFile())
+			return null;
+		StringWriter writer = new StringWriter();
+		FileReader reader = new FileReader(file);
+		try {
+			int read;
+			char[] cbuf = new char[1024];
+			while ((read = reader.read(cbuf)) >= 0) {
+				writer.write(cbuf, 0, read);
+			}
+			return writer.toString();
+		} finally {
+			reader.close();
+		}
+	}
+
+	@Override
+	public synchronized void setLoggingProperties(String properties) throws IOException {
+		LogManager.getLogManager().readConfiguration(new ByteArrayInputStream(properties.getBytes()));
+		file.getParentFile().mkdirs();
+		FileWriter writer = new FileWriter(file);
+		try {
+			writer.write(properties);
+		} finally {
+			writer.close();
+		}
+	}
+
+	private static File getDefaultLoggingPropertiesFile() {
+		String file = System.getProperty("java.util.logging.config.file");
+		if (file == null)
+			return new File("etc/logging.properties");
+		return new File(file);
+	}
+
+	private synchronized void appendLoggingProperties(String properties) throws IOException {
+		file.getParentFile().mkdirs();
+		FileWriter writer = new FileWriter(file, true);
+		try {
+			writer.write(properties);
+		} finally {
+			writer.close();
+		}
+		LogManager.getLogManager().readConfiguration(new FileInputStream(file));
+	}
+
 }

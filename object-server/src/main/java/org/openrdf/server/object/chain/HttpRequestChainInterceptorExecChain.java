@@ -1,7 +1,9 @@
-package org.openrdf.server.object.helpers;
+package org.openrdf.server.object.chain;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.ServiceLoader;
 import java.util.concurrent.Future;
 
@@ -11,16 +13,21 @@ import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.protocol.HttpContext;
-import org.openrdf.server.object.chain.AsyncExecChain;
+import org.openrdf.server.object.helpers.CompletedResponse;
+import org.openrdf.server.object.helpers.ResponseCallback;
 
 public class HttpRequestChainInterceptorExecChain implements AsyncExecChain {
 	private final AsyncExecChain delegate;
-	private final ServiceLoader<HttpRequestChainInterceptor> loader;
+	private final List<HttpRequestChainInterceptor> interceptors = new ArrayList<HttpRequestChainInterceptor>();
 
 	public HttpRequestChainInterceptorExecChain(AsyncExecChain delegate) {
 		this.delegate = delegate;
 		ClassLoader cl = this.getClass().getClassLoader();
-		this.loader = ServiceLoader.load(HttpRequestChainInterceptor.class, cl);
+		ServiceLoader<HttpRequestChainInterceptor> ld = ServiceLoader.load(HttpRequestChainInterceptor.class, cl);
+		Iterator<HttpRequestChainInterceptor> iter = ld.iterator();
+		while (iter.hasNext()) {
+			interceptors.add(iter.next());
+		}
 	}
 
 	@Override
@@ -55,9 +62,7 @@ public class HttpRequestChainInterceptorExecChain implements AsyncExecChain {
 
 	private HttpResponse intercept(HttpRequest request, HttpContext context)
 			throws HttpException, IOException {
-		Iterator<HttpRequestChainInterceptor> iter = loader.iterator();
-		while (iter.hasNext()) {
-			HttpRequestChainInterceptor interceptor = iter.next();
+		for (HttpRequestChainInterceptor interceptor : interceptors) {
 			HttpResponse resp = interceptor.intercept(request, context);
 			if (resp != null)
 				return resp;
@@ -67,9 +72,7 @@ public class HttpRequestChainInterceptorExecChain implements AsyncExecChain {
 
 	void process(HttpResponse response, HttpContext context)
 			throws HttpException, IOException {
-		Iterator<HttpRequestChainInterceptor> iter = loader.iterator();
-		while (iter.hasNext()) {
-			HttpRequestChainInterceptor interceptor = iter.next();
+		for (HttpRequestChainInterceptor interceptor : interceptors) {
 			interceptor.process(response, context);
 		}
 	}

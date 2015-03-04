@@ -83,6 +83,7 @@ import org.openrdf.server.object.fluid.FluidBuilder;
 import org.openrdf.server.object.fluid.FluidException;
 import org.openrdf.server.object.fluid.FluidFactory;
 import org.openrdf.server.object.fluid.FluidType;
+import org.openrdf.server.object.util.PathMatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

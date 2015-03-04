@@ -26,54 +26,23 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.OperatingSystemMXBean;
 import java.lang.management.RuntimeMXBean;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.GregorianCalendar;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Properties;
 
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 
-public class JVMSummary implements JVMSummaryMXBean {
+public class JVMUsage implements JVMUsageMXBean {
 
-	public String[] showVMSummary() throws Exception {
+	public String[] getJVMUsage() throws Exception {
 		int i = 0;
-		String[] result = new String[8];
-		result[i++] = getJVMVersion();
+		String[] result = new String[5];
 		result[i++] = getOSUsage();
 		result[i++] = getMemoryUsage();
 		result[i++] = getRuntimeUsage();
 		result[i++] = getClassUsage();
 		result[i++] = getFileSystemUsage();
-		result[i++] = getSystemProperties();
-		result[i++] = getVariables();
 		return result;
-	}
-
-	private String getJVMVersion() {
-		StringWriter sw = new StringWriter();
-		PrintWriter w = new PrintWriter(sw, true);
-		w.print("OS:\t");
-		w.print(System.getProperty("os.name"));
-		w.print(" ");
-		w.print(System.getProperty("os.version"));
-		w.print(" (");
-		w.print(System.getProperty("os.arch"));
-		w.println(")");
-		w.print("VM:\t");
-		w.print(System.getProperty("java.vendor"));
-		w.print(" ");
-		w.print(System.getProperty("java.vm.name"));
-		w.print(" ");
-		w.println(System.getProperty("java.version"));
-		w.print("Server:\t");
-		w.println(org.openrdf.server.object.Version.getInstance().getVersion());
-		w.print("User:\t");
-		w.println(System.getProperty("user.name"));
-		return sw.toString();
 	}
 
 	private String getRuntimeUsage() throws DatatypeConfigurationException {
@@ -85,6 +54,16 @@ public class JVMSummary implements JVMSummaryMXBean {
 		gcal.setTime(starttime);
 		DatatypeFactory df = DatatypeFactory.newInstance();
 		String date = df.newXMLGregorianCalendar(gcal).toXMLFormat();
+		w.print("VM:\t");
+		w.print(System.getProperty("java.vendor"));
+		w.print(" ");
+		w.print(System.getProperty("java.vm.name"));
+		w.print(" ");
+		w.println(System.getProperty("java.version"));
+		w.print("Server:\t");
+		w.println(org.openrdf.server.object.Version.getInstance().getVersion());
+		w.print("User:\t");
+		w.println(System.getProperty("user.name"));
 		w.println("VM start time:\t" + date);
 		w.println("VM up time:\t" + mx.getUptime() + " ms");
 		w.print("Available processors (cores):\t");
@@ -92,8 +71,6 @@ public class JVMSummary implements JVMSummaryMXBean {
 		// the input arguments passed to the Java virtual machine
 		// which does not include the arguments to the main method.
 		w.println("JVM arguments:\n" + mx.getInputArguments());
-		w.println("Boot class path:\n" + mx.getBootClassPath());
-		w.println("Class path:\n" + mx.getClassPath());
 		return sw.toString();
 	}
 
@@ -103,6 +80,9 @@ public class JVMSummary implements JVMSummaryMXBean {
 		ClassLoadingMXBean mx = ManagementFactory.getClassLoadingMXBean();
 		w.println("Classes loaded:\t" + mx.getLoadedClassCount());
 		w.println("Total loaded:\t" + mx.getTotalLoadedClassCount());
+		RuntimeMXBean rmx = ManagementFactory.getRuntimeMXBean();
+		w.println("Boot class path:\n" + rmx.getBootClassPath());
+		w.println("Class path:\n" + rmx.getClassPath());
 		return sw.toString();
 	}
 
@@ -110,6 +90,13 @@ public class JVMSummary implements JVMSummaryMXBean {
 		StringWriter sw = new StringWriter();
 		PrintWriter w = new PrintWriter(sw, true);
 		OperatingSystemMXBean mx = ManagementFactory.getOperatingSystemMXBean();
+		w.print("OS:\t");
+		w.print(System.getProperty("os.name"));
+		w.print(" ");
+		w.print(System.getProperty("os.version"));
+		w.print(" (");
+		w.print(System.getProperty("os.arch"));
+		w.println(")");
 		w.print("Name:\t");
 		w.println(mx.getName());
 		w.print("Arch:\t");
@@ -166,39 +153,8 @@ public class JVMSummary implements JVMSummaryMXBean {
 			w.print((int) (root.getUsableSpace() / 1024 / 1024));
 			w.println("m");
 		}
-		return sw.toString();
-	}
-
-	private String getSystemProperties() {
-		StringWriter sw = new StringWriter();
-		PrintWriter w = new PrintWriter(sw, true);
-		Properties sysProps = System.getProperties();
-		ArrayList<String> keyList = new ArrayList<String>(
-				sysProps.stringPropertyNames());
-		Collections.sort(keyList);
-		Iterator<String> sysPropNames = keyList.iterator();
-		while (sysPropNames.hasNext()) {
-			String name = sysPropNames.next();
-			w.print(name);
-			w.print(":\t");
-			w.println(sysProps.get(name));
-		}
-		return sw.toString();
-	}
-
-	private String getVariables() {
-		StringWriter sw = new StringWriter();
-		PrintWriter w = new PrintWriter(sw, true);
-		Map<String, String> envProps = System.getenv();
-		ArrayList<String> keyList = new ArrayList<String>(envProps.keySet());
-		Collections.sort(keyList);
-		Iterator<String> envPropNames = keyList.iterator();
-		while (envPropNames.hasNext()) {
-			String name = envPropNames.next();
-			w.print(name);
-			w.print(":\t");
-			w.println(envProps.get(name));
-		}
+		w.print("Current working directory:\t");
+		w.println(new File(".").getAbsolutePath());
 		return sw.toString();
 	}
 

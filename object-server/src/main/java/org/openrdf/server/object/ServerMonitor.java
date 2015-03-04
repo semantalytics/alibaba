@@ -52,13 +52,11 @@ import org.openrdf.server.object.cli.Command;
 import org.openrdf.server.object.cli.CommandSet;
 import org.openrdf.server.object.concurrent.ManagedThreadPool;
 import org.openrdf.server.object.concurrent.ThreadPoolMXBean;
-import org.openrdf.server.object.helpers.WebServer;
-import org.openrdf.server.object.helpers.WebServerMXBean;
 import org.openrdf.server.object.io.ChannelUtil;
-import org.openrdf.server.object.management.CalliServer;
-import org.openrdf.server.object.management.CalliServerMXBean;
-import org.openrdf.server.object.management.JVMSummary;
-import org.openrdf.server.object.management.JVMSummaryMXBean;
+import org.openrdf.server.object.management.JVMUsage;
+import org.openrdf.server.object.management.JVMUsageMXBean;
+import org.openrdf.server.object.management.ObjectServer;
+import org.openrdf.server.object.management.ObjectServerMXBean;
 
 /**
  * Command line tool for monitoring the server.
@@ -134,9 +132,8 @@ public class ServerMonitor {
 
 	private Object vm;
 	private MBeanServerConnection mbsc;
-	private JVMSummaryMXBean summary;
-	private WebServerMXBean webService;
-	private CalliServerMXBean server;
+	private JVMUsageMXBean summary;
+	private ObjectServerMXBean server;
 	private boolean reset;
 	private boolean stop;
 
@@ -206,19 +203,19 @@ public class ServerMonitor {
 				} finally {
 					server.destroy();
 				}
-				info("Callimachus server has stopped");
+				info("Server has stopped");
 				return true;
 			} catch (UndeclaredThrowableException e) {
 				if (e.getCause() instanceof InstanceNotFoundException) {
 					// remote MBean has unregistered
-					info("Callimachus server has been destroyed");
+					info("Server has been destroyed");
 					return true;
 				}
 				throw e;
 			} catch (UnmarshalException e) {
 				if (e.getCause() instanceof IOException) {
 					// remote JVM has terminated
-					info("Callimachus server has shutdown");
+					info("Server has shutdown");
 					return true;
 				}
 				throw e;
@@ -230,7 +227,7 @@ public class ServerMonitor {
 
 	public void resetCache() throws Throwable {
 		try {
-			webService.resetCache();
+			server.resetCache();
 		} catch (UndeclaredThrowableException e) {
 			throw e.getCause();
 		}
@@ -247,10 +244,10 @@ public class ServerMonitor {
 				+ ".tdump");
 		heapDump(vm, dir + "heap-" + stamp + ".hprof");
 		executeVMCommand(vm, "heapHisto", dir + "heap-" + stamp + ".histo");
-		// dump callimachus info
+		// dump info
 		connectionDump(mbsc, dir + "server-" + stamp + ".csv");
 		poolDump(mbsc, dir + "pool-" + stamp + ".tdump");
-		summaryDump(mbsc, dir + "summary-" + stamp + ".txt");
+		usageDump(mbsc, dir + "summary-" + stamp + ".txt");
 		netStatistics(dir + "netstat-" + stamp + ".txt");
 		topStatistics(dir + "top-" + stamp + ".txt");
 	}
@@ -258,15 +255,11 @@ public class ServerMonitor {
 	private void setPidFile(String pid) throws Throwable {
 		vm = getRemoteVirtualMachine(pid);
 		mbsc = getMBeanConnection(vm);
-		for (ObjectName name : getObjectNames(CalliServer.class, mbsc)) {
-			server = JMX.newMXBeanProxy(mbsc, name, CalliServerMXBean.class);
+		for (ObjectName name : getObjectNames(ObjectServer.class, mbsc)) {
+			server = JMX.newMXBeanProxy(mbsc, name, ObjectServerMXBean.class);
 		}
-		for (ObjectName name : getObjectNames(WebServer.class, mbsc)) {
-			webService = JMX.newMXBeanProxy(mbsc, name,
-					WebServerMXBean.class);
-		}
-		for (ObjectName name : getObjectNames(JVMSummary.class, mbsc)) {
-			summary = JMX.newMXBeanProxy(mbsc, name, JVMSummaryMXBean.class);
+		for (ObjectName name : getObjectNames(JVMUsage.class, mbsc)) {
+			summary = JMX.newMXBeanProxy(mbsc, name, JVMUsageMXBean.class);
 		}
 	}
 
@@ -304,9 +297,9 @@ public class ServerMonitor {
 
 	private void connectionDump(MBeanServerConnection mbsc, String filename)
 			throws MalformedObjectNameException, IOException {
-		for (ObjectName name : getObjectNames(WebServer.class, mbsc)) {
-			WebServerMXBean server = JMX.newMXBeanProxy(mbsc, name,
-					WebServerMXBean.class);
+		for (ObjectName name : getObjectNames(ObjectServer.class, mbsc)) {
+			ObjectServerMXBean server = JMX.newMXBeanProxy(mbsc, name,
+					ObjectServerMXBean.class);
 			server.connectionDumpToFile(filename);
 			info(filename);
 		}
@@ -315,7 +308,8 @@ public class ServerMonitor {
 	private Set<ObjectName> getObjectNames(Class<?> mclass,
 			MBeanServerConnection mbsc) throws IOException,
 			MalformedObjectNameException {
-		ObjectName name = new ObjectName("*:type=" + mclass.getSimpleName() + ",*");
+		String pkg = mclass.getPackage().getName();
+		ObjectName name = new ObjectName(pkg + ":type=" + mclass.getSimpleName() + ",*");
 		for (Class<?> mx : mclass.getInterfaces()) {
 			if (mx.getName().endsWith("Bean")) {
 				QueryExp instanceOf = Query.isInstanceOf(Query.value(mclass.getName()));
@@ -339,11 +333,11 @@ public class ServerMonitor {
 		}
 	}
 
-	private void summaryDump(MBeanServerConnection mbsc, String filename)
+	private void usageDump(MBeanServerConnection mbsc, String filename)
 			throws Throwable {
 		try {
 			if (this.summary != null) {
-				String[] summary = this.summary.showVMSummary();
+				String[] summary = this.summary.getJVMUsage();
 				PrintWriter w = new PrintWriter(filename);
 				try {
 					for (String line : summary) {

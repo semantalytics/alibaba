@@ -29,14 +29,11 @@
 package org.openrdf.server.object.helpers;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.URI;
 import java.util.Queue;
 
-import org.apache.http.HttpConnection;
 import org.apache.http.HttpException;
 import org.apache.http.HttpHost;
-import org.apache.http.HttpInetConnection;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpVersion;
@@ -48,12 +45,10 @@ import org.apache.http.nio.protocol.HttpAsyncRequestConsumer;
 import org.apache.http.nio.protocol.HttpAsyncRequestHandler;
 import org.apache.http.nio.protocol.HttpAsyncRequestHandlerMapper;
 import org.apache.http.protocol.HttpContext;
-import org.apache.http.protocol.HttpCoreContext;
 import org.openrdf.server.object.chain.AsyncExecChain;
 import org.openrdf.server.object.client.HttpUriResponse;
 import org.openrdf.server.object.exceptions.InternalServerError;
 import org.openrdf.server.object.exceptions.ResponseException;
-import org.openrdf.server.object.util.DomainNameSystemResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,8 +60,6 @@ import org.slf4j.LoggerFactory;
  */
 public class AsyncRequestHandler implements HttpAsyncRequestHandlerMapper,
 		HttpAsyncRequestHandler<HttpRequest> {
-	private static final InetAddress LOCALHOST = DomainNameSystemResolver
-			.getInstance().getLocalHost();
 
 	private final Logger logger = LoggerFactory
 			.getLogger(AsyncRequestHandler.class);
@@ -87,11 +80,11 @@ public class AsyncRequestHandler implements HttpAsyncRequestHandlerMapper,
 			IOException {
 		logger.debug("Request received {}", request.getRequestLine());
 		ObjectContext cc = ObjectContext.adapt(context);
-		final Request req = new Request(request, context);
+		final Request req = new Request(request, cc);
 		final Queue<Exchange> queue = cc.getOrCreateProcessingQueue();
 		final Exchange exchange = new Exchange(req, queue);
 		cc.setExchange(exchange);
-		handle(req, context, exchange);
+		handle(req, cc, exchange);
 		return exchange.getConsumer();
 	}
 
@@ -108,11 +101,8 @@ public class AsyncRequestHandler implements HttpAsyncRequestHandlerMapper,
 
 	private void handle(final Request req, HttpContext context,
 			final Exchange exchange) {
-		InetAddress remoteAddress = getRemoteAddress(context);
 		// fork HttpContext so it can be used in other threads
 		ObjectContext cc = ObjectContext.fork(context);
-		cc.setReceivedOn(System.currentTimeMillis());
-		cc.setClientAddr(remoteAddress);
 		HttpHost host = URIUtils.extractHost(URI.create(req.getOrigin() + "/"));
 		try {
 			handler.execute(host, req.getEnclosingRequest(), cc,
@@ -164,18 +154,6 @@ public class AsyncRequestHandler implements HttpAsyncRequestHandlerMapper,
 					.exception(new InternalServerError(ex));
 			exchange.submitResponse(result);
 		}
-	}
-
-	private InetAddress getRemoteAddress(HttpContext context) {
-		if (context == null)
-			return LOCALHOST;
-		HttpConnection con = HttpCoreContext.adapt(context).getConnection();
-		if (con instanceof HttpInetConnection) {
-			InetAddress remoteAddress = ((HttpInetConnection) con).getRemoteAddress();
-			if (remoteAddress != null)
-				return remoteAddress;
-		}
-		return LOCALHOST;
 	}
 
 }

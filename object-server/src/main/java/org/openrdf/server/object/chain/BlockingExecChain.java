@@ -26,7 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.openrdf.server.object.helpers;
+package org.openrdf.server.object.chain;
 
 import java.io.IOException;
 import java.util.concurrent.Future;
@@ -45,7 +45,6 @@ import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.impl.execchain.ClientExecChain;
 import org.apache.http.protocol.HttpContext;
-import org.openrdf.server.object.chain.AsyncExecChain;
 
 public class BlockingExecChain implements AsyncExecChain {
 	private final ClientExecChain delegate;

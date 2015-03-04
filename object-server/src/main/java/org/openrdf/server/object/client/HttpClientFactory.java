@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import org.apache.http.ConnectionReuseStrategy;
 import org.apache.http.HttpClientConnection;
@@ -55,7 +56,6 @@ import org.apache.http.message.BasicHeader;
 import org.apache.http.protocol.HttpContext;
 import org.openrdf.server.object.Version;
 import org.openrdf.server.object.io.FileUtil;
-import org.openrdf.server.object.util.SystemProperties;
 
 /**
  * Manages the connections and cache entries for outgoing requests.
@@ -69,18 +69,9 @@ public class HttpClientFactory implements Closeable {
 	static HttpClientFactory instance;
 	static {
 		try {
-			String tmpDirStr = System.getProperty("java.io.tmpdir");
-			if (tmpDirStr != null) {
-				File tmpDir = new File(tmpDirStr);
-				if (!tmpDir.exists()) {
-					tmpDir.mkdirs();
-				}
-			}
-			File dir = File.createTempFile("http-client-cache", "");
-			dir.delete();
+			File dir = FileUtil.createTempDir("http-client-cache");
 			FileUtil.deleteOnExit(dir);
 			setCacheDirectory(dir);
-			instance = new HttpClientFactory(dir);
 		} catch (IOException e) {
 			throw new AssertionError(e);
 		}
@@ -108,6 +99,7 @@ public class HttpClientFactory implements Closeable {
 		instance = new HttpClientFactory(dir);
 	}
 
+	final long KEEPALIVE = getClientKeepAliveTimeout();
 	final ProxyClientExecDecorator decorator;
 	private final ResourceFactory entryFactory;
 	final PoolingHttpClientConnectionManager connManager;
@@ -131,7 +123,6 @@ public class HttpClientFactory implements Closeable {
 		connManager.setMaxTotal(2 * max);
 		reuseStrategy = DefaultConnectionReuseStrategy.INSTANCE;
 		keepAliveStrategy = new ConnectionKeepAliveStrategy() {
-			private final long KEEPALIVE = SystemProperties.getClientKeepAliveTimeout();
 			private ConnectionKeepAliveStrategy delegate = DefaultConnectionKeepAliveStrategy.INSTANCE;
 
 			public long getKeepAliveDuration(HttpResponse response,
@@ -282,5 +273,22 @@ public class HttpClientFactory implements Closeable {
 				.setHeuristicCachingEnabled(true)
 				.setHeuristicDefaultLifetime(60 * 60 * 24)
 				.setMaxObjectSize(1024 * 1024).build();
+	}
+
+	private long getClientKeepAliveTimeout() {
+		String pkg = HttpClientFactory.class.getPackage().getName();
+		String keepAliveTimeout = getProperty(pkg + ".keepAliveTimeout");
+		if (keepAliveTimeout != null && Pattern.matches("\\d+", keepAliveTimeout))
+			return Math.abs(Long.parseLong(keepAliveTimeout));
+		return 4000;
+	}
+
+	private String getProperty(String key) {
+		try {
+			return System.getProperty(key);
+		} catch (SecurityException e) {
+			e.printStackTrace(System.err);
+		}
+		return null;
 	}
 }

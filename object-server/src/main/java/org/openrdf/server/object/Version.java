@@ -60,7 +60,7 @@ public class Version {
 		return "devel";
 	}
 
-	private final String product = "Callimachus";
+	private final String product = "ObjectServer";
 	private final int major;
 	private final int release;
 	private final int maintenance;
