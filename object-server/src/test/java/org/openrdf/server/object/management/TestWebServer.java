@@ -1,16 +1,17 @@
 package org.openrdf.server.object.management;
 
+import info.aduna.io.FileUtil;
+
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.X509Certificate;
+import java.security.KeyStore;
 import java.util.concurrent.CountDownLatch;
 import java.util.zip.GZIPInputStream;
 
@@ -18,8 +19,6 @@ import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSession;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 
 import junit.framework.TestCase;
 
@@ -33,6 +32,7 @@ import org.apache.http.concurrent.Cancellable;
 import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.message.BasicHttpRequest;
+import org.apache.http.ssl.SSLContexts;
 import org.apache.http.util.EntityUtils;
 import org.openrdf.annotations.Method;
 import org.openrdf.annotations.Type;
@@ -81,6 +81,7 @@ public class TestWebServer extends TestCase {
 
 	public TestWebServer(String name) throws Exception {
 		super(name);
+		SSLContext.getDefault(); // initialise SSL
 		Class<? extends TestWebServer> cls = this.getClass();
 		String path = cls.getName().replace('.', '/') + ".class";
 		String uri = cls.getClassLoader().getResource(path).toExternalForm();
@@ -103,12 +104,24 @@ public class TestWebServer extends TestCase {
 				vf.createURI("urn:test:test-response"));
 		con.close();
 		char[] password = "changeit".toCharArray();
+		File truststore = copyCacerts(password);
 		File keystore = generateKeyStore("localhost", password);
+		File cer = exportCertificate("localhost", keystore, password);
+		importCertificate(cer, "localhost", truststore, password);
+		truststore.deleteOnExit();
 		keystore.deleteOnExit();
-		System.setProperty("javax.net.ssl.keyStorePassword", new String(password));
-		System.setProperty("javax.net.ssl.keyStore", keystore.getAbsolutePath());
-		sslcontext = createSSLContext();
-		server = new WebServer();
+		cer.deleteOnExit();
+        final KeyStore identityStore = KeyStore.getInstance(KeyStore.getDefaultType());
+        final FileInputStream instream = new FileInputStream(keystore);
+        try {
+            identityStore.load(instream, password);
+        } finally {
+            instream.close();
+        }
+		sslcontext = SSLContexts.custom()
+				.loadTrustMaterial(truststore, password)
+				.loadKeyMaterial(identityStore, password).build();
+		server = new WebServer(sslcontext);
 		server.addRepository("http://localhost:" + port + "/", repository);
 		server.addRepository("https://localhost:" + ssl + "/", repository);
 		server.listen(new int[] { port }, new int[] { ssl });
@@ -119,8 +132,6 @@ public class TestWebServer extends TestCase {
 		server.stop();
 		repository.shutDown();
 		server.destroy();
-		System.clearProperty("javax.net.ssl.keyStorePassword");
-		System.clearProperty("javax.net.ssl.keyStore");
 	}
 
 	public void testClientExecNoOrigins() throws Exception {
@@ -258,32 +269,50 @@ public class TestWebServer extends TestCase {
 		}
 	}
 
-	private SSLContext createSSLContext() throws NoSuchAlgorithmException,
-			KeyManagementException {
-		TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
-			public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-				return null;
-			}
-	
-			public void checkClientTrusted(X509Certificate[] certs,
-					String authType) {
-			}
-	
-			public void checkServerTrusted(X509Certificate[] certs,
-					String authType) {
-			}
-		} };
-		final SSLContext sc = SSLContext.getInstance("TLS");
-		sc.init(null, trustAllCerts, new java.security.SecureRandom());
-		return sc;
-	}
-
 	private HostnameVerifier createHostnameVerifier() {
 		return new HostnameVerifier() {
 			public boolean verify(String s, SSLSession sslSession) {
 				return true;
 			}
 		};
+	}
+
+	private File copyCacerts(char[] password) throws IOException,
+			InterruptedException {
+		File truststore = File.createTempFile("trust", "store");
+		File cacerts = new File(new File(new File(System.getProperty("java.home"), "lib"), "security"), "cacerts");
+		FileUtil.copyFile(cacerts, truststore);
+		keytool("-storepasswd",
+				"-new", new String(password),
+				"-keystore", truststore.getAbsolutePath(),
+				"-storepass", "changeit"
+		);
+		return truststore;
+	}
+
+	private File exportCertificate(String alias, File keystore, char[] password)
+			throws IOException, InterruptedException {
+		File cer = File.createTempFile(alias, ".cer");
+		keytool("-export",
+				"-alias", alias,
+				"-keypass", new String(password),
+				"-keystore", keystore.getAbsolutePath(),
+				"-storepass", new String(password),
+				"-file", cer.getAbsolutePath(),
+				"-rfc"
+		);
+		return cer;
+	}
+
+	private void importCertificate(File cer, String alias, File truststore,
+			char[] password) throws IOException, InterruptedException {
+		keytool("-import",
+				"-alias", alias,
+				"-file", cer.getAbsolutePath(),
+				"-noprompt", "-trustcacerts",
+				"-keystore", truststore.getAbsolutePath(),
+				"-storepass", new String(password)
+		);
 	}
 
 	private File generateKeyStore(String alias, char[] password)
