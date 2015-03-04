@@ -412,10 +412,12 @@ public class OWLCompiler {
 		}
 		List<String> classes = buildJavaFiles(dir);
 		saveConceptResources(dir);
-		ClassPathBuilder cb = new ClassPathBuilder();
-		cb.append(getClass().getClassLoader()).append(cl);
-		List<File> classpath = cb.toFileList();
-		compiler.compile(classes, dir, classpath);
+		if (!classes.isEmpty()) {
+			ClassPathBuilder cb = new ClassPathBuilder();
+			cb.append(getClass().getClassLoader()).append(cl);
+			List<File> classpath = cb.toFileList();
+			compiler.compile(classes, dir, classpath);
+		}
 		return classes;
 	}
 
@@ -518,8 +520,7 @@ public class OWLCompiler {
 		if (exception != null)
 			throw exception;
 		if (content.isEmpty())
-			throw new IllegalArgumentException(
-					"No classes found - Try a different namespace.");
+			logger.warn("No classes found - Try a different namespace.");
 		if (!methods.isEmpty()) {
 			printClasses(methods, dir, META_INF_BEHAVIOURS);
 			content.addAll(methods);
