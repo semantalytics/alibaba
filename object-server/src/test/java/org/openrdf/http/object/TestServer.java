@@ -97,7 +97,7 @@ public class TestServer extends TestCase {
 
 	public void testMXBean() throws Exception {
 		assertNull(getMBean("*:*", ObjectServerMXBean.class));
-		server.init("-d", dataDir.getAbsolutePath(), "-p", port, "--trust");
+		server.init("-d", dataDir.getAbsolutePath(), "--trust");
 		ObjectServerMXBean server = getMBean("*:*", ObjectServerMXBean.class);
 		assertNotNull(server);
 		assertFalse(server.isRunning());
@@ -110,7 +110,7 @@ public class TestServer extends TestCase {
 	}
 
 	public void testRepositoryMXBean() throws Exception {
-		server.init("-d", dataDir.getAbsolutePath(), "-p", port, "--trust");
+		server.init("-d", dataDir.getAbsolutePath(), "--trust");
 		String url = "http://localhost:" + port + "/";
 		String PROLOG = "BASE <" + url + ">\n" + PREFIX;
 		RepositoryMXBean system = getMBean("*:*,name=SYSTEM", RepositoryMXBean.class);
@@ -129,7 +129,8 @@ public class TestServer extends TestCase {
 		RepositoryMXBean repository = getMBean("*:*,name=localhost", RepositoryMXBean.class);
 		repository.sparqlUpdate(PROLOG + "INSERT DATA {<> a <TestClass>}");
 		repository.storeBlob(url, "Hello World!");
-		server.start();
+		objectServer.setPorts(port);
+		objectServer.start();
 		assertHelloWorld("Hello World!", new URL(url).openConnection());
 	}
 

@@ -369,7 +369,7 @@ public class WebServer implements IOReactorExceptionHandler, ClientExecChain {
 		resetConnections();
 		try {
 			synchronized (WebServer.this) {
-				while (!listening && !ssllistening) {
+				while (listening || ssllistening) {
 					WebServer.this.wait();
 				}
 			}
