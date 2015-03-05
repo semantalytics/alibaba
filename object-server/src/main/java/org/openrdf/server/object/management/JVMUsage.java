@@ -70,7 +70,7 @@ public class JVMUsage implements JVMUsageMXBean {
 		w.println(Runtime.getRuntime().availableProcessors());
 		// the input arguments passed to the Java virtual machine
 		// which does not include the arguments to the main method.
-		w.println("JVM arguments:\n" + mx.getInputArguments());
+		w.println("JVM arguments:\t" + mx.getInputArguments());
 		return sw.toString();
 	}
 
@@ -81,8 +81,8 @@ public class JVMUsage implements JVMUsageMXBean {
 		w.println("Classes loaded:\t" + mx.getLoadedClassCount());
 		w.println("Total loaded:\t" + mx.getTotalLoadedClassCount());
 		RuntimeMXBean rmx = ManagementFactory.getRuntimeMXBean();
-		w.println("Boot class path:\n" + rmx.getBootClassPath());
-		w.println("Class path:\n" + rmx.getClassPath());
+		w.println("Boot class path:\t" + rmx.getBootClassPath());
+		w.println("Class path:\t" + rmx.getClassPath());
 		return sw.toString();
 	}
 
@@ -154,7 +154,7 @@ public class JVMUsage implements JVMUsageMXBean {
 			w.println("m");
 		}
 		w.print("Current working directory:\t");
-		w.println(new File(".").getAbsolutePath());
+		w.println(new File("").getAbsolutePath());
 		return sw.toString();
 	}
 

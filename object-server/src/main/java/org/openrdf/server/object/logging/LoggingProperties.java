@@ -116,17 +116,17 @@ public class LoggingProperties extends NotificationBroadcasterSupport implements
 
 	@Override
 	public void logAll(String pkg) throws IOException {
-		appendLoggingProperties("\n" + pkg + ".level=ALL\n");
+		appendLoggingProperties(pkg + ".level=ALL");
 	}
 
 	@Override
 	public void logInfo(String pkg) throws IOException {
-		appendLoggingProperties("\n" + pkg + ".level=INFO\n");
+		appendLoggingProperties(pkg + ".level=INFO");
 	}
 
 	@Override
 	public void logWarn(String pkg) throws IOException {
-		appendLoggingProperties("\n" + pkg + ".level=WARN\n");
+		appendLoggingProperties(pkg + ".level=WARN");
 	}
 
 	@Override
@@ -170,6 +170,7 @@ public class LoggingProperties extends NotificationBroadcasterSupport implements
 		file.getParentFile().mkdirs();
 		FileWriter writer = new FileWriter(file, true);
 		try {
+			writer.write("\n");
 			writer.write(properties);
 		} finally {
 			writer.close();

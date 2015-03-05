@@ -179,13 +179,13 @@ public class Server {
 			node.setPorts(ports);
 			node.setSSLPorts(ssl);
 			registerMBean(node, mbean(ObjectServer.class, name));
-			registerRepositoryMBeans();
 			registerMBean(new JVMUsage(), mbean(JVMUsage.class));
 			LoggingProperties loggingBean = new LoggingProperties();
 			registerMBean(loggingBean, mbean(LoggingProperties.class));
 			File etc = new File(dataDir, "etc");
 			KeyStoreImpl keystore = new KeyStoreImpl(etc);
 			registerMBean(keystore, mbean(KeyStoreImpl.class));
+			poke();
 			if (!line.has("trust")) {
 				ServerPolicy.apply(new String[0], loggingBean
 						.getLoggingPropertiesFile(), new File(dataDir,
@@ -204,6 +204,7 @@ public class Server {
 	}
 
 	public void start() throws Exception {
+		poke();
 		node.start();
 	}
 
@@ -242,8 +243,36 @@ public class Server {
 	public void await() throws InterruptedException, OpenRDFException {
 		synchronized (node) {
 			while (node.isRunning()) {
-				registerRepositoryMBeans();
+				poke();
 				node.wait();
+			}
+		}
+	}
+
+	public void poke() throws RepositoryException,
+			RepositoryConfigException {
+		node.poke();
+		Set<String> active = node.getRepositoryIDs();
+		String repositories = getRepositoryMBeanPrefix();
+		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+		try {
+			QueryExp instanceOf = Query.isInstanceOf(Query.value(RepositoryMXBean.class.getName()));
+			for (ObjectName on : mbs.queryNames(new ObjectName(repositories + ",*"), instanceOf)) {
+				if (!active.contains(on.getKeyProperty("name"))) {
+					mbs.unregisterMBean(on);
+				}
+			}
+		} catch (JMException e) {
+			logger.error(e.toString(), e);
+		}
+		for (String id : active) {
+			try {
+				String oname = repositories + ",name=" + id;
+				if (!mbs.isRegistered(new ObjectName(oname))) {
+					registerMBean(node.getRepositoryMXBean(id), oname);
+				}
+			} catch (MalformedObjectNameException e) {
+				logger.error(e.toString(), e);
 			}
 		}
 	}
@@ -302,33 +331,6 @@ public class Server {
 		sb.append(pkg).append(":type=").append(simple);
 		sb.append(",name=").append(name);
 		return sb.toString();
-	}
-
-	private void registerRepositoryMBeans() throws RepositoryException,
-			RepositoryConfigException {
-		Set<String> active = node.getRepositoryIDs();
-		String repositories = getRepositoryMBeanPrefix();
-		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-		try {
-			QueryExp instanceOf = Query.isInstanceOf(Query.value(RepositoryMXBean.class.getName()));
-			for (ObjectName on : mbs.queryNames(new ObjectName(repositories + ",*"), instanceOf)) {
-				if (!active.contains(on.getKeyProperty("name"))) {
-					mbs.unregisterMBean(on);
-				}
-			}
-		} catch (JMException e) {
-			logger.error(e.toString(), e);
-		}
-		for (String id : active) {
-			try {
-				String oname = repositories + ",name=" + id;
-				if (!mbs.isRegistered(new ObjectName(oname))) {
-					registerMBean(node.getRepositoryMXBean(id), oname);
-				}
-			} catch (MalformedObjectNameException e) {
-				logger.error(e.toString(), e);
-			}
-		}
 	}
 
 	private String getRepositoryMBeanPrefix() {

@@ -18,6 +18,7 @@ package org.openrdf.server.object.management;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.StringWriter;
 import java.io.Writer;
 
@@ -132,6 +133,21 @@ public class RepositoryMXBeanImpl implements RepositoryMXBean {
 				writer.write(content);
 			} finally {
 				writer.close();
+			}
+		} finally {
+			conn.close();
+		}
+	}
+
+	public void storeBinaryBlob(String uri, byte[] content) throws OpenRDFException, IOException {
+		ObjectConnection conn = getObjectConnection();
+		try {
+			logger.warn("Replacing {}", uri);
+			OutputStream out = conn.getBlobObject(uri).openOutputStream();
+			try {
+				out.write(content);
+			} finally {
+				out.close();
 			}
 		} finally {
 			conn.close();

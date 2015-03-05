@@ -28,7 +28,4 @@ public interface KeyStoreMXBean {
 
 	boolean isCertificateSigned() throws IOException, GeneralSecurityException;
 
-	String exportCertificateSigningRequest() throws IOException,
-			GeneralSecurityException;
-
 }

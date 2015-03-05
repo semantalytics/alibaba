@@ -38,4 +38,6 @@ public interface RepositoryMXBean {
 
 	void storeBlob(String uri, String content) throws OpenRDFException, IOException;
 
+	void storeBinaryBlob(String uri, byte[] content) throws OpenRDFException, IOException;
+
 }

@@ -227,7 +227,9 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 
 	@Override
 	public void poke() {
-		server.poke();
+		if (server != null) {
+			server.poke();
+		}
 	}
 
 	@Override

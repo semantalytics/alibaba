@@ -26,9 +26,14 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Enumeration;
+
+import org.apache.commons.codec.binary.Base64;
 
 public class KeyStoreImpl implements KeyStoreMXBean {
 	private static final int CERT_EXPIRE_DAYS = 31;
@@ -53,52 +58,27 @@ public class KeyStoreImpl implements KeyStoreMXBean {
 
 	public synchronized String exportCertificate() throws IOException,
 			GeneralSecurityException {
+		KeyStore ks = loadKeyStore();
 		String alias = getKeyAlias();
-		File file = new File(cerDir, alias + ".cer");
-		if (file.isFile())
-			return readString(file);
-		return null;
+		if (!ks.isKeyEntry(alias))
+			return null;
+		Certificate cer = ks.getCertificate(alias);
+		StringBuilder sb = new StringBuilder();
+		sb.append("-----BEGIN CERTIFICATE-----\n");
+		sb.append(new String(Base64.encodeBase64(cer.getEncoded())));
+		sb.append("\n-----END CERTIFICATE-----\n");
+		return sb.toString();
 	}
 
 	public boolean isCertificateSigned() throws IOException,
 			GeneralSecurityException {
-		String alias = getKeyAlias();
-		char[] password = getKeyStorePassword();
-		KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
-		File file = getKeyStoreFile();
-		if (!file.exists())
-			return false;
-		FileInputStream in = new FileInputStream(file);
-		try {
-			ks.load(in, password);
-		} finally {
-			in.close();
-		}
-		Certificate[] chain = ks.getCertificateChain(alias);
+		KeyStore ks = loadKeyStore();
+		Certificate[] chain = ks.getCertificateChain(getKeyAlias());
 		return chain != null && chain.length > 1;
 	}
 
-	public synchronized String exportCertificateSigningRequest()
-			throws IOException, GeneralSecurityException {
-		String alias = getKeyAlias();
-		File file = new File(cerDir, alias + ".csr");
-		if (file.isFile())
-			return readString(file);
-		return null;
-	}
-
 	private String getKeyAlias() throws IOException, GeneralSecurityException {
-		char[] password = getKeyStorePassword();
-		KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
-		File file = getKeyStoreFile();
-		if (!file.exists())
-			return null;
-		FileInputStream in = new FileInputStream(file);
-		try {
-			ks.load(in, password);
-		} finally {
-			in.close();
-		}
+		KeyStore ks = loadKeyStore();
 		Enumeration<String> aliases = ks.aliases();
 		while (aliases.hasMoreElements()) {
 			String alias = aliases.nextElement();
@@ -111,9 +91,24 @@ public class KeyStoreImpl implements KeyStoreMXBean {
 	private long getCertificateExperation(int days, String alias,
 			File keystore, char[] password) throws GeneralSecurityException,
 			IOException {
+		KeyStore ks = loadKeyStore();
+		if (ks.isKeyEntry(alias)) {
+			Certificate cert = ks.getCertificate(alias);
+			if (cert instanceof X509Certificate) {
+				return ((X509Certificate) cert).getNotAfter().getTime();
+			}
+		}
+		return -1;
+	}
+
+	private KeyStore loadKeyStore() throws IOException, KeyStoreException,
+			FileNotFoundException, NoSuchAlgorithmException,
+			CertificateException {
+		char[] password = getKeyStorePassword();
 		KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
-		if (keystore.exists()) {
-			FileInputStream in = new FileInputStream(keystore);
+		File file = getKeyStoreFile();
+		if (file.exists()) {
+			FileInputStream in = new FileInputStream(file);
 			try {
 				ks.load(in, password);
 			} finally {
@@ -122,13 +117,7 @@ public class KeyStoreImpl implements KeyStoreMXBean {
 		} else {
 			ks.load(null, password);
 		}
-		if (ks.isKeyEntry(alias)) {
-			Certificate cert = ks.getCertificate(alias);
-			if (cert instanceof X509Certificate) {
-				return ((X509Certificate) cert).getNotAfter().getTime();
-			}
-		}
-		return -1;
+		return ks;
 	}
 
 	private void transfer(final InputStream in, final OutputStream out) {
