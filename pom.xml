@@ -89,6 +89,11 @@ AliBaba is a collection of modules that provide simplified RDF store abstraction
 			</dependency>
 			<dependency>
 				<groupId>org.openrdf.alibaba</groupId>
+				<artifactId>alibaba-http-object</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.openrdf.alibaba</groupId>
 				<artifactId>alibaba-store-blob</artifactId>
 				<version>${project.version}</version>
 			</dependency>
@@ -105,17 +110,17 @@ AliBaba is a collection of modules that provide simplified RDF store abstraction
 			</dependency>
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
-				<artifactId>sesame-runtime</artifactId>
-				<version>${sesame.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-queryparser-sparql</artifactId>
 				<version>${sesame.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-queryresultio-sparqlxml</artifactId>
+				<version>${sesame.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.openrdf.sesame</groupId>
+				<artifactId>sesame-queryresultio-sparqljson</artifactId>
 				<version>${sesame.version}</version>
 			</dependency>
 			<dependency>
@@ -155,10 +160,30 @@ AliBaba is a collection of modules that provide simplified RDF store abstraction
 			</dependency>
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
+				<artifactId>sesame-repository-contextaware</artifactId>
+				<version>${sesame.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-store-testsuite</artifactId>
 				<version>${sesame.version}</version>
 				<scope>test</scope>
 			</dependency>
+		    <dependency>
+			    <groupId>org.openrdf.sesame</groupId>
+			    <artifactId>sesame-sail-api</artifactId>
+				<version>${sesame.version}</version>
+		    </dependency>
+		    <dependency>
+			    <groupId>org.openrdf.sesame</groupId>
+			    <artifactId>sesame-sail-memory</artifactId>
+				<version>${sesame.version}</version>
+		    </dependency>
+		    <dependency>
+			    <groupId>org.openrdf.sesame</groupId>
+			    <artifactId>sesame-queryresultio-text</artifactId>
+				<version>${sesame.version}</version>
+		    </dependency>
 			<dependency>
 				<groupId>org.openrdf.sesame</groupId>
 				<artifactId>sesame-sparql-testsuite</artifactId>

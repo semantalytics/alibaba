@@ -29,7 +29,7 @@ The Object Composition library merges multiple Java objects into a single multi-
 	<dependencies>
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>
-			<artifactId>sesame-runtime</artifactId>
+			<artifactId>sesame-queryalgebra-evaluation</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>

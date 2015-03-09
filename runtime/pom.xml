@@ -19,16 +19,16 @@ Runtime dependencies for an OpenRDF application
 	</description>
 	<dependencies>
 		<dependency>
-			<groupId>org.openrdf.sesame</groupId>
-			<artifactId>sesame-runtime</artifactId>
-		</dependency>
-		<dependency>
 			<groupId>org.openrdf.alibaba</groupId>
 			<artifactId>alibaba-sail-optimistic</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.openrdf.alibaba</groupId>
 			<artifactId>alibaba-repository-object</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.openrdf.alibaba</groupId>
+			<artifactId>alibaba-http-object</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.openrdf.alibaba</groupId>
