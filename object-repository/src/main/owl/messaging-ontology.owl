@@ -38,10 +38,22 @@
 		<rdfs:isDefinedBy rdf:resource="" />
 	</owl:AnnotationProperty>
 
+	<owl:AnnotationProperty rdf:ID="classpath">
+		<rdfs:label xml:lang="en">classpath</rdfs:label>
+		<rdfs:comment xml:lang="en">Location of a JAR that should be included when resolving Java class definitations for msg:mixin of this class</rdfs:comment>
+		<rdfs:isDefinedBy rdf:resource="" />
+	</owl:AnnotationProperty>
+
+	<owl:AnnotationProperty rdf:ID="mixin">
+		<rdfs:label xml:lang="en">mixin</rdfs:label>
+		<rdfs:comment xml:lang="en">A Java class name that should be included in objects of this class</rdfs:comment>
+		<rdfs:isDefinedBy rdf:resource="" />
+	</owl:AnnotationProperty>
+
 	<owl:AnnotationProperty rdf:ID="sparql">
 		<rdfs:label xml:lang="en">sparql</rdfs:label>
-		<rdfs:comment xml:lang="en">Inline SPARQL query or SPARQL query URL (absolute or relative classpath) should be placed in this annotation on methods that
-should respond with this query. In addition to parameters, the variable "this" will be bound to the message target. It is recommended to use the '$' prefix for explicitly bound variables (as in $this) and '?' for all other variables.</rdfs:comment>
+		<rdfs:comment xml:lang="en">Inline SPARQL query or SPARQL query URL (absolute or relative classpath) should be placed in this annotation on message classes that
+should respond with this query's result. In addition to parameters, the variable "this" will be bound to the message target. It is recommended to use the '$' prefix for explicitly bound variables (as in $this) and '?' for all other variables.</rdfs:comment>
 		<rdfs:isDefinedBy rdf:resource="" />
 	</owl:AnnotationProperty>
 

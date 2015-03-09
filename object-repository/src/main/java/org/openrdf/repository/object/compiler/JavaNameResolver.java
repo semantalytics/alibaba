@@ -240,6 +240,15 @@ public class JavaNameResolver {
 		return pkg + '.' + simple;
 	}
 
+	public String getAnnotationAttributeName(URI uri) throws ObjectStoreConfigException {
+		if (!ignore.contains(uri)) {
+			Method m = roles.findAnnotationMethod(uri);
+			if (m != null)
+				return m.getName();
+		}
+		return "value";
+	}
+
 	public boolean isCompiledAnnotation(URI name) {
 		return roles.isRecordedAnnotation(name);
 	}

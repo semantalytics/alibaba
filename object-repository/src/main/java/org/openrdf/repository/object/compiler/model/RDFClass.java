@@ -375,7 +375,7 @@ public class RDFClass extends RDFEntity {
 		}
 		builder.annotationProperties(this);
 		if (!builder.isAnonymous(this.getURI())) {
-			builder.annotateURI(Iri.class, builder.getType(this.getURI()));
+			builder.annotateURI(Iri.class, "value", builder.getType(this.getURI()));
 		}
 		builder.interfaceName(simple);
 		for (RDFClass sups : this.getRDFClasses(RDFS.SUBCLASSOF)) {
@@ -487,7 +487,7 @@ public class RDFClass extends RDFEntity {
 			}
 		}
 		URI type = builder.getType(prop.getURI());
-		prop1.annotateURI(Iri.class, type);
+		prop1.annotateURI(Iri.class, "value", type);
 		String className = builder.getPropertyClassName(this, prop);
 		if (this.isFunctional(prop)) {
 			prop1.type(className);
@@ -500,7 +500,7 @@ public class RDFClass extends RDFEntity {
 			prop1.annotate(Deprecated.class);
 		}
 		builder.annotationProperties(prop1, prop);
-		prop1.annotateURI(Iri.class, type);
+		prop1.annotateURI(Iri.class, "value", type);
 		prop1.openSetter();
 		prop1.closeSetter();
 		prop1.end();
@@ -574,7 +574,7 @@ public class RDFClass extends RDFEntity {
 		if (this.isDatatype()) {
 			builder.annotationProperties(this);
 			URI type = builder.getType(this.getURI());
-			builder.annotateURI(Iri.class, type);
+			builder.annotateURI(Iri.class, "value", type);
 			builder.className(simple);
 		} else {
 			builder.annotationProperties(this);

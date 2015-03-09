@@ -108,13 +108,17 @@ public class JavaSourceBuilder {
 		return this;
 	}
 
-	public JavaSourceBuilder annotateStrings(String ann,
+	public JavaSourceBuilder annotateStrings(String ann, String attr,
 			Collection<String> values) {
 		if (values == null || values.isEmpty())
 			return this;
 		begin();
 		sb.append(indent).append("@").append(imports(ann));
-		sb.append("({");
+		sb.append("(");
+		if (attr != null && !"value".equals(attr)) {
+			sb.append(attr).append("=");
+		}
+		sb.append("{");
 		boolean first = true;
 		for (String value : values) {
 			if (first) {
@@ -128,34 +132,44 @@ public class JavaSourceBuilder {
 		return this;
 	}
 
-	public JavaSourceBuilder annotateString(String ann, String value) {
+	public JavaSourceBuilder annotateString(String ann, String attr, String value) {
 		if (value == null)
 			return this;
 		begin();
 		sb.append(indent).append("@").append(imports(ann));
 		sb.append("(");
+		if (attr != null && !"value".equals(attr)) {
+			sb.append(attr).append("=");
+		}
 		appendString(sb, value);
 		sb.append(")\n");
 		return this;
 	}
 
-	public JavaSourceBuilder annotateURI(Class<?> ann, URI value) {
+	public JavaSourceBuilder annotateURI(Class<?> ann, String attr, URI value) {
 		if (value == null)
 			return this;
 		begin();
 		sb.append(indent).append("@").append(imports(ann));
 		sb.append("(");
+		if (attr != null && !"value".equals(attr)) {
+			sb.append(attr).append("=");
+		}
 		appendString(sb, value);
 		sb.append(")\n");
 		return this;
 	}
 
-	public JavaSourceBuilder annotateURIs(Class<?> ann, List<URI> values) {
+	public JavaSourceBuilder annotateURIs(Class<?> ann, String attr, List<URI> values) {
 		if (values.isEmpty())
 			return this;
 		begin();
 		sb.append(indent).append("@").append(imports(ann));
-		sb.append("({");
+		sb.append("(");
+		if (attr != null && !"value".equals(attr)) {
+			sb.append(attr).append("=");
+		}
+		sb.append("{");
 		for (int i = 0, n = values.size(); i < n; i++) {
 			if (i > 0) {
 				sb.append(", ");
@@ -166,10 +180,14 @@ public class JavaSourceBuilder {
 		return this;
 	}
 
-	public JavaSourceBuilder annotateClasses(String ann, List<String> values) {
+	public JavaSourceBuilder annotateClasses(String ann, String attr, List<String> values) {
 		begin();
 		sb.append(indent).append("@").append(imports(ann));
-		sb.append("({");
+		sb.append("(");
+		if (attr != null && !"value".equals(attr)) {
+			sb.append(attr).append("=");
+		}
+		sb.append("{");
 		for (int i = 0, n = values.size(); i < n; i++) {
 			if (i > 0) {
 				sb.append(", ");
@@ -181,26 +199,37 @@ public class JavaSourceBuilder {
 		return this;
 	}
 
-	public JavaSourceBuilder annotateClass(String ann, String value) {
+	public JavaSourceBuilder annotateClass(String ann, String attr, String value) {
 		begin();
 		sb.append(indent).append("@").append(imports(ann));
-		sb.append("(").append(imports(value)).append(".class)\n");
+		sb.append("(");
+		if (attr != null && !"value".equals(attr)) {
+			sb.append(attr).append("=");
+		}
+		sb.append(imports(value)).append(".class)\n");
 		return this;
 	}
 
-	public JavaSourceBuilder annotateEnum(Class<?> ann, Class<?> e, String value) {
+	public JavaSourceBuilder annotateEnum(Class<?> ann, String attr, Class<?> e, String value) {
 		begin();
 		sb.append(indent).append("@").append(imports(ann)).append("(");
+		if (attr != null && !"value".equals(attr)) {
+			sb.append(attr).append("=");
+		}
 		sb.append(imports(e)).append(".");
 		sb.append(value).append(")\n");
 		return this;
 	}
 
-	public JavaSourceBuilder annotateEnums(Class<?> ann, Class<?> e,
+	public JavaSourceBuilder annotateEnums(Class<?> ann, String attr, Class<?> e,
 			String... values) {
 		begin();
 		sb.append(indent).append("@").append(imports(ann));
-		sb.append("({");
+		sb.append("(");
+		if (attr != null && !"value".equals(attr)) {
+			sb.append(attr).append("=");
+		}
+		sb.append("{");
 		for (int i = 0, n = values.length; i < n; i++) {
 			if (i > 0) {
 				sb.append(", ");

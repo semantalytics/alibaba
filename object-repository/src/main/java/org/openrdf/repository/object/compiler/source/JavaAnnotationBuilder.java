@@ -161,6 +161,7 @@ public class JavaAnnotationBuilder extends JavaClassBuilder {
 			if (property.isA(OWL.ANNOTATIONPROPERTY) || compiled) {
 				URI uri = resolver.getType(iri);
 				String ann = resolver.getClassName(uri);
+				String attr = resolver.getAnnotationAttributeName(uri);
 				boolean valueOfClass = resolver.isAnnotationOfClasses(uri);
 				boolean functional = property.isA(OWL.FUNCTIONALPROPERTY);
 				if (compiled && !functional) {
@@ -171,7 +172,7 @@ public class JavaAnnotationBuilder extends JavaClassBuilder {
 					if (isSubClass && MSG.MESSAGE.equals(value.getResource()))
 						continue;
 					String className = resolver.getClassName(value.getURI());
-					out.annotateClass(ann, className);
+					out.annotateClass(ann, attr, className);
 				} else if (valueOfClass) {
 					List<String> classNames = new ArrayList<String>();
 					for (RDFClass value : entity.getRDFClasses(uri)) {
@@ -182,19 +183,19 @@ public class JavaAnnotationBuilder extends JavaClassBuilder {
 						classNames.add(resolver.getClassName(value.getURI()));
 					}
 					if (!classNames.isEmpty()) {
-						out.annotateClasses(ann, classNames);
+						out.annotateClasses(ann, attr, classNames);
 					}
 				} else if (functional) {
 					String value = entity.getString(uri);
 					if (isSubClass && MSG.MESSAGE.stringValue().equals(value))
 						continue;
-					out.annotateString(ann, value);
+					out.annotateString(ann, attr, value);
 				} else {
 					Collection<String> values = entity.getStrings(uri);
 					if (isSubClass) {
 						values.remove(MSG.MESSAGE.stringValue());
 					}
-					out.annotateStrings(ann, values);
+					out.annotateStrings(ann, attr, values);
 				}
 			}
 		}

@@ -26,7 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.openrdf.repository.object.result;
+package org.openrdf.repository.object.managers.helpers;
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
