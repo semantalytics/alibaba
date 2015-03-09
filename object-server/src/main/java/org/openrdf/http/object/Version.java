@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
 import org.slf4j.LoggerFactory;
 
 public class Version {
-	private static final String VERSION_PATH = "META-INF/callimachusproject.properties";
+	private static final String VERSION_PATH = "META-INF/maven/org.openrdf.alibaba/alibaba-http-object/pom.properties";
 	private static Version instance = new Version(loadVersion(Version.class.getClassLoader(), VERSION_PATH));
 
 	public static void main(String[] args) {
@@ -46,7 +46,7 @@ public class Version {
 				try {
 					Properties result = new Properties();
 					result.load(in);
-					String version = result.getProperty("Version");
+					String version = result.getProperty("version");
 					if (version != null)
 						return version.trim();
 				} finally {
