@@ -274,7 +274,6 @@ public class ResourceTarget {
 	}
 
 	private Collection<Method> findHandlers(String req_method, String url) {
-		assert req_method != null;
 		Collection<Method> methods = new ArrayList<Method>();
 		for (Method m : target.getClass().getMethods()) {
 			if (m.isAnnotationPresent(ParameterTypes.class))
@@ -282,7 +281,7 @@ public class ResourceTarget {
 			org.openrdf.annotations.Method ann = m.getAnnotation(org.openrdf.annotations.Method.class);
 			if (ann == null)
 				continue;
-			if (!Arrays.asList(ann.value()).contains(req_method))
+			if (req_method != null && !Arrays.asList(ann.value()).contains(req_method))
 				continue;
 			if (matches(url, getPathRegex(m))) {
 				methods.add(m);
