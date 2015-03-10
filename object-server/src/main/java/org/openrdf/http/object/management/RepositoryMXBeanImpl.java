@@ -18,6 +18,7 @@ package org.openrdf.http.object.management;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.StringWriter;
 import java.io.Writer;
@@ -41,6 +42,7 @@ import org.openrdf.repository.sail.config.RepositoryResolver;
 import org.openrdf.rio.ParserConfig;
 import org.openrdf.rio.helpers.BasicParserSettings;
 import org.openrdf.rio.turtle.TurtleWriter;
+import org.openrdf.store.blob.BlobObject;
 import org.openrdf.store.blob.BlobStore;
 import org.slf4j.LoggerFactory;
 
@@ -115,7 +117,7 @@ public class RepositoryMXBeanImpl implements RepositoryMXBean {
 		}
 	}
 
-	public String getBlob(String uri) throws OpenRDFException, IOException {
+	public String readCharacterBlob(String uri) throws OpenRDFException, IOException {
 		ObjectConnection conn = getObjectConnection();
 		try {
 			return conn.getBlobObject(uri).getCharContent(true).toString();
@@ -124,7 +126,28 @@ public class RepositoryMXBeanImpl implements RepositoryMXBean {
 		}
 	}
 
-	public void storeBlob(String uri, String content) throws OpenRDFException, IOException {
+	public byte[] readBinaryBlob(String uri) throws OpenRDFException, IOException {
+		ObjectConnection conn = getObjectConnection();
+		try {
+			BlobObject blob = conn.getBlobObject(uri);
+			InputStream in = blob.openInputStream();
+			try {
+				ByteArrayOutputStream baos = new ByteArrayOutputStream((int) blob.getLength());
+				byte[] buf = new byte[1024];
+				int read;
+				while ((read = in.read(buf)) >= 0) {
+					baos.write(buf, 0, read);
+				}
+				return baos.toByteArray();
+			} finally {
+				in.close();
+			}
+		} finally {
+			conn.close();
+		}
+	}
+
+	public void storeCharacterBlob(String uri, String content) throws OpenRDFException, IOException {
 		ObjectConnection conn = getObjectConnection();
 		try {
 			logger.warn("Replacing {}", uri);

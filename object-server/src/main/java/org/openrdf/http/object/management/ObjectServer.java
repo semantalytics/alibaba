@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -80,6 +81,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
+	private static final Pattern HTTP_DOTALL = Pattern.compile("\\s*\\bhttp.*", Pattern.DOTALL);
 	private static final Pattern URL_PATTERN = Pattern
 			.compile("https?://[a-zA-Z0-9\\-\\._~%!\\$\\&'\\(\\)\\*\\+,;=:/\\[\\]@]+/(?![a-zA-Z0-9\\-\\._~%!\\$\\&'\\(\\)\\*\\+,;=:/\\?\\#\\[\\]@])");
 
@@ -220,6 +222,10 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 		return server != null && server.isRunning();
 	}
 
+	public synchronized boolean isShutDown() {
+		return !manager.isInitialized();
+	}
+
 	@Override
 	public String getStatus() {
 		return server.getStatus();
@@ -351,9 +357,10 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 		return manager.getSystemRepository();
 	}
 
-	public synchronized Set<String> getRepositoryIDs()
+	public synchronized String[] getRepositoryIDs()
 			throws RepositoryException {
-		return manager.getRepositoryIDs();
+		Set<String> ids = new TreeSet<String>(manager.getRepositoryIDs());
+		return ids.toArray(new String[ids.size()]);
 	}
 
 	public RepositoryMXBean getRepositoryMXBean(String id)
@@ -361,10 +368,28 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 		return new RepositoryMXBeanImpl(this, id);
 	}
 
-	@Override
 	public ObjectRepository getRepository(String id)
 			throws RepositoryException, RepositoryConfigException {
 		return getObjectRepository(id);
+	}
+
+	public String[] getRepositoryPrefixes(String id) throws RepositoryException {
+		RepositoryInfo info = manager.getRepositoryInfo(id);
+		if (info == null)
+			return null;
+		String desc = info.getDescription();
+		return splitURLs(desc);
+	}
+
+	public synchronized void setRepositoryPrefixes(String id, String prefixes)
+			throws OpenRDFException {
+		RepositoryInfo info = manager.getRepositoryInfo(id);
+		if (info == null)
+			throw new IllegalArgumentException("Unknown repository ID: " + id);
+		RepositoryConfig config = manager.getRepositoryConfig(id);
+		Matcher m = HTTP_DOTALL.matcher(config.getTitle());
+		config.setTitle(m.replaceAll("\n") + prefixes);
+		addRepository(config);
 	}
 
 	public synchronized void addRepository(String base, String configString)
@@ -379,7 +404,7 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 			throws OpenRDFException {
 		if (!manager.hasRepositoryConfig(id))
 			return false;
-		stopRepository(manager.getRepositoryInfo(id));
+		stopRepository(id);
 		notifyAll();
 		return manager.removeRepository(id);
 	}
@@ -390,8 +415,8 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 			recompileSchema();
 			server = createServer(this.serverCacheDir, this.timeout,
 					this.ports, this.sslPorts);
-			for (RepositoryInfo info : manager.getAllRepositoryInfos()) {
-				startRepository(info);
+			for (String id : manager.getRepositoryIDs()) {
+				startRepository(id);
 			}
 		} catch (IOException e) {
 			logger.error(e.toString(), e);
@@ -453,13 +478,21 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 				repo.shutDown();
 			}
 			manager.shutDown();
+			notifyAll();
 		}
 	}
 
 	public synchronized void restart() throws IOException, OpenRDFException {
 		stop();
-		recompileSchema();
 		resetConnections();
+		if (server != null) {
+			server.destroy();
+			server = null;
+		}
+		manager.refresh();
+		recompileSchema();
+		server = createServer(this.serverCacheDir, this.timeout,
+				this.ports, this.sslPorts);
 		start();
 	}
 
@@ -496,28 +529,27 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 		return server;
 	}
 
-	private void startRepository(RepositoryInfo info)
+	private synchronized void startRepository(String id)
 			throws RepositoryConfigException, RepositoryException {
-		String desc = info.getDescription();
-		Matcher m = desc != null ? URL_PATTERN.matcher(desc) : null;
-		if (m != null && m.find()) {
-			ObjectRepository obj = getObjectRepository(info.getId());
-			do {
-				logger.info("Serving {} from {}", m.group(), info.getLocation());
-				server.addRepository(m.group(), obj);
-			} while (m.find());
+		String[] prefixes = getRepositoryPrefixes(id);
+		if (prefixes != null && prefixes.length > 0) {
+			RepositoryInfo info = manager.getRepositoryInfo(id);
+			ObjectRepository obj = getObjectRepository(id);
+			for (String prefix : prefixes) {
+				logger.info("Serving {} from {}", prefix, info.getLocation());
+				server.addRepository(prefix, obj);
+			}
 		}
 	}
 
-	private void stopRepository(RepositoryInfo info)
+	private synchronized void stopRepository(String id)
 			throws RepositoryConfigException, RepositoryException {
-		String desc = info.getDescription();
-		Matcher m = desc != null ? URL_PATTERN.matcher(desc) : null;
-		if (m != null && m.find()) {
-			do {
-				logger.info("Stop serving {}", m.group(), info.getLocation());
-				server.removeRepository(m.group());
-			} while (m.find());
+		RepositoryInfo info = manager.getRepositoryInfo(id);
+		if (info != null) {
+			for (String prefix : getRepositoryPrefixes(id)) {
+				logger.info("Stop serving {}", prefix, info.getLocation());
+				server.removeRepository(prefix);
+			}
 		}
 	}
 
@@ -568,9 +600,19 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 	private synchronized void addRepository(RepositoryConfig config)
 			throws RepositoryException, RepositoryConfigException {
 		String id = config.getID();
+		if (manager.hasRepositoryConfig(id) && server != null) {
+			RepositoryInfo info = manager.getRepositoryInfo(id);
+			String[] existing = splitURLs(info.getDescription());
+			List<String> removed = new ArrayList<String>(
+					Arrays.asList(existing));
+			removed.removeAll(Arrays.asList(splitURLs(config.getTitle())));
+			for (String rem : removed) {
+				server.removeRepository(rem);
+			}
+		}
 		manager.addRepositoryConfig(config);
 		if (server != null) {
-			startRepository(manager.getRepositoryInfo(id));
+			startRepository(id);
 		}
 		notifyAll();
 	}
@@ -587,6 +629,17 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 			}
 		}
 		return ports;
+	}
+
+	private String[] splitURLs(String desc) {
+		List<String> list = new ArrayList<String>();
+		Matcher m = desc != null ? URL_PATTERN.matcher(desc) : null;
+		if (m != null && m.find()) {
+			do {
+				list.add(m.group());
+			} while (m.find());
+		}
+		return list.toArray(new String[list.size()]);
 	}
 
 	private String toString(String string) {

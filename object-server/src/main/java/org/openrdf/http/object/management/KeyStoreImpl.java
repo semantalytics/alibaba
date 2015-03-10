@@ -16,14 +16,10 @@
  */
 package org.openrdf.http.object.management;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -118,31 +114,6 @@ public class KeyStoreImpl implements KeyStoreMXBean {
 			ks.load(null, password);
 		}
 		return ks;
-	}
-
-	private void transfer(final InputStream in, final OutputStream out) {
-		if (in != null) {
-			try {
-				try {
-					int read;
-					byte[] buf = new byte[1024];
-					while ((read = in.read(buf)) >= 0) {
-						out.write(buf, 0, read);
-					}
-				} finally {
-					in.close();
-				}
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-
-	private String readString(File file) throws FileNotFoundException,
-			UnsupportedEncodingException {
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		transfer(new FileInputStream(file), out);
-		return new String(out.toByteArray());
 	}
 
 	private char[] getKeyStorePassword() throws IOException {

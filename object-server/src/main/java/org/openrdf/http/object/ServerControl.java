@@ -48,28 +48,35 @@ import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 import javax.xml.datatype.DatatypeFactory;
 
+import org.apache.commons.io.FileUtils;
 import org.openrdf.http.object.cli.Command;
 import org.openrdf.http.object.cli.CommandSet;
-import org.openrdf.http.object.concurrent.ManagedThreadPool;
 import org.openrdf.http.object.concurrent.ThreadPoolMXBean;
 import org.openrdf.http.object.io.ChannelUtil;
-import org.openrdf.http.object.management.JVMUsage;
 import org.openrdf.http.object.management.JVMUsageMXBean;
-import org.openrdf.http.object.management.ObjectServer;
 import org.openrdf.http.object.management.ObjectServerMXBean;
+import org.openrdf.http.object.management.RepositoryMXBean;
 
 /**
- * Command line tool for monitoring the server.
+ * Command line tool for monitoring and controlling the server.
  * 
  * @author James Leigh
  * 
  */
-public class ServerMonitor {
+public class ServerControl {
+	private static final String REPO_NAME = Server.class.getPackage().getName() + ":*,name=";
 	public static final String NAME = Version.getInstance().getVersion();
 	private static final String CONNECTOR_ADDRESS = "com.sun.management.jmxremote.localConnectorAddress";
+	private static final String ENDPOINT_CONFIG = "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.\n"
+			+ "@prefix rep: <http://www.openrdf.org/config/repository#>.\n"
+			+ "@prefix hr: <http://www.openrdf.org/config/repository/http#>.\n"
+			+ "<#{id}> a rep:Repository ;\n"
+			+ "   rep:repositoryImpl [ rep:repositoryType 'openrdf:HTTPRepository' ; hr:repositoryURL <{url}> ];\n"
+			+ "   rep:repositoryID '{id}' ; rdfs:label '''description}''' .\n";
+							
 	private static final ThreadFactory tfactory = new ThreadFactory() {
 		public Thread newThread(Runnable r) {
-			Thread t = new Thread(r, "Callimachus-Configure-Setup-Queue" + Integer.toHexString(r.hashCode()));
+			Thread t = new Thread(r, "ServerControl-Queue" + Integer.toHexString(r.hashCode()));
 			t.setDaemon(true);
 			return t;
 		}
@@ -77,37 +84,73 @@ public class ServerMonitor {
 
 	private static final CommandSet commands = new CommandSet(NAME);
 	static {
-		commands.require("pid").arg("file").desc(
-				"File to read the server process id to monitor");
-		commands.option("dump").arg("directory").desc(
-				"Use the directory to dump the server status in the given directory");
+		commands.option("pid").arg("file")
+				.desc("File to read the server process id to monitor");
+		commands.option("n", "serverName").optional("name")
+				.desc("Web server name");
+		commands.option("p", "port").optional("number")
+				.desc("HTTP port number");
+		commands.option("s", "ssl").optional("number")
+				.desc("HTTPS port number");
+		commands.option("status").desc("Print status of server and exit");
+		commands.option("dump")
+				.arg("directory")
+				.desc("Use the directory to dump the server status in the given directory");
+		commands.option("remove").arg("Endpoint ID")
+				.desc("Remove SPARQL endpoint repository from server");
+		commands.option("add").arg("SPARQL endpoint URL")
+				.desc("Add SPARQL endpoint repository to server");
+		commands.option("l", "list").desc("List endpoint IDs");
+		commands.option("i", "id").arg("Endpoint ID")
+				.desc("Endpoint to modify");
+		commands.option("x", "prefix").arg("URL prefix")
+				.desc("Include this prefix when server the given endpoint");
+		commands.option("u", "update").arg("SPARQL Update")
+				.desc("Execute update against endpoint");
+		commands.option("q", "query").arg("SPARQL Query")
+				.desc("Evaluate query against endpoint");
+		commands.option("w", "write").arg("BLOB URI")
+				.desc("Store a file into this URI for the endpoint");
+		commands.option("r", "read").arg("BLOB URI")
+				.desc("Read this URI for from the endpoint into a file");
+		commands.option("f", "file").arg("BLOB file")
+				.desc("Local file to read or write BLOB content to or from");
 		commands.option("reset").desc("Empty any cache on the server");
-		commands.option("stop").desc(
-				"Use the PID file to shutdown the server");
-		commands.option("h", "help").desc(
-				"Print help (this message) and exit");
+		commands.option("restart").desc("Restart the server");
+		commands.option("stop").desc("Use the PID file to shutdown the server");
+		commands.option("h", "help").desc("Print help (this message) and exit");
 		commands.option("v", "version").desc(
 				"Print version information and exit");
 	}
 
 	public static void main(String[] args) {
 		try {
-			final ServerMonitor monitor = new ServerMonitor();
-			monitor.init(args);
-			monitor.start();
+			
+			Command line = commands.parse(args);
+			if (!line.has("pid")) {
+				System.err.println("Missing required option: pid");
+				System.exit(2);
+			}
+			File pidFile = new File(line.get("pid"));
+			final ServerControl control = new ServerControl(pidFile);
+			control.init(args);
+			control.start();
 			Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
 				public void run() {
 					try {
-						monitor.stop();
-						monitor.destroy();
+						control.stop();
+						control.destroy();
 					} catch (Throwable e) {
 						println(e);
 					}
 				}
 			}));
-			synchronized (monitor) {
-				monitor.wait();
+			synchronized (control) {
+				control.wait();
 			}
+			control.stop();
+			control.destroy();
+			System.exit(0);
 		} catch (ClassNotFoundException e) {
 			System.err.print("Missing jar with: ");
 			System.err.println(e.toString());
@@ -132,22 +175,21 @@ public class ServerMonitor {
 
 	private Object vm;
 	private MBeanServerConnection mbsc;
-	private JVMUsageMXBean summary;
+	private JVMUsageMXBean usage;
 	private ObjectServerMXBean server;
-	private boolean reset;
-	private boolean stop;
+	private Command line;
 
-	public ServerMonitor() {
+	public ServerControl() {
 		super();
 	}
 
-	public ServerMonitor(String pidFile) throws Throwable {
-		setPidFile(pidFile);
+	public ServerControl(File pidFile) throws Exception {
+		setPid(IOUtil.readString(pidFile).trim());
 	}
 
-	public void init(String[] args) {
+	public void init(String... args) {
 		try {
-			Command line = commands.parse(args);
+			line = commands.parse(args);
 			if (line.has("help")) {
 				line.printHelp();
 				System.exit(0);
@@ -160,13 +202,27 @@ public class ServerMonitor {
 				line.printParseError();
 				System.exit(2);
 				return;
-			} else {
-				setPidFile(line.get("pid"));
-				reset = line.has("reset");
-				stop = line.has("stop");
-				if (line.has("dump")) {
-					dumpService(line.get("dump") + File.separatorChar);
-				}
+			} else if (!line.has("id")
+					&& (line.has("update") || line.has("query")
+							|| line.has("read") || line.has("write"))) {
+				System.err.println("Missing required option: id");
+				line.printHelp();
+				System.exit(2);
+				return;
+			} else if (!line.has("file")
+					&& (line.has("read") || line.has("write"))) {
+				System.err.println("Missing required option: file");
+				line.printHelp();
+				System.exit(2);
+				return;
+			} else if (line.has("pid")){
+				setPid(IOUtil.readString(new File(line.get("pid"))).trim());
+			}
+			for (ObjectName name : getObjectNames(ObjectServerMXBean.class, mbsc)) {
+				server = JMX.newMXBeanProxy(mbsc, name, ObjectServerMXBean.class);
+			}
+			for (ObjectName name : getObjectNames(JVMUsageMXBean.class, mbsc)) {
+				usage = JMX.newMXBeanProxy(mbsc, name, JVMUsageMXBean.class);
 			}
 		} catch (Throwable e) {
 			println(e);
@@ -175,14 +231,144 @@ public class ServerMonitor {
 		}
 	}
 
-	public void start() throws Throwable {
-		if (reset) {
-			resetCache();
+	public void start() throws Exception {
+		if (line.has("serverName")) {
+			String name = line.get("serverName");
+			if (name == null || name.length() == 0) {
+				System.out.println(server.getServerName());
+			} else {
+				server.setServerName(name);
+			}
 		}
-		if (stop) {
+		if (line.has("port")) {
+			if (line.getAll("port").length > 0) {
+				server.setPorts(Arrays.toString(line.getAll("port")));
+			} else {
+				System.out.println(server.getPorts());
+			}
+		}
+		if (line.has("ssl")) {
+			if (line.getAll("ssl").length > 0) {
+				server.setSSLPorts(Arrays.toString(line.getAll("ssl")));
+			} else {
+				System.out.println(server.getSSLPorts());
+			}
+		}
+		if (line.has("status")) {
+			System.out.println(server.getStatus());
+		}
+		if (line.has("dump")) {
+			dumpService(line.get("dump") + File.separatorChar);
+		}
+		if (line.has("remove")) {
+			for (String id : line.getAll("remove")) {
+				server.removeRepository(id);
+			}
+		}
+		if (line.has("add")) {
+			String[] urls = line.getAll("add");
+			String[] ids = line.getAll("id");
+			if (ids == null || urls.length != ids.length) {
+				ids = new String[urls.length];
+				for (int i=0; i<urls.length; i++) {
+					String w = urls[i].replaceAll("\\W*$", "").replaceAll(".*\\W", "");
+					ids[i] = w + Integer.toHexString(urls[i].hashCode());
+				}
+			}
+			for (int i=0; i<urls.length; i++) {
+				System.out.println("Adding " + urls[i] + " as " + ids[i]);
+				StringBuilder desc = new StringBuilder();
+				if (line.has("prefix")) {
+					for (String prefix : line.getAll("prefix")) {
+						desc.append(prefix).append("\n");
+						System.out.println("Assigning " + prefix + " to " + ids[i]);
+					}
+				}
+				String config = ENDPOINT_CONFIG.replace("{id}", ids[i])
+						.replace("{url}", urls[i])
+						.replace("{description}", desc.toString());
+				String base = new File("").toURI().toASCIIString();
+				server.addRepository(base, config);
+			}
+		}
+		if (line.has("list")) {
+			for (String id : server.getRepositoryIDs()) {
+				System.out.println(id);
+			}
+		}
+		if (line.has("id") && line.has("prefix")) {
+			StringBuilder desc = new StringBuilder();
+			if (line.has("prefix")) {
+				for (String prefix : line.getAll("prefix")) {
+					desc.append(prefix).append("\n");
+				}
+			}
+			String prefixes = desc.toString();
+			for (String id : line.getAll("id")) {
+				server.setRepositoryPrefixes(id, prefixes);
+			}
+		}
+		if (line.has("update")) {
+			for (String update : line.getAll("update")) {
+				for (String id : line.getAll("id")) {
+					QueryExp instanceOf = Query.isInstanceOf(Query.value(RepositoryMXBean.class.getName()));
+					Set<ObjectName> names = mbsc.queryNames(new ObjectName(REPO_NAME + id), instanceOf);
+					for (ObjectName name : names) {
+						RepositoryMXBean repo = JMX.newMXBeanProxy(mbsc, name, RepositoryMXBean.class);
+						repo.sparqlUpdate(update);
+					}
+				}
+			}
+		}
+		if (line.has("query")) {
+			for (String query : line.getAll("query")) {
+				for (String id : line.getAll("id")) {
+					QueryExp instanceOf = Query.isInstanceOf(Query.value(RepositoryMXBean.class.getName()));
+					Set<ObjectName> names = mbsc.queryNames(new ObjectName(REPO_NAME + id), instanceOf);
+					for (ObjectName name : names) {
+						RepositoryMXBean repo = JMX.newMXBeanProxy(mbsc, name, RepositoryMXBean.class);
+						for (String line : repo.sparqlQuery(query)) {
+							System.out.println(line);
+						}
+					}
+				}
+			}
+		}
+		if (line.has("write")) {
+			byte[] content = FileUtils.readFileToByteArray(new File(line.get("file")));
+			for (String uri : line.getAll("write")) {
+				for (String id : line.getAll("id")) {
+					QueryExp instanceOf = Query.isInstanceOf(Query.value(RepositoryMXBean.class.getName()));
+					Set<ObjectName> names = mbsc.queryNames(new ObjectName(REPO_NAME + id), instanceOf);
+					for (ObjectName name : names) {
+						RepositoryMXBean repo = JMX.newMXBeanProxy(mbsc, name, RepositoryMXBean.class);
+						repo.storeBinaryBlob(uri, content);
+					}
+				}
+			}
+		}
+		if (line.has("read")) {
+			for (String uri : line.getAll("read")) {
+				for (String id : line.getAll("id")) {
+					QueryExp instanceOf = Query.isInstanceOf(Query.value(RepositoryMXBean.class.getName()));
+					Set<ObjectName> names = mbsc.queryNames(new ObjectName(REPO_NAME + id), instanceOf);
+					for (ObjectName name : names) {
+						RepositoryMXBean repo = JMX.newMXBeanProxy(mbsc, name, RepositoryMXBean.class);
+						byte[] content = repo.readBinaryBlob(uri);
+						FileUtils.writeByteArrayToFile(new File(line.get("file")), content);
+					}
+				}
+			}
+		}
+		if (line.has("reset")) {
+			server.resetCache();
+		}
+		if (line.has("restart")) {
+			server.restart();
+		}
+		if (line.has("stop")) {
 			destroyService();
 		}
-		System.exit(0);
 	}
 
 	public void stop() throws Throwable {
@@ -193,9 +379,9 @@ public class ServerMonitor {
 		// nothing to destroy
 	}
 
-	public boolean destroyService() throws Throwable {
+	private boolean destroyService() throws Exception {
 		try {
-			if (!server.isRunning())
+			if (server.isShutDown())
 				return false;
 			try {
 				try {
@@ -221,19 +407,17 @@ public class ServerMonitor {
 				throw e;
 			}
 		} catch (UndeclaredThrowableException e) {
-			throw e.getCause();
+			try {
+				throw e.getCause();
+			} catch (Exception cause) {
+				throw cause;
+			} catch (Throwable cause) {
+				throw e;
+			}
 		}
 	}
 
-	public void resetCache() throws Throwable {
-		try {
-			server.resetCache();
-		} catch (UndeclaredThrowableException e) {
-			throw e.getCause();
-		}
-	}
-
-	public void dumpService(String dir) throws Throwable {
+	private void dumpService(String dir) throws Exception {
 		GregorianCalendar now = new GregorianCalendar(
 				TimeZone.getTimeZone("UTC"));
 		DatatypeFactory df = DatatypeFactory.newInstance();
@@ -247,20 +431,14 @@ public class ServerMonitor {
 		// dump info
 		connectionDump(mbsc, dir + "server-" + stamp + ".csv");
 		poolDump(mbsc, dir + "pool-" + stamp + ".tdump");
-		usageDump(mbsc, dir + "summary-" + stamp + ".txt");
+		usageDump(mbsc, dir + "usage-" + stamp + ".txt");
 		netStatistics(dir + "netstat-" + stamp + ".txt");
 		topStatistics(dir + "top-" + stamp + ".txt");
 	}
 
-	private void setPidFile(String pid) throws Throwable {
+	private void setPid(String pid) throws Exception {
 		vm = getRemoteVirtualMachine(pid);
 		mbsc = getMBeanConnection(vm);
-		for (ObjectName name : getObjectNames(ObjectServer.class, mbsc)) {
-			server = JMX.newMXBeanProxy(mbsc, name, ObjectServerMXBean.class);
-		}
-		for (ObjectName name : getObjectNames(JVMUsage.class, mbsc)) {
-			summary = JMX.newMXBeanProxy(mbsc, name, JVMUsageMXBean.class);
-		}
 	}
 
 	private void heapDump(Object vm, String hprof) throws Exception {
@@ -297,7 +475,7 @@ public class ServerMonitor {
 
 	private void connectionDump(MBeanServerConnection mbsc, String filename)
 			throws MalformedObjectNameException, IOException {
-		for (ObjectName name : getObjectNames(ObjectServer.class, mbsc)) {
+		for (ObjectName name : getObjectNames(ObjectServerMXBean.class, mbsc)) {
 			ObjectServerMXBean server = JMX.newMXBeanProxy(mbsc, name,
 					ObjectServerMXBean.class);
 			server.connectionDumpToFile(filename);
@@ -305,24 +483,19 @@ public class ServerMonitor {
 		}
 	}
 
-	private Set<ObjectName> getObjectNames(Class<?> mclass,
+	private Set<ObjectName> getObjectNames(Class<?> mx,
 			MBeanServerConnection mbsc) throws IOException,
 			MalformedObjectNameException {
-		String pkg = mclass.getPackage().getName();
-		ObjectName name = new ObjectName(pkg + ":type=" + mclass.getSimpleName() + ",*");
-		for (Class<?> mx : mclass.getInterfaces()) {
-			if (mx.getName().endsWith("Bean")) {
-				QueryExp instanceOf = Query.isInstanceOf(Query.value(mclass.getName()));
-				return mbsc.queryNames(name, instanceOf);
-			}
-		}
-		throw new AssertionError(mclass.getSimpleName() + " does not have an interface that ends with Bean");
+		String pkg = Server.class.getPackage().getName();
+		ObjectName name = new ObjectName(pkg + ":*");
+		QueryExp instanceOf = Query.isInstanceOf(Query.value(mx.getName()));
+		return mbsc.queryNames(name, instanceOf);
 	}
 
 	private void poolDump(MBeanServerConnection mbsc, String filename)
 			throws MalformedObjectNameException, IOException {
 		boolean empty = true;
-		for (ObjectName mon : getObjectNames(ManagedThreadPool.class, mbsc)) {
+		for (ObjectName mon : getObjectNames(ThreadPoolMXBean.class, mbsc)) {
 			ThreadPoolMXBean pool = JMX.newMXBeanProxy(mbsc, mon,
 					ThreadPoolMXBean.class);
 			pool.threadDumpToFile(filename);
@@ -334,10 +507,10 @@ public class ServerMonitor {
 	}
 
 	private void usageDump(MBeanServerConnection mbsc, String filename)
-			throws Throwable {
+			throws Exception {
 		try {
-			if (this.summary != null) {
-				String[] summary = this.summary.getJVMUsage();
+			if (this.usage != null) {
+				String[] summary = this.usage.getJVMUsage();
 				PrintWriter w = new PrintWriter(filename);
 				try {
 					for (String line : summary) {
@@ -349,21 +522,32 @@ public class ServerMonitor {
 				info(filename);
 			}
 		} catch (UndeclaredThrowableException e) {
-			throw e.getCause();
+			try {
+				throw e.getCause();
+			} catch (Exception cause) {
+				throw cause;
+			} catch (Throwable cause) {
+				throw e;
+			}
 		}
 	}
 
-	private Object getRemoteVirtualMachine(String pidFile)
-			throws Throwable {
+	private Object getRemoteVirtualMachine(String pid)
+			throws Exception {
 		Class<?> VM = Class.forName("com.sun.tools.attach.VirtualMachine");
 		Method attach = VM.getDeclaredMethod("attach", String.class);
-		String pid = IOUtil.readString(new File(pidFile)).trim();
 		// attach to the target application
 		info("Connecting to " + pid);
 		try {
 			return attach.invoke(null, pid);
 		} catch (InvocationTargetException e) {
-			throw e.getCause();
+			try {
+				throw e.getCause();
+			} catch (Exception cause) {
+				throw cause;
+			} catch (Throwable cause) {
+				throw e;
+			}
 		}
 	}
 

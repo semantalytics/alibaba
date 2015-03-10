@@ -27,7 +27,7 @@ import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.util.Arrays;
-import java.util.Set;
+import java.util.List;
 
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.JMException;
@@ -49,8 +49,6 @@ import org.openrdf.http.object.management.KeyStoreImpl;
 import org.openrdf.http.object.management.ObjectServer;
 import org.openrdf.http.object.management.RepositoryMXBean;
 import org.openrdf.http.object.util.ServerPolicy;
-import org.openrdf.repository.RepositoryException;
-import org.openrdf.repository.config.RepositoryConfigException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,22 +81,17 @@ public class Server {
 	}
 
 	public static void main(String[] args) throws IOException, OpenRDFException {
-		final Server node = new Server();
+		final Server node;
+		Command line = commands.parse(args);
+		if (line.has("pid")) {
+			File pidFile = new File(line.get("pid"));
+			pidFile.getParentFile().mkdirs();
+			pidFile.deleteOnExit();
+			node = new Server(pidFile);
+		} else {
+			node = new Server();
+		}
 		try {
-			Command line = commands.parse(args);
-			if (line.has("pid")) {
-				RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
-				String pid = bean.getName().replaceAll("@.*", "");
-				File file = new File(line.get("pid"));
-				file.getParentFile().mkdirs();
-				FileWriter writer = new FileWriter(file);
-				try {
-					writer.append(pid);
-				} finally {
-					writer.close();
-				}
-				file.deleteOnExit();
-			}
 			Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
 				public void run() {
 					try {
@@ -128,6 +121,21 @@ public class Server {
 	private final Logger logger = LoggerFactory.getLogger(Server.class);
 	private String name;
 	private ObjectServer node;
+
+	public Server() {
+		super();
+	}
+
+	public Server(File pidFile) throws IOException {
+		RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
+		String pid = bean.getName().replaceAll("@.*", "");
+		FileWriter writer = new FileWriter(pidFile);
+		try {
+			writer.append(pid);
+		} finally {
+			writer.close();
+		}
+	}
 
 	public void init(String... args) {
 		try {
@@ -249,30 +257,44 @@ public class Server {
 		}
 	}
 
-	public void poke() throws RepositoryException,
-			RepositoryConfigException {
-		node.poke();
-		Set<String> active = node.getRepositoryIDs();
+	public void poke() throws OpenRDFException {
 		String repositories = getRepositoryMBeanPrefix();
 		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-		try {
-			QueryExp instanceOf = Query.isInstanceOf(Query.value(RepositoryMXBean.class.getName()));
-			for (ObjectName on : mbs.queryNames(new ObjectName(repositories + ",*"), instanceOf)) {
-				if (!active.contains(on.getKeyProperty("name"))) {
+		if (node.isShutDown()) {
+			try {
+				QueryExp instanceOf = Query.isInstanceOf(Query.value(RepositoryMXBean.class.getName()));
+				for (ObjectName on : mbs.queryNames(new ObjectName(repositories + ",*"), instanceOf)) {
 					mbs.unregisterMBean(on);
 				}
-			}
-		} catch (JMException e) {
-			logger.error(e.toString(), e);
-		}
-		for (String id : active) {
-			try {
-				String oname = repositories + ",name=" + id;
-				if (!mbs.isRegistered(new ObjectName(oname))) {
-					registerMBean(node.getRepositoryMXBean(id), oname);
+				if (name != null) {
+					mbs.unregisterMBean(new ObjectName(mbean(ObjectServer.class, name)));
+					name = null;
 				}
-			} catch (MalformedObjectNameException e) {
+			} catch (JMException e) {
 				logger.error(e.toString(), e);
+			}
+		} else {
+			node.poke();
+			List<String> active = Arrays.asList(node.getRepositoryIDs());
+			try {
+				QueryExp instanceOf = Query.isInstanceOf(Query.value(RepositoryMXBean.class.getName()));
+				for (ObjectName on : mbs.queryNames(new ObjectName(repositories + ",*"), instanceOf)) {
+					if (!active.contains(on.getKeyProperty("name"))) {
+						mbs.unregisterMBean(on);
+					}
+				}
+			} catch (JMException e) {
+				logger.error(e.toString(), e);
+			}
+			for (String id : active) {
+				try {
+					String oname = repositories + ",name=" + id;
+					if (!mbs.isRegistered(new ObjectName(oname))) {
+						registerMBean(node.getRepositoryMXBean(id), oname);
+					}
+				} catch (MalformedObjectNameException e) {
+					logger.error(e.toString(), e);
+				}
 			}
 		}
 	}
@@ -339,8 +361,7 @@ public class Server {
 		StringBuilder sb = new StringBuilder();
 		sb.append(pkg).append(":type=").append(simple).append(".").append("Repository");
 		sb.append(",").append(simple).append("=").append(name);
-		String repositories = sb.toString();
-		return repositories;
+		return sb.toString();
 	}
 
 	private void logStdout() {

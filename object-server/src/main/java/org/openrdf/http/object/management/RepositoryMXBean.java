@@ -34,9 +34,11 @@ public interface RepositoryMXBean {
 
 	void sparqlUpdate(String update) throws OpenRDFException, IOException;
 
-	String getBlob(String uri) throws OpenRDFException, IOException;
+	String readCharacterBlob(String uri) throws OpenRDFException, IOException;
 
-	void storeBlob(String uri, String content) throws OpenRDFException, IOException;
+	byte[] readBinaryBlob(String uri) throws OpenRDFException, IOException;
+
+	void storeCharacterBlob(String uri, String content) throws OpenRDFException, IOException;
 
 	void storeBinaryBlob(String uri, byte[] content) throws OpenRDFException, IOException;
 

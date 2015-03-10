@@ -82,6 +82,7 @@ import org.apache.http.protocol.ImmutableHttpProcessor;
 import org.apache.http.protocol.ResponseConnControl;
 import org.apache.http.protocol.ResponseContent;
 import org.apache.http.protocol.ResponseDate;
+import org.apache.http.ssl.SSLContexts;
 import org.apache.http.util.TextUtils;
 import org.openrdf.http.object.Version;
 import org.openrdf.http.object.chain.HeadRequestFilter;
@@ -108,17 +109,6 @@ public class WebServer implements IOReactorExceptionHandler, ClientExecChain {
 	protected static final String DEFAULT_NAME = Version.getInstance().getVersion();
 	private static NamedThreadFactory executor = new NamedThreadFactory("WebServer", false);
 
-	private static SSLContext getOptionalSSLContext() {
-		try {
-			if (System.getProperty("javax.net.ssl.keyStore") == null)
-				return null;
-			return SSLContext.getDefault();
-		} catch (NoSuchAlgorithmException e) {
-			LoggerFactory.getLogger(WebServer.class).warn(e.toString(), e);
-			return null;
-		}
-	}
-
 	final Logger logger = LoggerFactory.getLogger(WebServer.class);
 	private final UnavailableRequestDirector unavailable = new UnavailableRequestDirector();
 	final Map<NHttpConnection, Boolean> connections = new WeakHashMap<NHttpConnection, Boolean>();
@@ -136,20 +126,20 @@ public class WebServer implements IOReactorExceptionHandler, ClientExecChain {
 
 	public WebServer() throws IOException,
 			NoSuchAlgorithmException {
-		this(new RequestExecChain(), getOptionalSSLContext(), 0);
+		this(new RequestExecChain(), SSLContexts.createSystemDefault(), 0);
 	}
 
 	public WebServer(File cacheDir) throws IOException {
-		this(new RequestExecChain(new FileResourceFactory(cacheDir)), getOptionalSSLContext(), 0);
+		this(new RequestExecChain(new FileResourceFactory(cacheDir)), SSLContexts.createSystemDefault(), 0);
 	}
 
 	public WebServer(int timeout) throws IOException,
 			NoSuchAlgorithmException {
-		this(new RequestExecChain(), getOptionalSSLContext(), timeout);
+		this(new RequestExecChain(), SSLContexts.createSystemDefault(), timeout);
 	}
 
 	public WebServer(File cacheDir, int timeout) throws IOException {
-		this(new RequestExecChain(new FileResourceFactory(cacheDir)), getOptionalSSLContext(), timeout);
+		this(new RequestExecChain(new FileResourceFactory(cacheDir)), SSLContexts.createSystemDefault(), timeout);
 	}
 
 	public WebServer(SSLContext sslcontext) throws IOException,
@@ -433,6 +423,8 @@ public class WebServer implements IOReactorExceptionHandler, ClientExecChain {
 		if (sslserver != null && sslports.length > 0) {
 			sb.append(sslserver.getStatus().toString());
 		}
+		if (sb.length() == 0)
+			return "INACTIVE";
 		return sb.toString();
 	}
 

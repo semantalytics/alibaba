@@ -128,7 +128,7 @@ public class TestServer extends TestCase {
 		server.poke(); // update registered repositories
 		RepositoryMXBean repository = getMBean("*:*,name=localhost", RepositoryMXBean.class);
 		repository.sparqlUpdate(PROLOG + "INSERT DATA {<> a <TestClass>}");
-		repository.storeBlob(url, "Hello World!");
+		repository.storeCharacterBlob(url, "Hello World!");
 		objectServer.setPorts(port);
 		objectServer.start();
 		assertHelloWorld("Hello World!", new URL(url).openConnection());
@@ -166,7 +166,7 @@ public class TestServer extends TestCase {
 		server.poke(); // update registered repositories
 		RepositoryMXBean repository = getMBean("*:*,name=localhost", RepositoryMXBean.class);
 		repository.sparqlUpdate(PROLOG + "INSERT DATA {<> a <TestClass>}");
-		repository.storeBlob(url, "Hello World!");
+		repository.storeCharacterBlob(url, "Hello World!");
 		server.start();
 		KeyStoreMXBean store = getMBean("*:*", KeyStoreMXBean.class);
 		assertFalse(store.isCertificateSigned());

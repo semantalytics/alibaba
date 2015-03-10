@@ -38,6 +38,8 @@ public interface ObjectServerMXBean {
 
 	void setTimeout(int timeout);
 
+	boolean isShutDown();
+
 	boolean isRunning();
 
 	boolean isStartingInProgress();
@@ -64,6 +66,12 @@ public interface ObjectServerMXBean {
 			IOException;
 
 	boolean removeRepository(String id) throws OpenRDFException;
+
+	String[] getRepositoryIDs() throws OpenRDFException;
+
+	String[] getRepositoryPrefixes(String id) throws OpenRDFException;
+
+	void setRepositoryPrefixes(String id, String prefixes) throws OpenRDFException;
 
 	void init() throws IOException, OpenRDFException;
 
