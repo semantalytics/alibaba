@@ -53,9 +53,8 @@ public class TestServerControl extends TestCase {
 
 	private String port;
 	private String ssl;
-	private Server server;
 	private File dataDir;
-	private File pid;
+	private ServerControl control;
 
 	public TestServerControl(String name) throws Exception {
 		super(name);
@@ -70,26 +69,22 @@ public class TestServerControl extends TestCase {
 	public void setUp() throws Exception {
 		dataDir = FileUtil.createTempDir("server");
 		FileUtil.deleteOnExit(dataDir);
-		pid = File.createTempFile("pid", "", dataDir);
-		server = new Server(pid);
-		server.init("-d", dataDir.getAbsolutePath(), "--trust");
+		control = new ServerControl();
 	}
 
 	public void tearDown() throws Exception {
-		server.destroy();
+		control.destroy();
 	}
 
 	public void testServerName() throws Exception {
-		ServerControl control = new ServerControl(pid);
-		control.init("-n", "test name");
+		control.init("-d", dataDir.getAbsolutePath(), "-n", "test name");
 		control.start();
 		assertEquals("test name", getMBean("*:*", ObjectServerMXBean.class)
 				.getServerName());
 	}
 
 	public void testPorts() throws Exception {
-		ServerControl control = new ServerControl(pid);
-		control.init("-p", port, "-s", ssl);
+		control.init("-d", dataDir.getAbsolutePath(), "-p", port, "-s", ssl);
 		control.start();
 		assertEquals(port, getMBean("*:*", ObjectServerMXBean.class).getPorts());
 		assertEquals(ssl, getMBean("*:*", ObjectServerMXBean.class)
@@ -97,8 +92,9 @@ public class TestServerControl extends TestCase {
 	}
 
 	public void testStop() throws Exception {
+		Server server = new Server();
+		server.init("-d", dataDir.getAbsolutePath(), "--trust");
 		assertNotNull(getMBean("*:*", ObjectServerMXBean.class));
-		ServerControl control = new ServerControl(pid);
 		control.init("-p", port, "-status", "-stop");
 		control.start();
 		server.poke();
@@ -106,16 +102,16 @@ public class TestServerControl extends TestCase {
 	}
 
 	public void testListRepositories() throws Exception {
-		ServerControl control = new ServerControl(pid);
-		control.init("-p", port, "-add", "http://example.com/sparql", "-x",
+		control.init("-d", dataDir.getAbsolutePath(), "-p", port, "-add", "http://example.com/sparql", "-x",
 				"http://example.com/", "-list");
 		control.start();
-		server.poke();
 	}
 
 	public void testUpdateQuery() throws Exception {
 		String url = "http://localhost:" + port + "/";
 		String PROLOG = "BASE <" + url + ">\n" + PREFIX;
+		Server server = new Server();
+		server.init("-d", dataDir.getAbsolutePath(), "--trust");
 		ObjectServerMXBean objectServer = getMBean("*:*",
 				ObjectServerMXBean.class);
 		objectServer.addRepository(url, PREFIX
@@ -126,7 +122,6 @@ public class TestServerControl extends TestCase {
 				+ "sr:sailImpl [sail:sailType 'openrdf:NativeStore']\n" + ""
 				+ "].\n");
 		server.poke(); // update registered repositories
-		ServerControl control = new ServerControl(pid);
 		control.init("-p", port, "-id", "localhost", "-update", PROLOG
 				+ "INSERT DATA {<> a <TestClass>}", "-query", PROLOG
 				+ "DESCRIBE <>");
@@ -135,6 +130,8 @@ public class TestServerControl extends TestCase {
 
 	public void testReadWrite() throws Exception {
 		String url = "http://localhost:" + port + "/";
+		Server server = new Server();
+		server.init("-d", dataDir.getAbsolutePath(), "--trust");
 		ObjectServerMXBean objectServer = getMBean("*:*",
 				ObjectServerMXBean.class);
 		objectServer.addRepository(url, PREFIX
@@ -148,7 +145,6 @@ public class TestServerControl extends TestCase {
 		File read = File.createTempFile("read", "", dataDir);
 		File write = File.createTempFile("read", "", dataDir);
 		FileUtils.writeStringToFile(write, "Hello World!");
-		ServerControl control = new ServerControl(pid);
 		control.init("-p", port, "-id", "localhost", "-write", url, "-file", write.getAbsolutePath());
 		control.start();
 		control.init("-p", port, "-id", "localhost", "-read", url, "-file", read.getAbsolutePath());

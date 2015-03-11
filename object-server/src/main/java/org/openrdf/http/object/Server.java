@@ -81,16 +81,7 @@ public class Server {
 	}
 
 	public static void main(String[] args) throws IOException, OpenRDFException {
-		final Server node;
-		Command line = commands.parse(args);
-		if (line.has("pid")) {
-			File pidFile = new File(line.get("pid"));
-			pidFile.getParentFile().mkdirs();
-			pidFile.deleteOnExit();
-			node = new Server(pidFile);
-		} else {
-			node = new Server();
-		}
+		final Server node = new Server();
 		try {
 			Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
 				public void run() {
@@ -162,6 +153,23 @@ public class Server {
 			File dataDir = new File(".");
 			if (line.has("dataDir")) {
 				dataDir = new File(line.get("dataDir"));
+			}
+			File pidFile;
+			if (line.has("pid")) {
+				pidFile = new File(line.get("pid"));
+			} else {
+				File run = new File(dataDir, "run");
+				pidFile = new File(run, "object-server.pid");
+			}
+			pidFile.getParentFile().mkdirs();
+			pidFile.deleteOnExit();
+			RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
+			String pid = bean.getName().replaceAll("@.*", "");
+			FileWriter writer = new FileWriter(pidFile);
+			try {
+				writer.append(pid);
+			} finally {
+				writer.close();
 			}
 			String serverName = line.get("serverName");
 			String ports = line.has("port") ? Arrays.toString(line.getAll("port")) : null;

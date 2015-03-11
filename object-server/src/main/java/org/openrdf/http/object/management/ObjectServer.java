@@ -388,7 +388,7 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 			throw new IllegalArgumentException("Unknown repository ID: " + id);
 		RepositoryConfig config = manager.getRepositoryConfig(id);
 		Matcher m = HTTP_DOTALL.matcher(config.getTitle());
-		config.setTitle(m.replaceAll("\n") + prefixes);
+		config.setTitle(m.replaceAll("") + "\n" + prefixes);
 		addRepository(config);
 	}
 

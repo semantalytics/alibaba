@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.lang.management.ManagementFactory;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.UndeclaredThrowableException;
@@ -84,6 +85,8 @@ public class ServerControl {
 
 	private static final CommandSet commands = new CommandSet(NAME);
 	static {
+		commands.option("d", "dataDir").arg("directory")
+				.desc("Sesame data dir to 'connect' to");
 		commands.option("pid").arg("file")
 				.desc("File to read the server process id to monitor");
 		commands.option("n", "serverName").optional("name")
@@ -98,8 +101,8 @@ public class ServerControl {
 				.desc("Use the directory to dump the server status in the given directory");
 		commands.option("remove").arg("Endpoint ID")
 				.desc("Remove SPARQL endpoint repository from server");
-		commands.option("add").arg("SPARQL endpoint URL")
-				.desc("Add SPARQL endpoint repository to server");
+		commands.option("endpoint").arg("SPARQL endpoint URL")
+				.desc("Adds or updates SPARQL endpoint URL");
 		commands.option("l", "list").desc("List endpoint IDs");
 		commands.option("i", "id").arg("Endpoint ID")
 				.desc("Endpoint to modify");
@@ -125,29 +128,18 @@ public class ServerControl {
 
 	public static void main(String[] args) {
 		try {
-			
-			Command line = commands.parse(args);
-			if (!line.has("pid")) {
-				System.err.println("Missing required option: pid");
-				System.exit(2);
-			}
-			File pidFile = new File(line.get("pid"));
-			final ServerControl control = new ServerControl(pidFile);
-			control.init(args);
-			control.start();
+			final ServerControl control = new ServerControl();
 			Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
 				public void run() {
 					try {
-						control.stop();
 						control.destroy();
 					} catch (Throwable e) {
 						println(e);
 					}
 				}
 			}));
-			synchronized (control) {
-				control.wait();
-			}
+			control.init(args);
+			control.start();
 			control.stop();
 			control.destroy();
 			System.exit(0);
@@ -178,16 +170,17 @@ public class ServerControl {
 	private JVMUsageMXBean usage;
 	private ObjectServerMXBean server;
 	private Command line;
+	private Server internalServer;
 
 	public ServerControl() {
-		super();
+		mbsc = ManagementFactory.getPlatformMBeanServer();
 	}
 
 	public ServerControl(File pidFile) throws Exception {
 		setPid(IOUtil.readString(pidFile).trim());
 	}
 
-	public void init(String... args) {
+	public synchronized void init(String... args) {
 		try {
 			line = commands.parse(args);
 			if (line.has("help")) {
@@ -217,6 +210,14 @@ public class ServerControl {
 				return;
 			} else if (line.has("pid")){
 				setPid(IOUtil.readString(new File(line.get("pid"))).trim());
+			} else if (line.has("dataDir")) {
+				File run = new File(line.get("dataDir"), "run");
+				File pidFile = new File(run, "object-server.pid");
+				if (pidFile.canRead()) {
+					setPid(IOUtil.readString(pidFile).trim());
+				} else if (getObjectNames(ObjectServerMXBean.class, mbsc).isEmpty()) {
+					initInternalServer();
+				}
 			}
 			for (ObjectName name : getObjectNames(ObjectServerMXBean.class, mbsc)) {
 				server = JMX.newMXBeanProxy(mbsc, name, ObjectServerMXBean.class);
@@ -265,8 +266,8 @@ public class ServerControl {
 				server.removeRepository(id);
 			}
 		}
-		if (line.has("add")) {
-			String[] urls = line.getAll("add");
+		if (line.has("endpoint")) {
+			String[] urls = line.getAll("endpoint");
 			String[] ids = line.getAll("id");
 			if (ids == null || urls.length != ids.length) {
 				ids = new String[urls.length];
@@ -276,7 +277,7 @@ public class ServerControl {
 				}
 			}
 			for (int i=0; i<urls.length; i++) {
-				System.out.println("Adding " + urls[i] + " as " + ids[i]);
+				System.out.println("Assigning endpoint " + urls[i] + " to ID " + ids[i]);
 				StringBuilder desc = new StringBuilder();
 				if (line.has("prefix")) {
 					for (String prefix : line.getAll("prefix")) {
@@ -375,8 +376,11 @@ public class ServerControl {
 		// nothing to stop
 	}
 
-	public void destroy() throws Exception {
-		// nothing to destroy
+	public synchronized void destroy() throws Exception {
+		if (internalServer != null) {
+			internalServer.destroy();
+			internalServer = null;
+		}
 	}
 
 	private boolean destroyService() throws Exception {
@@ -423,14 +427,16 @@ public class ServerControl {
 		DatatypeFactory df = DatatypeFactory.newInstance();
 		String stamp = df.newXMLGregorianCalendar(now).toXMLFormat();
 		stamp = stamp.replaceAll("[^0-9]", "");
-		// execute remote VM command
-		executeVMCommand(vm, "remoteDataDump", dir + "threads-" + stamp
-				+ ".tdump");
-		heapDump(vm, dir + "heap-" + stamp + ".hprof");
-		executeVMCommand(vm, "heapHisto", dir + "heap-" + stamp + ".histo");
+		if (vm != null) {
+			// execute remote VM command
+			executeVMCommand(vm, "remoteDataDump", dir + "threads-" + stamp
+					+ ".tdump");
+			heapDump(vm, dir + "heap-" + stamp + ".hprof");
+			executeVMCommand(vm, "heapHisto", dir + "heap-" + stamp + ".histo");
+			connectionDump(mbsc, dir + "server-" + stamp + ".csv");
+			poolDump(mbsc, dir + "pool-" + stamp + ".tdump");
+		}
 		// dump info
-		connectionDump(mbsc, dir + "server-" + stamp + ".csv");
-		poolDump(mbsc, dir + "pool-" + stamp + ".tdump");
 		usageDump(mbsc, dir + "usage-" + stamp + ".txt");
 		netStatistics(dir + "netstat-" + stamp + ".txt");
 		topStatistics(dir + "top-" + stamp + ".txt");
@@ -652,7 +658,7 @@ public class ServerControl {
 			String agent = properties.getProperty("java.home") + File.separator
 					+ "lib" + File.separator + "management-agent.jar";
 			loadAgent.invoke(vm, agent);
-
+	
 			// agent is started, get the connector address
 			properties = (Properties) getAgentProperties.invoke(vm);
 			connectorAddress = properties.getProperty(CONNECTOR_ADDRESS);
@@ -661,6 +667,11 @@ public class ServerControl {
 		JMXServiceURL service = new JMXServiceURL(connectorAddress);
 		JMXConnector connector = JMXConnectorFactory.connect(service);
 		return connector.getMBeanServerConnection();
+	}
+
+	private void initInternalServer() {
+		internalServer = new Server();
+		internalServer.init("--dataDir", line.get("dataDir"), "--trust");
 	}
 
 }
