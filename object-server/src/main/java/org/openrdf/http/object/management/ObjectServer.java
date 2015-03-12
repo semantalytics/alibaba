@@ -66,7 +66,6 @@ import org.openrdf.repository.object.ObjectService;
 import org.openrdf.repository.object.ObjectServiceImpl;
 import org.openrdf.repository.object.compiler.OWLCompiler;
 import org.openrdf.repository.object.config.ObjectRepositoryConfig;
-import org.openrdf.repository.object.config.ObjectRepositoryFactory;
 import org.openrdf.repository.object.managers.LiteralManager;
 import org.openrdf.repository.object.managers.RoleMapper;
 import org.openrdf.repository.object.managers.helpers.RoleClassLoader;
@@ -559,15 +558,16 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 			return repositories.get(id);
 		File dataDir = manager.getRepositoryDir(id);
 		Repository repo = manager.getRepository(id);
-		ObjectRepositoryFactory factory = new ObjectRepositoryFactory();
-		ObjectRepositoryConfig config = new ObjectRepositoryConfig();
-		config.setBlobStore(new File(dataDir, "blob").toURI().toASCIIString());
-		ObjectRepository obj = factory.createRepository(config, repo);
-		obj.setObjectService(new ObjectService() {
+		ObjectRepository obj = new ObjectRepository(new ObjectService() {
 			public ObjectFactory createObjectFactory() {
 				return service.createObjectFactory();
 			}
 		});
+		obj.setDelegate(repo);
+		ObjectRepositoryConfig config = new ObjectRepositoryConfig();
+		config.setBlobStore(new File(dataDir, "blob").toURI().toASCIIString());
+		obj.setBlobStoreUrl(config.getBlobStore());
+		obj.setBlobStoreParameters(config.getBlobStoreParameters());
 		repositories.put(id, obj);
 		return obj;
 	}

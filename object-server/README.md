@@ -3,84 +3,112 @@ Object Server
  
  The HTTP object server is a resource oriented platform for hosting resources and RESTful services. It differs from other resource oriented frameworks because it allows resource paths to be dynamic and change over time. In AliBaba, request handler paths and their metadata are stored in a dynamic RDF store (and an accompanying blob store). This dynamic indirection between request-uri and code execution gives increased manageability and persistent control over the published URLs.
 
- The HTTP Object Server includes two types of persistence stores:
- blobs are stored using the local file system and accessed through the local interface
- {{{http://java.sun.com/javase/6/docs/api/javax/tools/FileObject.html}FileObject}}
- and metadata is stored in an RDF store.
-
- When a request is received, the scheme and hierarchical part is used to find a resource by IRI in an RDF store, or a prefix, ending in a slash. The matched resource's rdf:type is then used to determinate relevant Java classes. The request method, absolute request URL, and Content-Type/Accept headers are used to determine the exact Java method to invoke. The result is then serialized as the HTTP response.
+ When a request is received, the scheme and hierarchical part is used to find a resource by IRI in an RDF store, or an IRI prefix, ending in a slash. The matched resource's rdf:type is then used to determinate resource class and associated Java classes. The request method, absolute request URL, and Content-Type/Accept headers are used to determine the exact Java method to invoke. The result is then serialized as the HTTP response.
  
- To start the HTTP object server run the provided bin/object-server.sh (or
- .bat) file with the main class org.openrdf.http.object.Server.
- The server has optional command line options to assign the RDF data
- directory. Use command line options to enable ther server
- to read the schema from an RDF store. For details run the server with the '-h'
- option.
- 
- <<Figure 2. CRUD RDF Implemented in Java>>
+ To start the HTTP object server run the main class org.openrdf.http.object.Server.
+ The server has a required command line options to assign the RDF data
+ directory. Use command line options to assign ports and a server name. For details run the server with the '-h' option.
 
-+---
-// PUTGraphSupport.java
-import java.io.*;
-import org.openrdf.rio.*;
-import org.openrdf.repository.object.*;
-import org.openrdf.http.object.annotations.*;
+RDF Graph Store
+---------------
 
-public abstract class PUTGraphSupport implements RDFObject {
-	@Method("PUT")
-	public void putRDF(@type("application/rdf+xml") InputStream in) throws Exception {
-		ObjectConnection con = this.getObjectConnection();
-		con.clear(this.getResource());
-		con.add(in, this.getResource().stringValue(), RDFFormat.RDFXML, this.getResource());
-		con.addDesignation(this, NamedGraph.class);
-	}
+    // GraphStore.java
+    import org.openrdf.annotations.*;
+    import org.openrdf.model.*;
+    import org.openrdf.query.*;
+    import org.openrdf.repository.object.*;
+    import org.openrdf.OpenRDFException;
+    import org.apache.http.*;
+    import org.apache.http.message.BasicHttpResponse;
+    @Iri("http://example.com/test/GraphStore")
+    public abstract class GraphStore implements RDFObject {
+        @Method("HEAD")
+        @Path(".*")
+        public HttpResponse head(@Param("0") String path) {
+            HttpResponse head = new BasicHttpResponse(HttpVersion.HTTP_1_1, 200, "OK");
+            head.addHeader("Cache-Control", "no-store");
+            return head;
+        }
+        @Method("GET")
+        @Path(".*")
+        @Type({"text/turtle", "application/rdf+xml"})
+        public GraphQueryResult get(@Param("0") String path) throws OpenRDFException {
+            String base = this.getResource().stringValue();
+            ObjectConnection con = this.getObjectConnection();
+            ValueFactory vf = con.getValueFactory();
+            URI graph = vf.createURI(base + path);
+            GraphQuery qry = con.prepareGraphQuery(
+                QueryLanguage.SPARQL,
+                "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH ?g { ?s ?p ?o } }"
+            );
+            qry.setBinding("g", graph);
+            return qry.evaluate();
+        }
+        @Method("PUT")
+        @Path(".*")
+        public void put(
+                @Param("0") String path,
+                @Type({"text/turtle", "application/rdf+xml"}) GraphQueryResult dataset
+        ) throws OpenRDFException {
+            String base = this.getResource().stringValue();
+            ObjectConnection con = this.getObjectConnection();
+            ValueFactory vf = con.getValueFactory();
+            URI graph = vf.createURI(base + path);
+            con.clear(graph);
+            con.add(dataset, graph);
+        }
+        @Method("POST")
+        @Path(".*")
+        public void post(
+                @Param("0") String path,
+                @Type({"text/turtle", "application/rdf+xml"}) GraphQueryResult dataset
+        ) throws OpenRDFException {
+            String base = this.getResource().stringValue();
+            ObjectConnection con = this.getObjectConnection();
+            ValueFactory vf = con.getValueFactory();
+            URI graph = vf.createURI(base + path);
+            con.add(dataset, graph);
+        }
+    }
 
-	@Method("PUT")
-	public void putTurtle(@type("text/turtle") Reader in) throws Exception {
-		ObjectConnection con = this.getObjectConnection();
-		con.clear(this.getResource());
-		con.add(in, this.getResource().stringValue(), RDFFormat.TURTLE, this.getResource());
-		con.addDesignation(this, NamedGraph.class);
-	}
-}
+    # META-INF/org.openrdf.concepts (empty)
 
-// NamedGraph.java
-import org.openrdf.model.*;
-import org.openrdf.query.*;
-import org.openrdf.query.impl.*;
-import org.openrdf.repository.object.*;
-import org.openrdf.annotations.*;
-import org.openrdf.http.object.*;
-import org.openrdf.http.object.annotations.*;
+    $ /opt/openrdf-sesame-2.8.0-beta2/bin/console.sh -d data
+    Connected to data
+    Commands end with '.' at the end of a line
+    Type 'help.' for help
+    > create nativerdf.
+    No template called nativerdf found in /home/james/.aduna/openrdf-sesame-console/templates
+    > create native.
+    Please specify values for the following variables:
+    Repository ID [native]: 
+    Repository title [Native store]: 
+    Triple indexes [spoc,posc]: 
+    Repository created
+    > open native.
+    Opened repository 'native'
+    native> sparql INSERT DATA { <http://localhost:8080/> a <http://example.com/test/GraphStore> }.
+    Executing update...
+    Update executed in 63 ms
+    native> quit.
+    Closing repository 'native'...
+    Disconnecting from data
+    Bye
 
-@Iri("http://data.leighnet.ca/rdf/2009/example#NamedGraph")
-public abstract class NamedGraph implements RDFObject {
-	@Method("GET")
-	@Type({"text/turtle", "application/rdf+xml"})
-	public GraphQueryResult getRDF() throws Exception {
-		String qry = "CONSTRUCT {?s ?p ?o} WHERE {?s ?p ?o}";
-		DatasetImpl ds = new DatasetImpl();
-		ds.addDefaultGraph((URI) this.getResource());
-		ObjectConnection con = this.getObjectConnection();
-		GraphQuery query = con.prepareGraphQuery(qry);
-		query.setDataset(ds);
-		return query.evaluate();
-	}
+    java -cp 'lib/*' org.openrdf.http.object.ServerControl -d data -i nativerdf -x http://localhost:8080/
+    INFO: Serving http://localhost:8080/ from data/repositories/native/
 
-	@Method("DELETE")
-	public void deleteRDF() throws Exception {
-		ObjectConnection con = this.getObjectConnection();
-		con.clear((URI) this.getResource());
-		con.removeDesignation(this, NamedGraph.class);
-	}
-}
+    java -cp 'lib/*' org.openrdf.http.object.Server -d data -p 8080
+    INFO: Scanning for concepts
+    INFO: Serving http://localhost:8080/ from data/repositories/native/
+    INFO: Restricted file system access in effect
+    INFO: AliBaba ObjectServer/2.1 is binding to port 8080 
+    INFO: AliBaba ObjectServer/2.1 started after 0.891 seconds
 
-# META-INF/org.openrdf.behaviours
-PUTGraphSupport = http://www.w3.org/2000/01/rdf-schema#Resource
 
-# META-INF/org.openrdf.concepts (empty)
-+---
-
+    curl -X PUT -H content-type:text/turtle --data-binary '<http://example.org/person/Mark_Twain> <http://example.org/relation/author> <http://example.org/books/Huckleberry_Finn> .' -i http://localhost:8080/finn
+    curl --compress -H accept:text/turtle -v http://localhost:8080/finn
+    curl --compress -H accept:application/rdf+xml -v http://localhost:8080/finn
  When the four files in Figure 2 are compiled into a jar and included on the command line
  when the server starts (or in the class path), RDF files uploaded in a PUT request will be added to the
  RDF store and these graphs will be made available as an alternate GET requests.
@@ -96,10 +124,6 @@ PUTGraphSupport = http://www.w3.org/2000/01/rdf-schema#Resource
 
  curl -L -H Accept:application/rdf+xml http://localhost:8080/my-graph
 ---
-
-HTTP Headers
-
- HTTP request headers can be read by placing using the @Header annotation on a message parameter. The parameter will be populated with the header value when the request is received and method is called.
 
  Annotated methods can return any registered concept, a concept Set, Model, GraphQueryResult,
  TupleQueryResult, InputStream, Readable, ReadableByteChannel, XMLEventReader,

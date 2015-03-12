@@ -31,11 +31,14 @@ package org.openrdf.repository.object.compiler;
 import info.aduna.io.MavenUtil;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.zip.ZipException;
+import java.util.zip.ZipFile;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
@@ -164,10 +167,23 @@ public abstract class Compiler {
 			converter.setClassLoader(cl);
 			converter.setPrefixNamespaces(loader.getNamespaces().values());
 			converter.createJar(jar);
+			if (isJarEmpty(jar))
+				System.err.println("No classes found - Try a different namespace.");
 			return;
 		} catch (ParseException exp) {
 			System.err.println(exp.getMessage());
 			System.exit(1);
+		}
+	}
+
+	private static boolean isJarEmpty(File jar) throws ZipException, IOException {
+		if (jar == null || !jar.canRead())
+			return true;
+		ZipFile zip = new ZipFile(jar);
+		try {
+			return zip.size() <= 0;
+		} finally {
+			zip.close();
 		}
 	}
 

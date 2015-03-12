@@ -80,7 +80,6 @@ public class HttpClientFactory implements Closeable {
 				synchronized (HttpClientFactory.class) {
 					if (instance != null) {
 						instance.close();
-						instance = null;
 					}
 				}
 			}

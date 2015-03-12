@@ -36,6 +36,7 @@ public class HttpUriResponse implements CloseableHttpResponse {
 	private final String systemId;
 
 	public HttpUriResponse(String systemId, HttpResponse delegate) {
+		assert delegate != null;
 		this.delegate = delegate;
 		this.systemId = systemId;
 	}

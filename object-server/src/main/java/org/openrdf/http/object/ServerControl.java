@@ -180,7 +180,7 @@ public class ServerControl {
 		setPid(IOUtil.readString(pidFile).trim());
 	}
 
-	public synchronized void init(String... args) {
+	public void init(String... args) {
 		try {
 			line = commands.parse(args);
 			if (line.has("help")) {
@@ -376,7 +376,7 @@ public class ServerControl {
 		// nothing to stop
 	}
 
-	public synchronized void destroy() throws Exception {
+	public void destroy() throws Exception {
 		if (internalServer != null) {
 			internalServer.destroy();
 			internalServer = null;
@@ -540,20 +540,25 @@ public class ServerControl {
 
 	private Object getRemoteVirtualMachine(String pid)
 			throws Exception {
-		Class<?> VM = Class.forName("com.sun.tools.attach.VirtualMachine");
-		Method attach = VM.getDeclaredMethod("attach", String.class);
-		// attach to the target application
-		info("Connecting to " + pid);
 		try {
-			return attach.invoke(null, pid);
-		} catch (InvocationTargetException e) {
+			Class<?> VM = Class.forName("com.sun.tools.attach.VirtualMachine");
+			Method attach = VM.getDeclaredMethod("attach", String.class);
+			// attach to the target application
+			info("Connecting to " + pid);
 			try {
-				throw e.getCause();
-			} catch (Exception cause) {
-				throw cause;
-			} catch (Throwable cause) {
-				throw e;
+				return attach.invoke(null, pid);
+			} catch (InvocationTargetException e) {
+				try {
+					throw e.getCause();
+				} catch (Exception cause) {
+					throw cause;
+				} catch (Throwable cause) {
+					throw e;
+				}
 			}
+		} catch (ClassNotFoundException e) {
+			System.err.println("MISSING tools.jar in classpath");
+			throw e;
 		}
 	}
 

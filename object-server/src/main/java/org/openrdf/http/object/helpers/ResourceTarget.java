@@ -861,16 +861,24 @@ public class ResourceTarget {
 			Method method, String[] responseTypes, ResponseBuilder rbuilder)
 			throws IOException, FluidException {
 		FluidBuilder builder = getFluidBuilder();
-		Fluid writer = builder.consume(result, req.getRequestURL(),
-				method.getGenericReturnType(), responseTypes);
+		Type gtype = method.getGenericReturnType();
 		if (!method.isAnnotationPresent(org.openrdf.annotations.Type.class)
-				&& writer.toHttpResponseMedia("message/http") != null)
-			return writer.asHttpResponse("message/http");
+				&& builder.nil(new FluidType(gtype, "message/http"))
+						.toHttpResponseMedia("message/http") != null) {
+			Fluid writer = builder.consume(result, req.getRequestURL(), gtype,
+					"message/http");
+			HttpResponse http = writer.asHttpResponse("message/http");
+			if (http == null)
+				return rbuilder.noContent(204, "No Content");
+			return http;
+		}
 		Class<?> type = method.getReturnType();
 		if (result == null || Set.class.equals(type)
 				&& ((Set<?>) result).isEmpty()) {
 			return rbuilder.noContent(204, "No Content");
 		}
+		Fluid writer = builder.consume(result, req.getRequestURL(),
+				gtype, responseTypes);
 		HttpEntity entity = writer.asHttpEntity(getResponseContentType(req,
 				method));
 		return rbuilder.content(200, "OK", entity);

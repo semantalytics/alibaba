@@ -519,8 +519,6 @@ public class OWLCompiler {
 		}
 		if (exception != null)
 			throw exception;
-		if (content.isEmpty())
-			logger.warn("No classes found - Try a different namespace.");
 		if (!methods.isEmpty()) {
 			printClasses(methods, dir, META_INF_BEHAVIOURS);
 			content.addAll(methods);

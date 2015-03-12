@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import javax.management.InstanceAlreadyExistsException;
+import javax.management.InstanceNotFoundException;
 import javax.management.JMException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
@@ -154,23 +155,6 @@ public class Server {
 			if (line.has("dataDir")) {
 				dataDir = new File(line.get("dataDir"));
 			}
-			File pidFile;
-			if (line.has("pid")) {
-				pidFile = new File(line.get("pid"));
-			} else {
-				File run = new File(dataDir, "run");
-				pidFile = new File(run, "object-server.pid");
-			}
-			pidFile.getParentFile().mkdirs();
-			pidFile.deleteOnExit();
-			RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
-			String pid = bean.getName().replaceAll("@.*", "");
-			FileWriter writer = new FileWriter(pidFile);
-			try {
-				writer.append(pid);
-			} finally {
-				writer.close();
-			}
 			String serverName = line.get("serverName");
 			String ports = line.has("port") ? Arrays.toString(line.getAll("port")) : null;
 			String ssl = line.has("ssl") ? Arrays.toString(line.getAll("ssl")) : null;
@@ -202,12 +186,13 @@ public class Server {
 			KeyStoreImpl keystore = new KeyStoreImpl(etc);
 			registerMBean(keystore, mbean(KeyStoreImpl.class));
 			poke();
+			node.init();
+			storePID(line.get("pid"), dataDir);
 			if (!line.has("trust")) {
 				ServerPolicy.apply(new String[0], loggingBean
 						.getLoggingPropertiesFile(), new File(dataDir,
 						"repositories"));
 			}
-			node.init();
 		} catch (Throwable e) {
 			while (e.getCause() != null) {
 				e = e.getCause();
@@ -250,6 +235,8 @@ public class Server {
 				for (ObjectName on : mbs.queryNames(rn, instanceOf)) {
 					mbs.unregisterMBean(on);
 				}
+			} catch (InstanceNotFoundException e) {
+				// already unregistered
 			} catch (JMException e) {
 				logger.error(e.toString(), e);
 			}
@@ -258,6 +245,7 @@ public class Server {
 
 	public void await() throws InterruptedException, OpenRDFException {
 		synchronized (node) {
+			node.wait(500); // give server a chance to start endpoint threads
 			while (node.isRunning()) {
 				poke();
 				node.wait();
@@ -361,6 +349,26 @@ public class Server {
 		sb.append(pkg).append(":type=").append(simple);
 		sb.append(",name=").append(name);
 		return sb.toString();
+	}
+
+	private void storePID(String pidFile, File dataDir) throws IOException {
+		File file;
+		if (pidFile != null) {
+			file = new File(pidFile);
+		} else {
+			File run = new File(dataDir, "run");
+			file = new File(run, "object-server.pid");
+		}
+		file.getParentFile().mkdirs();
+		file.deleteOnExit();
+		RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
+		String pid = bean.getName().replaceAll("@.*", "");
+		FileWriter writer = new FileWriter(file);
+		try {
+			writer.append(pid);
+		} finally {
+			writer.close();
+		}
 	}
 
 	private String getRepositoryMBeanPrefix() {
