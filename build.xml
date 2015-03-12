@@ -59,10 +59,8 @@
         <available file="${lib}" property="lib.present" />
         <property file="dependencies.properties" />
         <basename file="${commons-cli.url}" property="commons-cli.zip" />
-        <basename file="${commons-codec.url}" property="commons-codec.zip" />
-        <basename file="${commons-httpclient.url}" property="commons-httpclient.zip" />
+        <basename file="${httpasyncclient.url}" property="httpasyncclient.zip" />
         <basename file="${commons-io.url}" property="commons-io.zip" />
-        <basename file="${commons-logging.url}" property="commons-logging.zip" />
         <basename file="${jackson-core.url}" property="jackson-core.jar" />
         <basename file="${javassist.url}" property="javassist-3.11.GA.zip" />
         <basename file="${opencsv.url}" property="opencsv.jar" />
@@ -71,10 +69,8 @@
         <mkdir dir="${downloads}" />
         <get usetimestamp="true" skipexisting="${lib.present}" dest="${downloads}">
             <url url="${commons-cli.url}" />
-            <url url="${commons-codec.url}" />
-            <url url="${commons-httpclient.url}" />
+            <url url="${httpasyncclient.url}" />
             <url url="${commons-io.url}" />
-            <url url="${commons-logging.url}" />
             <url url="${jackson-core.url}" />
             <url url="${javassist.url}" />
             <url url="${opencsv.url}" />
@@ -91,16 +87,7 @@
             </patternset>
             <mapper type="flatten" />
         </unzip>
-        <unzip overwrite="false" src="${downloads}/${commons-codec.zip}" dest="${lib}">
-            <patternset>
-                <include name="**/*.jar" />
-                <exclude name="**/*-javadoc.jar" />
-                <exclude name="**/*-sources.jar" />
-                <exclude name="**/*-tests.jar" />
-            </patternset>
-            <mapper type="flatten" />
-        </unzip>
-        <unzip overwrite="false" src="${downloads}/${commons-httpclient.zip}" dest="${lib}">
+        <unzip overwrite="false" src="${downloads}/${httpasyncclient.zip}" dest="${lib}">
             <patternset>
                 <include name="**/*.jar" />
                 <exclude name="**/*-javadoc.jar" />
@@ -115,17 +102,6 @@
                 <exclude name="**/*-javadoc.jar" />
                 <exclude name="**/*-sources.jar" />
                 <exclude name="**/*-tests.jar" />
-            </patternset>
-            <mapper type="flatten" />
-        </unzip>
-        <unzip overwrite="false" src="${downloads}/${commons-logging.zip}" dest="${lib}">
-            <patternset>
-                <include name="**/*.jar" />
-                <exclude name="**/*-javadoc.jar" />
-                <exclude name="**/*-sources.jar" />
-                <exclude name="**/*-tests.jar" />
-                <exclude name="**/*-adapters-*.jar" />
-                <exclude name="**/*-api-*.jar" />
             </patternset>
             <mapper type="flatten" />
         </unzip>
@@ -205,6 +181,7 @@
 			<zipfileset src="optimistic-sail/target/alibaba-sail-optimistic-${project.version}.jar" excludes="${excludes}" />
 			<zipfileset src="object-composition/target/alibaba-composition-object-${project.version}.jar" excludes="${excludes}" />
 			<zipfileset src="object-repository/target/alibaba-repository-object-${project.version}.jar" excludes="${excludes}" />
+			<zipfileset src="object-server/target/alibaba-http-object-${project.version}.jar" excludes="${excludes}" />
 			<zipfileset src="runtime/target/alibaba-runtime-${project.version}.jar" excludes="${excludes}" />
 		</jar>
 		<zip destfile="target/openrdf-alibaba-${project.version}.zip">
@@ -219,6 +196,7 @@
 			<zipfileset src="optimistic-sail/target/alibaba-sail-optimistic-${project.version}-sources.jar" prefix="src" excludes="${excludes}" />
 			<zipfileset src="object-composition/target/alibaba-composition-object-${project.version}-sources.jar" prefix="src" excludes="${excludes}" />
 			<zipfileset src="object-repository/target/alibaba-repository-object-${project.version}-sources.jar" prefix="src" excludes="${excludes}" />
+			<zipfileset src="object-server/target/alibaba-http-object-${project.version}-sources.jar" prefix="src" excludes="${excludes}" />
 			<zipfileset src="runtime/target/alibaba-runtime-${project.version}-sources.jar" prefix="src" excludes="${excludes}" />
 		</zip>
 	</target>
