@@ -36,6 +36,7 @@ import java.util.Set;
 import java.util.concurrent.Future;
 
 import org.apache.http.Header;
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpException;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
@@ -101,7 +102,9 @@ public class ContentHeadersFilter implements AsyncExecChain {
 			ProtocolVersion ver = line.getProtocolVersion();
 			BasicHttpRequest head = new BasicHttpRequest("HEAD", line.getUri(), ver);
 			for (Header header : request.getAllHeaders()) {
-				head.addHeader(header);
+				if (!contentHeaders.contains(header.getName().toLowerCase())) {
+					head.addHeader(header);
+				}
 			}
 			if (trans.isHandled(head))
 				return trans.invoke(head);
@@ -131,6 +134,18 @@ public class ContentHeadersFilter implements AsyncExecChain {
 			if ("GET".equals(req.getMethod()) && code < 400 && code != 304
 					|| !contentHeaders.contains(name.toLowerCase())) {
 				addIfAbsent(name, head, rb);
+			}
+		}
+		HttpEntity entity = rb.getEntity();
+		if (entity != null) {
+			if (!rb.containsHeader("Content-Encoding") && entity.getContentEncoding() != null) {
+				rb.setHeader(entity.getContentEncoding());
+			}
+			if (!rb.containsHeader("Content-Type") && entity.getContentType() != null) {
+				rb.setHeader(entity.getContentType());
+			}
+			if (!rb.containsHeader("Content-Length") && entity.getContentLength() >= 0) {
+				rb.setHeader("Content-Length", Long.toString(entity.getContentLength()));
 			}
 		}
 	}
