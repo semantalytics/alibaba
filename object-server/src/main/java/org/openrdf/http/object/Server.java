@@ -26,6 +26,9 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.Arrays;
 import java.util.List;
 
@@ -76,6 +79,9 @@ public class Server {
 				.desc("File to store current process id");
 		commands.option("q", "quiet").desc(
 				"Don't print status messages to standard output.");
+		commands.option("cp", "classpath")
+				.arg("classpath")
+				.desc("Specifies a list of additional directories, JAR files, and ZIP archives to search for class files");
 		commands.option("h", "help").desc("Print help (this message) and exit");
 		commands.option("v", "version").desc(
 				"Print version information and exit");
@@ -174,7 +180,9 @@ public class Server {
 			if (node != null) {
 				node.destroy();
 			}
-			node = new ObjectServer(dataDir);
+			ClassLoader cl = Server.class.getClassLoader();
+			ClassLoader cp = getClasspath(line.get("classpath"), cl);
+			node = new ObjectServer(dataDir, cp);
 			node.setServerName(serverName);
 			node.setPorts(ports);
 			node.setSSLPorts(ssl);
@@ -349,6 +357,18 @@ public class Server {
 		sb.append(pkg).append(":type=").append(simple);
 		sb.append(",name=").append(name);
 		return sb.toString();
+	}
+
+	private ClassLoader getClasspath(String cp, ClassLoader parent)
+			throws MalformedURLException {
+		if (cp == null || cp.length() == 0)
+			return parent;
+		String[] paths = cp.split(File.pathSeparator);
+		URL[] urls = new URL[paths.length];
+		for (int i = 0; i < paths.length; i++) {
+			urls[i] = new File(paths[i]).toURI().toURL();
+		}
+		return new URLClassLoader(urls, parent);
 	}
 
 	private void storePID(String pidFile, File dataDir) throws IOException {

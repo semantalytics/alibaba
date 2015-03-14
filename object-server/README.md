@@ -120,19 +120,19 @@ RDF Graph Store
 
  Once the RDF store is created, assign the URL prefix to the store. Any HTTP requests that start with this prefix will be resolved using the RDF store provided.
 
-    java -cp 'lib/*:dist/*' org.openrdf.http.object.ServerControl -d data -i native -x http://localhost:8080/
+    bin/control-object-server.sh -d data -i native -x http://localhost:8080/
     INFO: Serving http://localhost:8080/ from data/repositories/native/
 
  Start the using and include the GraphStore.class in the classpath.
 
-    java -cp '.:lib/*:dist/*' org.openrdf.http.object.Server -d data -p 8080
-    INFO: Scanning for concepts
+    bin/object-server.sh -d data -cp ./ -p 8080
+    INFO: Scanning ./ for concepts
     INFO: Serving http://localhost:8080/ from data/repositories/native/
     INFO: Restricted file system access in effect
     INFO: AliBaba ObjectServer/2.1 is binding to port 8080 
     INFO: AliBaba ObjectServer/2.1 started after 0.891 seconds
 
- Once the server is runnig, using another terminal, create a new RDF graph by PUTting a text/turtle representation to a URL. Then GET the RDF graph back in the supported formats.
+ Once the server is running, using another terminal, create a new RDF graph by PUTting a text/turtle representation to a URL. Then GET the RDF graph back in the supported formats.
 
  Note that if lib/ or dist/ directories are within the tmpdir the server will fail to start with AccessControlExceptions.
 
@@ -142,4 +142,7 @@ RDF Graph Store
     $ curl -H accept:application/rdf+xml http://localhost:8080/graphs/twain
 
  If you get a 405 error check that you included the GraphStore.class in the classpath. You should see a "Scanning" message in the server output. If not you either don't have the classpath setup or you are missing the META-INF/org.openrdf.concepts file.
- 
+
+ The server can be stopped gracefully using the following command
+    $ bin/control-object-server.sh -d data -stop
+

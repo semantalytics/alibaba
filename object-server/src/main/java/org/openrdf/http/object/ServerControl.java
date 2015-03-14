@@ -29,6 +29,9 @@ import java.lang.management.ManagementFactory;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.UndeclaredThrowableException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.rmi.UnmarshalException;
 import java.util.Arrays;
 import java.util.GregorianCalendar;
@@ -65,6 +68,7 @@ import org.openrdf.http.object.management.RepositoryMXBean;
  * 
  */
 public class ServerControl {
+	private static final String ATTACH_MACHINE = "com.sun.tools.attach.VirtualMachine";
 	private static final String REPO_NAME = Server.class.getPackage().getName() + ":*,name=";
 	public static final String NAME = Version.getInstance().getVersion();
 	private static final String CONNECTOR_ADDRESS = "com.sun.management.jmxremote.localConnectorAddress";
@@ -224,6 +228,10 @@ public class ServerControl {
 			}
 			for (ObjectName name : getObjectNames(JVMUsageMXBean.class, mbsc)) {
 				usage = JMX.newMXBeanProxy(mbsc, name, JVMUsageMXBean.class);
+			}
+			if (server == null) {
+				System.err.println("Object server was not found, provide a different pid or dataDir option");
+				System.exit(2);
 			}
 		} catch (Throwable e) {
 			println(e);
@@ -540,25 +548,40 @@ public class ServerControl {
 
 	private Object getRemoteVirtualMachine(String pid)
 			throws Exception {
+		Class<?> VM = loadVirtualMatchineClass();
+		Method attach = VM.getDeclaredMethod("attach", String.class);
+		// attach to the target application
+		info("Connecting to " + pid);
 		try {
-			Class<?> VM = Class.forName("com.sun.tools.attach.VirtualMachine");
-			Method attach = VM.getDeclaredMethod("attach", String.class);
-			// attach to the target application
-			info("Connecting to " + pid);
+			return attach.invoke(null, pid);
+		} catch (InvocationTargetException e) {
 			try {
-				return attach.invoke(null, pid);
-			} catch (InvocationTargetException e) {
-				try {
-					throw e.getCause();
-				} catch (Exception cause) {
-					throw cause;
-				} catch (Throwable cause) {
-					throw e;
-				}
+				throw e.getCause();
+			} catch (Exception cause) {
+				throw cause;
+			} catch (Throwable cause) {
+				throw e;
 			}
+		}
+	}
+
+	private Class<?> loadVirtualMatchineClass() throws ClassNotFoundException,
+			MalformedURLException {
+		try {
+			return Class.forName(ATTACH_MACHINE);
 		} catch (ClassNotFoundException e) {
-			System.err.println("MISSING tools.jar in classpath");
-			throw e;
+			try {
+				File jre = new File(System.getProperty("java.home"));
+				File jdk = jre.getParentFile();
+				File tools = new File(new File(jdk, "lib"), "tools.jar");
+				URL url = tools.toURI().toURL();
+				URLClassLoader cl = new URLClassLoader(new URL[] { url });
+				return Class.forName(ATTACH_MACHINE,
+						true, cl);
+			} catch (ClassNotFoundException exc) {
+				System.err.println("MISSING tools.jar in classpath");
+				throw e;
+			}
 		}
 	}
 
