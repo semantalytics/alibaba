@@ -62,7 +62,7 @@ public interface ObjectServerMXBean {
 
 	void connectionDumpToFile(String outputFile) throws IOException;
 
-	void addRepository(String base, String config) throws OpenRDFException,
+	String addRepository(String base, String config) throws OpenRDFException,
 			IOException;
 
 	boolean removeRepository(String id) throws OpenRDFException;
@@ -71,7 +71,9 @@ public interface ObjectServerMXBean {
 
 	String[] getRepositoryPrefixes(String id) throws OpenRDFException;
 
-	void setRepositoryPrefixes(String id, String prefixes) throws OpenRDFException;
+	void addRepositoryPrefix(String id, String prefix) throws OpenRDFException;
+
+	void setRepositoryPrefixes(String id, String[] prefixes) throws OpenRDFException;
 
 	void init() throws IOException, OpenRDFException;
 

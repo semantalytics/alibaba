@@ -34,6 +34,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
@@ -41,7 +42,6 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.openrdf.repository.object.exceptions.ObjectCompileException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,7 +67,7 @@ public class JavaCompiler {
 	}
 
 	public void compile(Iterable<String> content, File dir, List<File> classpath)
-			throws ObjectCompileException, IOException, InterruptedException {
+			throws IOException {
 		List<File> source = new ArrayList<File>();
 		for (String name : content) {
 			String filename = name.replace('.', File.separatorChar);
@@ -77,7 +77,7 @@ public class JavaCompiler {
 		try {
 			String[] args = new String[] { "@" + argfile.getAbsolutePath() };
 			if (javac(args) != 0)
-				throw new ObjectCompileException("Could not compile");
+				throw new IOException("Could not compile");
 		} finally {
 			argfile.delete();
 		}
@@ -87,7 +87,7 @@ public class JavaCompiler {
 	 * Try and run any available compiler. Try embedded compilers before
 	 * external commands. Only fail if all compilers have be attempted.
 	 */
-	private int javac(String[] args) throws IOException, InterruptedException {
+	private int javac(String[] args) throws IOException {
 		int result = -1;
 		if (useTools) {
 			result = javaCompilerTool(args);
@@ -183,11 +183,9 @@ public class JavaCompiler {
 	/**
 	 * Requires JDK installation.
 	 * 
-	 * @throws InterruptedException
 	 * @throws IOException
 	 */
-	private int javacCommand(String[] args) throws IOException,
-			InterruptedException {
+	private int javacCommand(String[] args) throws IOException {
 		String javac = findJavac();
 		if (javac == null)
 			return -1;
@@ -247,8 +245,7 @@ public class JavaCompiler {
 		}
 	}
 
-	private int exec(String cmd, String[] args) throws IOException,
-			InterruptedException {
+	private int exec(String cmd, String[] args) throws IOException {
 		logger.debug("exec {}", cmd);
 		String[] cmdArray = new String[1 + args.length];
 		cmdArray[0] = cmd;
@@ -291,7 +288,13 @@ public class JavaCompiler {
 			} finally {
 				stderr.close();
 			}
-			return exec.waitFor();
+			try {
+				return exec.waitFor();
+			} catch (InterruptedException cause) {
+				InterruptedIOException e = new InterruptedIOException(cause.getMessage());
+				e.initCause(cause);
+				throw e;
+			}
 		} finally {
 			exec.destroy();
 		}

@@ -61,7 +61,6 @@ import org.openrdf.repository.contextaware.ContextAwareConnection;
 import org.openrdf.repository.object.exceptions.BlobConflictException;
 import org.openrdf.repository.object.exceptions.BlobStoreException;
 import org.openrdf.repository.object.exceptions.ObjectPersistException;
-import org.openrdf.repository.object.managers.TypeManager;
 import org.openrdf.repository.object.managers.helpers.WeakValueMap;
 import org.openrdf.repository.object.result.ObjectIterator;
 import org.openrdf.repository.object.traits.Mergeable;

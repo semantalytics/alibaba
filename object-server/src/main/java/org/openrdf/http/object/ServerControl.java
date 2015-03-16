@@ -72,12 +72,11 @@ public class ServerControl {
 	private static final String REPO_NAME = Server.class.getPackage().getName() + ":*,name=";
 	public static final String NAME = Version.getInstance().getVersion();
 	private static final String CONNECTOR_ADDRESS = "com.sun.management.jmxremote.localConnectorAddress";
-	private static final String ENDPOINT_CONFIG = "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.\n"
-			+ "@prefix rep: <http://www.openrdf.org/config/repository#>.\n"
+	private static final String ENDPOINT_CONFIG = "@prefix rep: <http://www.openrdf.org/config/repository#>.\n"
 			+ "@prefix hr: <http://www.openrdf.org/config/repository/http#>.\n"
 			+ "<#{id}> a rep:Repository ;\n"
 			+ "   rep:repositoryImpl [ rep:repositoryType 'openrdf:HTTPRepository' ; hr:repositoryURL <{url}> ];\n"
-			+ "   rep:repositoryID '{id}' ; rdfs:label '''description}''' .\n";
+			+ "   rep:repositoryID '{id}'.\n";
 							
 	private static final ThreadFactory tfactory = new ThreadFactory() {
 		public Thread newThread(Runnable r) {
@@ -107,11 +106,13 @@ public class ServerControl {
 				.desc("Remove SPARQL endpoint repository from server");
 		commands.option("endpoint").arg("SPARQL endpoint URL")
 				.desc("Adds or updates SPARQL endpoint URL");
+		commands.require("c", "conf").arg("file")
+				.desc("The local repository config file to read settings from");
 		commands.option("l", "list").desc("List endpoint IDs");
 		commands.option("i", "id").arg("Endpoint ID")
 				.desc("Endpoint to modify");
 		commands.option("x", "prefix").arg("URL prefix")
-				.desc("Include this prefix when server the given endpoint");
+				.desc("URL prefix to map to the given endpoint");
 		commands.option("u", "update").arg("SPARQL Update")
 				.desc("Execute update against endpoint");
 		commands.option("q", "query").arg("SPARQL Query")
@@ -279,25 +280,30 @@ public class ServerControl {
 			String[] ids = line.getAll("id");
 			if (ids == null || urls.length != ids.length) {
 				ids = new String[urls.length];
-				for (int i=0; i<urls.length; i++) {
-					String w = urls[i].replaceAll("\\W*$", "").replaceAll(".*\\W", "");
+				for (int i = 0; i < urls.length; i++) {
+					String w = urls[i].replaceAll("\\W*$", "").replaceAll(
+							".*\\W", "");
 					ids[i] = w + Integer.toHexString(urls[i].hashCode());
 				}
 			}
-			for (int i=0; i<urls.length; i++) {
-				System.out.println("Assigning endpoint " + urls[i] + " to ID " + ids[i]);
-				StringBuilder desc = new StringBuilder();
-				if (line.has("prefix")) {
-					for (String prefix : line.getAll("prefix")) {
-						desc.append(prefix).append("\n");
-						System.out.println("Assigning " + prefix + " to " + ids[i]);
-					}
-				}
+			for (int i = 0; i < urls.length; i++) {
+				System.out.println("Assigning endpoint " + urls[i] + " to ID "
+						+ ids[i]);
 				String config = ENDPOINT_CONFIG.replace("{id}", ids[i])
-						.replace("{url}", urls[i])
-						.replace("{description}", desc.toString());
+						.replace("{url}", urls[i]);
 				String base = new File("").toURI().toASCIIString();
 				server.addRepository(base, config);
+			}
+		}
+		if (line.has("conf")) {
+			String[] files = line.getAll("conf");
+			for (int i = 0; i < files.length; i++) {
+				File file = new File(files[i]);
+				String config = FileUtils.readFileToString(file);
+				String base = file.toURI().toASCIIString();
+				String id = server.addRepository(base, config);
+				System.out.println("Assigning endpoint " + files[i] + " to ID "
+						+ id);
 			}
 		}
 		if (line.has("list")) {
@@ -306,15 +312,15 @@ public class ServerControl {
 			}
 		}
 		if (line.has("id") && line.has("prefix")) {
-			StringBuilder desc = new StringBuilder();
-			if (line.has("prefix")) {
-				for (String prefix : line.getAll("prefix")) {
-					desc.append(prefix).append("\n");
+			String[] ids = line.getAll("id");
+			String[] prefixes = line.getAll("prefix");
+			for (int i = 0; i < prefixes.length; i++) {
+				if (i >= ids.length) {
+					server.addRepositoryPrefix(ids[ids.length - 1], prefixes[i]);
+				} else {
+					server.setRepositoryPrefixes(ids[i],
+							new String[] { prefixes[i] });
 				}
-			}
-			String prefixes = desc.toString();
-			for (String id : line.getAll("id")) {
-				server.setRepositoryPrefixes(id, prefixes);
 			}
 		}
 		if (line.has("update")) {

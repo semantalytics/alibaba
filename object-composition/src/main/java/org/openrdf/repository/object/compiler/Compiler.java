@@ -48,9 +48,6 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.openrdf.model.Model;
 import org.openrdf.model.impl.TreeModel;
-import org.openrdf.repository.object.managers.LiteralManager;
-import org.openrdf.repository.object.managers.RoleMapper;
-import org.openrdf.repository.object.managers.helpers.RoleClassLoader;
 
 /**
  * Converts OWL ontologies into Java source code from the command line.
@@ -137,10 +134,7 @@ public abstract class Compiler {
 				loader.followImports();
 			}
 			Model model = loader.getModel();
-			RoleMapper mapper = new RoleMapper();
-			new RoleClassLoader(mapper).loadRoles(cl);
-			LiteralManager literals = new LiteralManager(cl);
-			OWLCompiler converter = new OWLCompiler(mapper, literals);
+			OWLCompiler converter = new OWLCompiler(cl);
 			if (line.hasOption('s')) {
 				converter.setPluralForms(false);
 			} else {
@@ -164,7 +158,6 @@ public abstract class Compiler {
 			}
 			urls.addAll(loader.getImported());
 			converter.setOntologies(loader.getImportedFormats());
-			converter.setClassLoader(cl);
 			converter.setPrefixNamespaces(loader.getNamespaces().values());
 			converter.createJar(jar);
 			if (isJarEmpty(jar))

@@ -30,6 +30,7 @@
 package org.openrdf.repository.object.compiler.model;
 
 import java.io.File;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -51,7 +52,6 @@ import org.openrdf.model.impl.URIImpl;
 import org.openrdf.model.vocabulary.OWL;
 import org.openrdf.model.vocabulary.RDF;
 import org.openrdf.model.vocabulary.RDFS;
-import org.openrdf.repository.object.RDFObject;
 import org.openrdf.repository.object.compiler.JavaNameResolver;
 import org.openrdf.repository.object.compiler.RDFList;
 import org.openrdf.repository.object.compiler.source.JavaMessageBuilder;
@@ -242,7 +242,7 @@ public class RDFClass extends RDFEntity {
 	}
 
 	public File generateSourceCode(File dir, JavaNameResolver resolver)
-			throws Exception {
+			throws IOException, ObjectStoreConfigException {
 		File source = createSourceFile(dir, resolver);
 		if (isDatatype()) {
 			JavaMessageBuilder builder = new JavaMessageBuilder(source, resolver);
@@ -599,7 +599,7 @@ public class RDFClass extends RDFEntity {
 			if (range != null) {
 				builder.implement(builder.getClassName(range));
 			}
-			builder.implement(RDFObject.class.getName());
+			builder.implement("org.openrdf.repository.object.RDFObject");
 			builder.implement(RDFObjectBehaviour.class.getName());
 		}
 	}

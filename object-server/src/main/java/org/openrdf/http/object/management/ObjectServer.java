@@ -66,9 +66,6 @@ import org.openrdf.repository.object.ObjectService;
 import org.openrdf.repository.object.ObjectServiceImpl;
 import org.openrdf.repository.object.compiler.OWLCompiler;
 import org.openrdf.repository.object.config.ObjectRepositoryConfig;
-import org.openrdf.repository.object.managers.LiteralManager;
-import org.openrdf.repository.object.managers.RoleMapper;
-import org.openrdf.repository.object.managers.helpers.RoleClassLoader;
 import org.openrdf.repository.sail.config.RepositoryResolver;
 import org.openrdf.rio.RDFFormat;
 import org.openrdf.rio.RDFHandlerException;
@@ -376,27 +373,46 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 		RepositoryInfo info = manager.getRepositoryInfo(id);
 		if (info == null)
 			return null;
-		String desc = info.getDescription();
-		return splitURLs(desc);
+		return splitURLs(info.getDescription());
 	}
 
-	public synchronized void setRepositoryPrefixes(String id, String prefixes)
+	public synchronized void addRepositoryPrefix(String id, String prefix)
 			throws OpenRDFException {
 		RepositoryInfo info = manager.getRepositoryInfo(id);
 		if (info == null)
 			throw new IllegalArgumentException("Unknown repository ID: " + id);
+		if (Arrays.asList(splitURLs(info.getDescription())).contains(prefix))
+			return;
+		RepositoryConfig config = manager.getRepositoryConfig(id);
+		config.setTitle(config.getTitle() + "\n" + prefix);
+		addRepository(config);
+	}
+
+	public synchronized void setRepositoryPrefixes(String id, String[] prefixes)
+			throws OpenRDFException {
+		RepositoryInfo info = manager.getRepositoryInfo(id);
+		if (info == null)
+			throw new IllegalArgumentException("Unknown repository ID: " + id);
+		StringBuilder desc = new StringBuilder();
+		if (prefixes != null) {
+			for (String prefix : prefixes) {
+				desc.append(prefix).append("\n");
+			}
+		}
 		RepositoryConfig config = manager.getRepositoryConfig(id);
 		Matcher m = HTTP_DOTALL.matcher(config.getTitle());
 		config.setTitle(m.replaceAll("") + "\n" + prefixes);
 		addRepository(config);
 	}
 
-	public synchronized void addRepository(String base, String configString)
+	public synchronized String addRepository(String base, String configString)
 			throws OpenRDFException, IOException {
 		Model graph = parseTurtleGraph(manager, configString, base);
 		Resource node = graph.filter(null, RDF.TYPE,
 				RepositoryConfigSchema.REPOSITORY).subjectResource();
-		addRepository(RepositoryConfig.create(graph, node));
+		RepositoryConfig config = RepositoryConfig.create(graph, node);
+		addRepository(config);
+		return config.getID();
 	}
 
 	public synchronized boolean removeRepository(String id)
@@ -500,11 +516,7 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 		libDir.mkdirs();
 		File jar = File.createTempFile("model", "", libDir);
 		jar.deleteOnExit();
-		RoleMapper mapper = new RoleMapper();
-		new RoleClassLoader(mapper).loadRoles(cl);
-		LiteralManager literals = new LiteralManager(cl);
-		OWLCompiler converter = new OWLCompiler(mapper, literals);
-		converter.setClassLoader(cl);
+		OWLCompiler converter = new OWLCompiler(cl);
 		Model schema = new TreeModel();
 		RepositoryConnection con = repo.getConnection();
 		try {

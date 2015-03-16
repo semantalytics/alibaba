@@ -47,6 +47,7 @@ import org.openrdf.model.URI;
 import org.openrdf.model.Value;
 import org.openrdf.model.ValueFactory;
 import org.openrdf.model.impl.ContextStatementImpl;
+import org.openrdf.model.impl.LinkedHashModel;
 import org.openrdf.model.impl.ValueFactoryImpl;
 import org.openrdf.model.vocabulary.OWL;
 import org.openrdf.model.vocabulary.RDF;
@@ -74,6 +75,10 @@ public class OntologyLoader {
 	private Map<URL, RDFFormat> imported = new LinkedHashMap<URL, RDFFormat>();
 	private ValueFactory vf = ValueFactoryImpl.getInstance();
 
+	public OntologyLoader() {
+		this(new LinkedHashModel());
+	}
+
 	public OntologyLoader(Model model) {
 		this.model = model;
 	}
@@ -95,12 +100,17 @@ public class OntologyLoader {
 		return namespaces;
 	}
 
-	public void loadOntologies(List<URL> urls) throws RDFParseException,
+	public void loadOntologies(Iterable<URL> urls) throws RDFParseException,
 			IOException {
 		for (URL url : urls) {
-			RDFFormat format = loadOntology(url, null, vf.createURI(url.toExternalForm()));
-			imported.put(url, format);
+			loadOntology(url);
 		}
+	}
+
+	public void loadOntology(URL url) throws RDFParseException, IOException {
+		URI graph = vf.createURI(url.toExternalForm());
+		RDFFormat format = loadOntology(url, null, graph);
+		imported.put(url, format);
 	}
 
 	public void followImports() throws RDFParseException, IOException {

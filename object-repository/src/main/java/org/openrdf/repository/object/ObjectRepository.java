@@ -39,7 +39,6 @@ import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.RepositoryException;
 import org.openrdf.repository.contextaware.ContextAwareRepository;
 import org.openrdf.repository.object.exceptions.ObjectStoreConfigException;
-import org.openrdf.repository.object.managers.TypeManager;
 import org.openrdf.store.blob.BlobStore;
 import org.openrdf.store.blob.BlobStoreFactory;
 

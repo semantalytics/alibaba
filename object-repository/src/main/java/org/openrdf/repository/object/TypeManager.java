@@ -26,7 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.openrdf.repository.object.managers;
+package org.openrdf.repository.object;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -40,7 +40,6 @@ import org.openrdf.model.vocabulary.RDF;
 import org.openrdf.model.vocabulary.RDFS;
 import org.openrdf.repository.RepositoryException;
 import org.openrdf.repository.RepositoryResult;
-import org.openrdf.repository.object.ObjectConnection;
 
 /**
  * Reads and manages the rdf:type statements of objects.

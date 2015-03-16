@@ -29,6 +29,7 @@
 package org.openrdf.repository.object.compiler.model;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -55,7 +56,7 @@ public class RDFProperty extends RDFEntity {
 	}
 
 	public File generateAnnotationCode(File dir, JavaNameResolver resolver)
-			throws Exception {
+			throws IOException, ObjectStoreConfigException {
 		File source = createSourceFile(dir, resolver);
 		JavaMessageBuilder builder = new JavaMessageBuilder(source, resolver);
 		annotationHeader(builder);

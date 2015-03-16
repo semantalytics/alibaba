@@ -38,8 +38,6 @@ import java.net.URL;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 
-import org.openrdf.rio.RDFParseException;
-
 /**
  * Packages a directy into a Jar and writes the concept index files.
  * 
@@ -54,7 +52,7 @@ public class JarPacker {
 		this.dir = dir;
 	}
 
-	public void packageJar(File output) throws IOException, RDFParseException {
+	public void packageJar(File output) throws IOException {
 		FileOutputStream stream = new FileOutputStream(output);
 		JarOutputStream jar = new JarOutputStream(stream);
 		try {

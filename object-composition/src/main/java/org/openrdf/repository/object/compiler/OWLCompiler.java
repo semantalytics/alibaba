@@ -36,9 +36,11 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Method;
+import java.lang.reflect.UndeclaredThrowableException;
 import java.net.ConnectException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -64,7 +66,6 @@ import org.openrdf.model.impl.URIImpl;
 import org.openrdf.model.vocabulary.OWL;
 import org.openrdf.model.vocabulary.RDF;
 import org.openrdf.model.vocabulary.RDFS;
-import org.openrdf.repository.RepositoryException;
 import org.openrdf.repository.object.compiler.model.RDFClass;
 import org.openrdf.repository.object.compiler.model.RDFOntology;
 import org.openrdf.repository.object.compiler.model.RDFProperty;
@@ -215,6 +216,13 @@ public class OWLCompiler {
 
 	private static final String JAVA_NS = "java:";
 
+	private static ClassLoader findClassLoader() {
+		ClassLoader ccl = Thread.currentThread().getContextClassLoader();
+		if (ccl == null)
+			return OWLCompiler.class.getClassLoader();
+		return ccl;
+	}
+
 	Runnable helper = new Runnable() {
 		public void run() {
 			try {
@@ -243,7 +251,7 @@ public class OWLCompiler {
 	JavaNameResolver resolver;
 	private Map<URL, RDFFormat> ontologies;
 	private JavaCompiler compiler = new JavaCompiler();
-	private ClassLoader cl = Thread.currentThread().getContextClassLoader();
+	private final ClassLoader cl;
 	private OwlNormalizer normalizer;
 	private boolean pluralForms = false;
 	private boolean resolvingPrefix = false;
@@ -254,9 +262,17 @@ public class OWLCompiler {
 	 * 
 	 */
 	public OWLCompiler() throws ObjectStoreConfigException {
-		if (cl == null) {
-			cl = getClass().getClassLoader();
-		}
+		this(findClassLoader());
+	}
+
+	/**
+	 * Constructs a new compiler instance using the
+	 * existing Java classes referenced in the classpath.
+	 * 
+	 */
+	public OWLCompiler(ClassLoader cl) throws ObjectStoreConfigException {
+		assert cl != null;
+		this.cl = cl;
 		this.mapper = new RoleMapper();
 		new RoleClassLoader(mapper).loadRoles(cl);
 		this.literals = new LiteralManager(cl);
@@ -268,13 +284,11 @@ public class OWLCompiler {
 	 * {@link LiteralManager}.
 	 * 
 	 */
-	public OWLCompiler(RoleMapper mapper, LiteralManager literals) {
-		assert mapper != null && literals != null;
+	public OWLCompiler(RoleMapper mapper, LiteralManager literals, ClassLoader cl) {
+		assert mapper != null && literals != null && cl != null;
+		this.cl = cl;
 		this.mapper = mapper;
 		this.literals = literals;
-		if (cl == null) {
-			cl = getClass().getClassLoader();
-		}
 	}
 
 	/**
@@ -351,13 +365,6 @@ public class OWLCompiler {
 	}
 
 	/**
-	 * Set the classpath used when compiling.
-	 */
-	public void setClassLoader(ClassLoader cl) {
-		this.cl = cl;
-	}
-
-	/**
 	 * All concepts created will extend the give baseClasses.
 	 */
 	public void setBaseClasses(String[] baseClasses) {
@@ -379,23 +386,17 @@ public class OWLCompiler {
 	 * @throws IllegalArgumentException
 	 *             if no concepts found
 	 * @return a ClassLoader with in jar included
+	 * @throws IOException 
+	 * @throws ObjectStoreConfigException 
 	 */
-	public ClassLoader createJar(File jar) throws RepositoryException,
+	public ClassLoader createJar(File jar) throws IOException,
 			ObjectStoreConfigException {
-		try {
-			File target = createTempDir(getClass().getSimpleName());
-			compile(target);
-			JarPacker packer = new JarPacker(target);
-			packer.packageJar(jar);
-			FileUtil.deleteDir(target);
-			return new URLClassLoader(new URL[] { jar.toURI().toURL() }, cl);
-		} catch (ObjectStoreConfigException e) {
-			throw e;
-		} catch (RepositoryException e) {
-			throw e;
-		} catch (Exception e) {
-			throw new RepositoryException(e);
-		}
+		File target = createTempDir(getClass().getSimpleName());
+		compile(target);
+		JarPacker packer = new JarPacker(target);
+		packer.packageJar(jar);
+		FileUtil.deleteDir(target);
+		return new URLClassLoader(new URL[] { jar.toURI().toURL() }, cl);
 	}
 
 	/**
@@ -404,8 +405,11 @@ public class OWLCompiler {
 	 * @throws IllegalArgumentException
 	 *             if no concepts found
 	 * @return list of compiled classes
+	 * @throws IOException 
+	 * @throws ObjectStoreConfigException 
 	 */
-	public List<String> compile(File dir) throws Exception {
+	public List<String> compile(File dir) throws ObjectStoreConfigException,
+			IOException {
 		if (resolver == null) {
 			resolver = buildJavaNameResolver(pkgPrefix, memPrefix, ns, model,
 					normalizer, cl);
@@ -427,8 +431,11 @@ public class OWLCompiler {
 	 * @throws IllegalArgumentException
 	 *             if no concepts found
 	 * @return list of concept classes created
+	 * @throws IOException 
+	 * @throws ObjectStoreConfigException
 	 */
-	public List<String> buildJavaFiles(File dir) throws Exception {
+	public List<String> buildJavaFiles(File dir)
+			throws ObjectStoreConfigException, IOException {
 		if (resolver == null) {
 			resolver = buildJavaNameResolver(pkgPrefix, memPrefix, ns, model,
 					normalizer, cl);
@@ -515,10 +522,24 @@ public class OWLCompiler {
 			}
 		}
 		for (Thread thread1 : threads) {
-			thread1.join();
+			try {
+				thread1.join();
+			} catch (InterruptedException cause) {
+				InterruptedIOException e = new InterruptedIOException(cause.getMessage());
+				e.initCause(cause);
+				throw e;
+			}
 		}
 		if (exception != null)
-			throw exception;
+			try {
+				throw exception;
+			} catch (ObjectStoreConfigException e) {
+				throw new ObjectStoreConfigException(e.getMessage(), e);
+			} catch (IOException e) {
+				throw new IOException(e.getMessage(), e);
+			} catch (Exception e) {
+				throw new UndeclaredThrowableException(e);
+			}
 		if (!methods.isEmpty()) {
 			printClasses(methods, dir, META_INF_BEHAVIOURS);
 			content.addAll(methods);
