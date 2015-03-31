@@ -100,7 +100,9 @@ public class AdviceBehaviourProvider implements BehaviourProvider {
 			AdviceFactory f = service.getAdviserFactory(t);
 			if (f != null) {
 				Advice a = f.createAdvice(method);
-				list.add(new AdviceBehaviourFactory(a, method, t));
+				if (a != null) {
+					list.add(new AdviceBehaviourFactory(a, method, t));
+				}
 			}
 		}
 	}
