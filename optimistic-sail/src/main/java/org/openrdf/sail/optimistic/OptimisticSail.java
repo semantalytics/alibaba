@@ -73,13 +73,13 @@ public class OptimisticSail extends SailWrapper implements NotifyingSail, Federa
 	private boolean readSnapshot = true;
 	private boolean snapshot;
 	private boolean serializable;
-	private ReadWriteLockManager preparing = new WritePrefReadWriteLockManager();
-	private ReadWriteLockManager open = new ReadPrefReadWriteLockManager();
-	private Map<OptimisticConnection, Lock> transactions = new HashMap<OptimisticConnection, Lock>();
+	private final ReadWriteLockManager preparing = new WritePrefReadWriteLockManager();
+	private final ReadWriteLockManager open = new ReadPrefReadWriteLockManager();
+	private final Map<OptimisticConnection, Lock> transactions = new HashMap<OptimisticConnection, Lock>();
 	private volatile Lock preparedLock;
 	private volatile OptimisticConnection prepared;
 	private volatile boolean listenersIsEmpty = true;
-	private Set<SailChangedListener> listeners = new HashSet<SailChangedListener>();
+	private final Set<SailChangedListener> listeners = new HashSet<SailChangedListener>();
 	private FederatedServiceResolver resolver;
 	private FederatedServiceResolverImpl serviceResolverImpl;
 
@@ -156,12 +156,14 @@ public class OptimisticSail extends SailWrapper implements NotifyingSail, Federa
 	}
 
 	@Override
-	public synchronized void shutDown() throws SailException {
+	public void shutDown() throws SailException {
 		try {
 			super.shutDown();
 		} finally {
-			if (serviceResolverImpl != null) {
-				serviceResolverImpl.shutDown();
+			synchronized (this) {
+				if (serviceResolverImpl != null) {
+					serviceResolverImpl.shutDown();
+				}
 			}
 		}
 	}
@@ -200,7 +202,7 @@ public class OptimisticSail extends SailWrapper implements NotifyingSail, Federa
 
 	void begin(OptimisticConnection con) throws InterruptedException {
 		Lock lock = open.getReadLock();
-		synchronized (this) {
+		synchronized (transactions) {
 			assert !transactions.containsKey(con);
 			transactions.put(con, lock);
 		}
@@ -215,26 +217,28 @@ public class OptimisticSail extends SailWrapper implements NotifyingSail, Federa
 		}
 	}
 
-	synchronized void prepare(OptimisticConnection prepared)
+	void prepare(OptimisticConnection prepared)
 			throws InterruptedException, SailException {
-		if (this.prepared != prepared) {
-			while (preparedLock != null && preparedLock.isActive()) {
-				wait();
+		synchronized (transactions) {
+			if (this.prepared != prepared) {
+				while (preparedLock != null && preparedLock.isActive()) {
+					transactions.wait();
+				}
+				assert transactions.containsKey(prepared);
+				preparedLock = preparing.getWriteLock();
+				this.prepared = prepared;
 			}
-			assert transactions.containsKey(prepared);
-			preparedLock = preparing.getWriteLock();
-			this.prepared = prepared;
-		}
-		synchronized (prepared) {
-			Model added = prepared.getAddedModel();
-			Model removed = prepared.getRemovedModel();
-			if (added.isEmpty() && removed.isEmpty())
-				return;
-			for (OptimisticConnection con : transactions.keySet()) {
-				if (con == prepared)
-					continue;
-				con.changed(added, removed);
-			}		
+			synchronized (prepared) {
+				Model added = prepared.getAddedModel();
+				Model removed = prepared.getRemovedModel();
+				if (added.isEmpty() && removed.isEmpty())
+					return;
+				for (OptimisticConnection con : transactions.keySet()) {
+					if (con == prepared)
+						continue;
+					con.changed(added, removed);
+				}
+			}
 		}
 	}
 
@@ -253,29 +257,31 @@ public class OptimisticSail extends SailWrapper implements NotifyingSail, Federa
 		}
 	}
 
-	synchronized void end(OptimisticConnection con) {
-		Lock lock = transactions.get(con);
-		if (lock == null)
-			return; // no active transaction
-		try {
-			transactions.remove(con);
-			if (prepared == con) {
-				preparedLock.release();
-				prepared = null;
-				notify();
+	void end(OptimisticConnection con) {
+		synchronized (transactions) {
+			Lock lock = transactions.get(con);
+			if (lock == null)
+				return; // no active transaction
+			try {
+				transactions.remove(con);
+				if (prepared == con) {
+					preparedLock.release();
+					prepared = null;
+					transactions.notify();
+				}
+			} finally {
+				lock.release();
 			}
-		} finally {
-			lock.release();
 		}
 	}
 
 	void exclusive(OptimisticConnection con) throws InterruptedException {
 		Lock exclusive;
-		synchronized (this) {
+		synchronized (transactions) {
 			transactions.remove(con).release();
 		}
 		exclusive = open.getWriteLock();
-		synchronized (this) {
+		synchronized (transactions) {
 			end(con);
 			transactions.put(con, exclusive);
 		}
