@@ -46,8 +46,6 @@ import javax.xml.stream.XMLResolver;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.util.XMLEventAllocator;
 
-import org.openrdf.http.object.fluid.helpers.ClosingXMLEventReader;
-import org.openrdf.http.object.fluid.helpers.DocumentXMLEventReader;
 
 
 /**
