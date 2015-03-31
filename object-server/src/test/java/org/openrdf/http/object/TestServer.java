@@ -34,7 +34,7 @@ import org.openrdf.OpenRDFException;
 import org.openrdf.annotations.Method;
 import org.openrdf.annotations.Type;
 import org.openrdf.http.object.io.ChannelUtil;
-import org.openrdf.http.object.io.FileUtil;
+import org.openrdf.http.object.io.DirUtil;
 import org.openrdf.http.object.management.JVMUsageMXBean;
 import org.openrdf.http.object.management.KeyStoreMXBean;
 import org.openrdf.http.object.management.ObjectServerMXBean;
@@ -86,8 +86,8 @@ public class TestServer extends TestCase {
 	}
 
 	public void setUp() throws Exception {
-		dataDir = FileUtil.createTempDir("server");
-		FileUtil.deleteOnExit(dataDir);
+		dataDir = DirUtil.createTempDir("server");
+		DirUtil.deleteOnExit(dataDir);
 		server = new Server();
 	}
 
@@ -137,7 +137,7 @@ public class TestServer extends TestCase {
 	public void testKeyStoreMXBean() throws Exception {
 		char[] password = "changeit".toCharArray();
 		File keystore = generateKeyStore("localhost", password);
-		FileUtil.deleteOnExit(keystore);
+		DirUtil.deleteOnExit(keystore);
         final KeyStore identityStore = KeyStore.getInstance(KeyStore.getDefaultType());
         final FileInputStream instream = new FileInputStream(keystore);
         try {

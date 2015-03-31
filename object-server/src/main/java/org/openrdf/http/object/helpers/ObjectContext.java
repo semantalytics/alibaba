@@ -32,23 +32,22 @@ import java.net.InetAddress;
 import java.util.LinkedList;
 import java.util.Queue;
 
+import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
-import org.openrdf.repository.object.ObjectConnection;
 
 public class ObjectContext implements HttpContext {
 
 	private static final String PROTOCOL_SCHEME = "http.protocol.scheme";
 	private static final String NS = ObjectContext.class.getName() + "#";
     private static final String CLIENT_ATTR = NS + "clientAddr";
-    private static final String CONNECTION_ATTR = NS + "connection";
-    private static final String CREDENTIAL_ATTR = NS + "credential";
     private static final String EXCHANGE_ATTR = NS + "exchange";
 	private static final String PROCESSING_ATTR = NS + "processing";
 	private static final String RECEIVED_ATTR = NS + "receivedOn";
 	private static final String TRANSACTION_ATTR = NS + "resourceTransaction";
 	private static final String HEAD_ATTR = NS + "headResponse";
+	private static final String ORIG_REQUEST_ATTR = NS + "originalRequest";
 
     public static ObjectContext adapt(HttpContext context) {
         if (context instanceof ObjectContext) {
@@ -61,9 +60,7 @@ public class ObjectContext implements HttpContext {
     public static ObjectContext fork(HttpContext context) {
     	ObjectContext forked = adapt(new BasicHttpContext(context));
     	forked.setClientAddr(forked.getClientAddr());
-    	forked.setCredential(forked.getCredential());
     	forked.setExchange(forked.getExchange());
-    	forked.setObjectConnection(forked.getObjectConnection());
     	forked.setProtocolScheme(forked.getProtocolScheme());
     	forked.setReceivedOn(forked.getReceivedOn());
     	forked.setResourceTarget(forked.getResourceTarget());
@@ -128,22 +125,6 @@ public class ObjectContext implements HttpContext {
 		setAttribute(CLIENT_ATTR, addr);
 	}
 
-	public synchronized String getCredential() {
-		return getAttribute(CREDENTIAL_ATTR, String.class);
-	}
-
-	public synchronized void setCredential(String credential) {
-		setAttribute(CREDENTIAL_ATTR, credential);
-	}
-
-	public synchronized ObjectConnection getObjectConnection() {
-		return getAttribute(CONNECTION_ATTR, ObjectConnection.class);
-	}
-
-	public synchronized void setObjectConnection(ObjectConnection con) {
-		setAttribute(CONNECTION_ATTR, con);
-	}
-
 	public ResourceTarget getResourceTarget() {
 		return getAttribute(TRANSACTION_ATTR, ResourceTarget.class);
 	}
@@ -158,6 +139,14 @@ public class ObjectContext implements HttpContext {
 
 	public void setDerivedFromHeadResponse(HttpResponse head) {
 		setAttribute(HEAD_ATTR, head);
+	}
+
+	public HttpRequest getOriginalRequest() {
+		return getAttribute(ORIG_REQUEST_ATTR, HttpRequest.class);
+	}
+
+	public void setOriginalRequest(HttpRequest request) {
+		setAttribute(ORIG_REQUEST_ATTR, request);
 	}
 
 	public Exchange getExchange() {

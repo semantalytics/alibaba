@@ -75,8 +75,8 @@ should respond with this query's result. In addition to parameters, the variable
 		<rdfs:isDefinedBy rdf:resource="" />
 	</owl:AnnotationProperty>
 
-	<owl:AnnotationProperty rdf:ID="header">
-		<rdfs:label xml:lang="en">header</rdfs:label>
+	<owl:AnnotationProperty rdf:ID="headerParam">
+		<rdfs:label xml:lang="en">header param</rdfs:label>
 		<rdfs:comment xml:lang="en">Placed on message properties that should be populated with request header values corresponding to the given name</rdfs:comment>
 		<rdfs:isDefinedBy rdf:resource="" />
 	</owl:AnnotationProperty>
@@ -84,6 +84,12 @@ should respond with this query's result. In addition to parameters, the variable
 	<owl:AnnotationProperty rdf:ID="type">
 		<rdfs:label xml:lang="en">type</rdfs:label>
 		<rdfs:comment xml:lang="en">The content type for binary or text representations of objects for this property, or return type for this message class</rdfs:comment>
+		<rdfs:isDefinedBy rdf:resource="" />
+	</owl:AnnotationProperty>
+
+	<owl:AnnotationProperty rdf:ID="header">
+		<rdfs:label xml:lang="en">header</rdfs:label>
+		<rdfs:comment xml:lang="en">Placed on message classes with a static response headers</rdfs:comment>
 		<rdfs:isDefinedBy rdf:resource="" />
 	</owl:AnnotationProperty>
 

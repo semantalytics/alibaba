@@ -14,22 +14,24 @@ public class InterceptorTester implements HttpRequestChainInterceptor {
 	public static int processCount;
 	public static HttpResponse response;
 	public static Header[] responseHeaders;
+	public static HttpRequestChainInterceptor callback;
 
 	@Override
 	public HttpResponse intercept(HttpRequest request, HttpContext context)
 			throws HttpException, IOException {
 		interceptCount++;
-		try {
+		if (callback == null)
 			return response;
-		} finally {
-			response = null;
-		}
+		else
+			return callback.intercept(request, context);
 	}
 
 	@Override
-	public void process(HttpResponse response, HttpContext context)
+	public void process(HttpRequest request, HttpResponse response, HttpContext context)
 			throws HttpException, IOException {
 		processCount++;
+		if (callback != null)
+			callback.process(request, response, context);
 		if (responseHeaders != null && responseHeaders.length > 0) {
 			for (Header hd : responseHeaders) {
 				response.addHeader(hd);

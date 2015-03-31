@@ -16,9 +16,8 @@ import junit.framework.TestCase;
 import org.openrdf.annotations.Method;
 import org.openrdf.annotations.Type;
 import org.openrdf.http.object.io.ChannelUtil;
-import org.openrdf.http.object.io.FileUtil;
-import org.openrdf.http.object.management.ObjectServer;
-import org.openrdf.repository.event.NotifyingRepositoryConnection;
+import org.openrdf.http.object.io.DirUtil;
+import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.object.ObjectConnection;
 import org.openrdf.rio.RDFFormat;
 
@@ -60,8 +59,8 @@ public class TestObjectServer extends TestCase {
 	}
 
 	public void setUp() throws Exception {
-		File dataDir = FileUtil.createTempDir("object-server");
-		FileUtil.deleteOnExit(dataDir);
+		File dataDir = DirUtil.createTempDir("object-server");
+		DirUtil.deleteOnExit(dataDir);
 		server = new ObjectServer(dataDir);
 		server.setPorts(port);
 	}
@@ -71,8 +70,7 @@ public class TestObjectServer extends TestCase {
 	}
 
 	public void testCompile() throws Exception {
-		NotifyingRepositoryConnection sys = server.getSystemRepository()
-				.getConnection();
+		RepositoryConnection sys = server.openSchemaConnection();
 		try {
 			sys.add(new StringReader(PREFIX + "<TestClass> a owl:Class;\n"
 					+ "msg:mixin '" + TestResponse.class.getName()
@@ -100,8 +98,7 @@ public class TestObjectServer extends TestCase {
 	}
 
 	public void testDynamicResources() throws Exception {
-		NotifyingRepositoryConnection sys = server.getSystemRepository()
-				.getConnection();
+		RepositoryConnection sys = server.openSchemaConnection();
 		try {
 			sys.add(new StringReader(PREFIX + "<TestClass> a owl:Class;\n"
 					+ "msg:mixin '" + TestResponse.class.getName()
@@ -129,8 +126,7 @@ public class TestObjectServer extends TestCase {
 	}
 
 	public void testDynamicRepository() throws Exception {
-		NotifyingRepositoryConnection sys = server.getSystemRepository()
-				.getConnection();
+		RepositoryConnection sys = server.openSchemaConnection();
 		try {
 			sys.add(new StringReader(PREFIX + "<TestClass> a owl:Class;\n"
 					+ "msg:mixin '" + TestResponse.class.getName()
@@ -160,8 +156,7 @@ public class TestObjectServer extends TestCase {
 	public void testRecompile() throws Exception {
 		server.init();
 		server.start();
-		NotifyingRepositoryConnection sys = server.getSystemRepository()
-				.getConnection();
+		RepositoryConnection sys = server.openSchemaConnection();
 		try {
 			sys.add(new StringReader(PREFIX + "<TestClass> a owl:Class;\n"
 					+ "msg:mixin '" + TestResponse.class.getName()

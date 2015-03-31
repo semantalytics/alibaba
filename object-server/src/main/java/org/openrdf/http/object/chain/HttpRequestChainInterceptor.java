@@ -36,10 +36,20 @@ import org.apache.http.HttpResponse;
 import org.apache.http.protocol.HttpContext;
 
 public interface HttpRequestChainInterceptor {
+	/**
+	 * Intercept the request by returning a non-null response otherwise returns
+	 * null.
+	 * 
+	 * @param request
+	 * @param context
+	 * @return
+	 * @throws HttpException
+	 * @throws IOException
+	 */
 	HttpResponse intercept(HttpRequest request, HttpContext context)
 			throws HttpException, IOException;
 
-	void process(HttpResponse response, HttpContext context)
+	void process(HttpRequest request, HttpResponse response, HttpContext context)
 			throws HttpException, IOException;
 
 }

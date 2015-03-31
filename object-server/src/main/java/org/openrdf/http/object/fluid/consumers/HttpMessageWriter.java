@@ -46,6 +46,7 @@ import org.apache.http.ProtocolVersion;
 import org.apache.http.RequestLine;
 import org.apache.http.StatusLine;
 import org.apache.http.message.BasicHeader;
+import org.apache.http.message.BasicHttpResponse;
 import org.apache.http.util.EntityUtils;
 import org.openrdf.OpenRDFException;
 import org.openrdf.http.object.fluid.Consumer;
@@ -111,7 +112,10 @@ public class HttpMessageWriter implements Consumer<HttpMessage> {
 					throws IOException, OpenRDFException, XMLStreamException,
 					TransformerException, ParserConfigurationException,
 					SAXException {
-				return (HttpResponse) result;
+				HttpResponse resp = new BasicHttpResponse(((HttpResponse) result).getStatusLine());
+				resp.setHeaders(result.getAllHeaders());
+				resp.setEntity(((HttpResponse) result).getEntity());
+				return resp;
 			}
 
 			public String toString() {

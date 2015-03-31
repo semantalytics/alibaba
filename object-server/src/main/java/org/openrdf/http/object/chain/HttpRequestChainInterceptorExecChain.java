@@ -31,13 +31,13 @@ public class HttpRequestChainInterceptorExecChain implements AsyncExecChain {
 	}
 
 	@Override
-	public Future<HttpResponse> execute(HttpHost host, HttpRequest request,
+	public Future<HttpResponse> execute(HttpHost host, final HttpRequest request,
 			final HttpContext context, FutureCallback<HttpResponse> callback) {
 		try {
 			callback = new ResponseCallback(callback) {
 				public void completed(HttpResponse result) {
 					try {
-						process(result, context);
+						process(request, result, context);
 						super.completed(result);
 					} catch (IOException ex) {
 						super.failed(ex);
@@ -56,6 +56,8 @@ public class HttpRequestChainInterceptorExecChain implements AsyncExecChain {
 			callback.failed(ex);
 		} catch (HttpException ex) {
 			callback.failed(ex);
+		} catch (RuntimeException ex) {
+			callback.failed(ex);
 		}
 		return delegate.execute(host, request, context, callback);
 	}
@@ -70,10 +72,10 @@ public class HttpRequestChainInterceptorExecChain implements AsyncExecChain {
 		return null;
 	}
 
-	void process(HttpResponse response, HttpContext context)
+	void process(HttpRequest request, HttpResponse response, HttpContext context)
 			throws HttpException, IOException {
 		for (HttpRequestChainInterceptor interceptor : interceptors) {
-			interceptor.process(response, context);
+			interceptor.process(request, response, context);
 		}
 	}
 

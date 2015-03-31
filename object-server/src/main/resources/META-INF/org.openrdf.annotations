@@ -1,4 +1,6 @@
 org.openrdf.annotations.Header#value
+org.openrdf.annotations.HeaderParam#value
+org.openrdf.annotations.Method#value
 org.openrdf.annotations.Param#value
 org.openrdf.annotations.Path#value
 org.openrdf.annotations.Type#value

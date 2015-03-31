@@ -75,7 +75,7 @@ public class OptionsHandler implements AsyncExecChain {
 		final ResourceTarget trans = ObjectContext.adapt(context).getResourceTarget();
 		final Request req = new Request(request, context);
 		final String m = req.getMethod();
-		if ("OPTIONS".equals(m) && !trans.isHandled(request)) {
+		if ("OPTIONS".equals(m) && trans.getHandlerMethod(request) == null) {
 			HttpUriResponse rb = new ResponseBuilder(request, context).noContent();
 			addPreflightHeaders(trans, req, rb);
 			addDiscoveryHeaders(trans, req, rb);

@@ -34,11 +34,9 @@ import org.openrdf.query.resultio.text.tsv.SPARQLResultsTSVWriter;
 import org.openrdf.repository.Repository;
 import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.RepositoryException;
-import org.openrdf.repository.contextaware.ContextAwareRepository;
 import org.openrdf.repository.object.ObjectConnection;
 import org.openrdf.repository.object.ObjectRepository;
 import org.openrdf.repository.object.exceptions.ObjectStoreConfigException;
-import org.openrdf.repository.sail.config.RepositoryResolver;
 import org.openrdf.rio.ParserConfig;
 import org.openrdf.rio.helpers.BasicParserSettings;
 import org.openrdf.rio.turtle.TurtleWriter;
@@ -50,29 +48,29 @@ public class RepositoryMXBeanImpl implements RepositoryMXBean {
 
 	private final org.slf4j.Logger logger = LoggerFactory.getLogger(RepositoryMXBeanImpl.class);
 	private final ParserConfig parserConfig = new ParserConfig();
-	private final RepositoryResolver resolver;
+	private final ObjectRepositoryManager manager;
 	private final String id;
 
-	public RepositoryMXBeanImpl(RepositoryResolver resolver, String id) {
-		this.resolver = resolver;
+	public RepositoryMXBeanImpl(ObjectRepositoryManager manager, String id) {
+		this.manager = manager;
 		this.id = id;
 		parserConfig.set(BasicParserSettings.PRESERVE_BNODE_IDS, true);
 	}
 
 	public int getMaxQueryTime() throws OpenRDFException {
-		return getContextAwareRepository().getMaxQueryTime();
+		return getObjectRepository().getMaxQueryTime();
 	}
 
 	public void setMaxQueryTime(int maxQueryTime) throws OpenRDFException {
-		getContextAwareRepository().setMaxQueryTime(maxQueryTime);
+		getObjectRepository().setMaxQueryTime(maxQueryTime);
 	}
 
 	public boolean isIncludeInferred() throws OpenRDFException {
-		return getContextAwareRepository().isIncludeInferred();
+		return getObjectRepository().isIncludeInferred();
 	}
 
 	public void setIncludeInferred(boolean includeInferred) throws OpenRDFException {
-		getContextAwareRepository().setIncludeInferred(includeInferred);
+		getObjectRepository().setIncludeInferred(includeInferred);
 	}
 
 	public BlobStore getBlobStore() throws OpenRDFException, ObjectStoreConfigException {
@@ -190,15 +188,11 @@ public class RepositoryMXBeanImpl implements RepositoryMXBean {
 	}
 
 	private ObjectRepository getObjectRepository() throws OpenRDFException {
-		return (ObjectRepository) getRepository();
-	}
-
-	private ContextAwareRepository getContextAwareRepository() throws OpenRDFException {
-		return (ContextAwareRepository) getRepository();
+		return manager.getObjectRepository(id);
 	}
 
 	private Repository getRepository() throws OpenRDFException {
-		return resolver.getRepository(id);
+		return manager.getRepository(id);
 	}
 
 }

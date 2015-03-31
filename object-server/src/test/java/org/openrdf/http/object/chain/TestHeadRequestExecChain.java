@@ -1,5 +1,6 @@
 package org.openrdf.http.object.chain;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -7,6 +8,7 @@ import java.util.concurrent.TimeUnit;
 import junit.framework.TestCase;
 
 import org.apache.http.Header;
+import org.apache.http.HttpException;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
@@ -16,8 +18,10 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.message.BasicHttpEntityEnclosingRequest;
 import org.apache.http.message.BasicHttpRequest;
 import org.apache.http.message.BasicHttpResponse;
+import org.apache.http.protocol.HttpContext;
 import org.apache.http.util.EntityUtils;
 import org.openrdf.annotations.Method;
+import org.openrdf.annotations.Path;
 import org.openrdf.annotations.Type;
 import org.openrdf.http.object.exceptions.BadGateway;
 import org.openrdf.http.object.helpers.ObjectContext;
@@ -34,6 +38,8 @@ public class TestHeadRequestExecChain extends TestCase {
 	private static final String RESOURCE = "http://example.org/";
 
 	public static class TestResponse {
+		public static int counter;
+
 		@Method("HEAD")
 		public HttpResponse head() {
 			HttpResponse head = new BasicHttpResponse(HttpVersion.HTTP_1_1, 200, "OK");
@@ -44,12 +50,31 @@ public class TestHeadRequestExecChain extends TestCase {
 		@Method("GET")
 		@Type("text/plain")
 		public String get() {
+			counter++;
 			return "Hello World!";
 		}
 
 		@Method("POST")
 		public void post(@Type("text/plain") String text) {
+			counter++;
 			System.out.println(text);
+		}
+
+		@Method("GET")
+		@Path("etag")
+		@Type("text/plain")
+		@org.openrdf.annotations.Header("ETag:\"tag\"")
+		public String getETag() {
+			counter++;
+			return "Hello World!";
+		}
+
+		@Method("GET")
+		@Path("intercept-etag")
+		@Type("text/plain")
+		public String getInterceptETag() {
+			counter++;
+			return "Hello World!";
 		}
 	}
 
@@ -103,6 +128,71 @@ public class TestHeadRequestExecChain extends TestCase {
 		HttpResponse resp = execute(request);
 		assertEquals(resp.getStatusLine().getReasonPhrase(), 204, resp
 				.getStatusLine().getStatusCode());
+	}
+
+	public void testGetETagHelloWorld() throws Exception {
+		TestResponse.counter = 0;
+		InterceptorTester.callback = new HttpRequestChainInterceptor() {
+			
+			@Override
+			public HttpResponse intercept(HttpRequest request,
+					HttpContext context) throws HttpException, IOException {
+				String m = request.getRequestLine().getMethod();
+				HttpRequest or = ObjectContext.adapt(context)
+						.getOriginalRequest();
+				assertTrue("GET".equals(m) || or != null
+						&& "GET".equals(or.getRequestLine().getMethod()));
+				return null;
+			}
+			
+			@Override
+			public void process(HttpRequest request, HttpResponse response,
+					HttpContext context) throws HttpException, IOException {
+				assertTrue(String.valueOf(response.getFirstHeader("Content-Type")).contains("text/plain"));
+			}
+		};
+		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE + "etag",
+				HttpVersion.HTTP_1_1);
+		request.setHeader("Accept", "text/plain");
+		HttpResponse resp = execute(request);
+		assertEquals(resp.getStatusLine().getReasonPhrase(), 200, resp
+				.getStatusLine().getStatusCode());
+		assertEquals("\"tag\"", resp.getFirstHeader("ETag").getValue());
+		execute(request);
+		InterceptorTester.callback = null;
+		assertEquals(1, TestResponse.counter);
+	}
+
+	public void testGetInterceptETagHelloWorld() throws Exception {
+		TestResponse.counter = 0;
+		InterceptorTester.callback = new HttpRequestChainInterceptor() {
+			
+			@Override
+			public HttpResponse intercept(HttpRequest request,
+					HttpContext context) throws HttpException, IOException {
+				String m = request.getRequestLine().getMethod();
+				HttpRequest or = ObjectContext.adapt(context)
+						.getOriginalRequest();
+				assertTrue("GET".equals(m)
+						|| "GET".equals(or.getRequestLine().getMethod()));
+				return null;
+			}
+			
+			@Override
+			public void process(HttpRequest request, HttpResponse response,
+					HttpContext context) throws HttpException, IOException {
+				response.addHeader("ETag", "\"intercept-etag\"");
+			}
+		};
+		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE + "intercept-etag",
+				HttpVersion.HTTP_1_1);
+		request.setHeader("Accept", "text/plain");
+		HttpResponse resp = execute(request);
+		assertEquals(resp.getStatusLine().getReasonPhrase(), 200, resp
+				.getStatusLine().getStatusCode());
+		execute(request);
+		InterceptorTester.callback = null;
+		assertEquals(1, TestResponse.counter);
 	}
 
 	private HttpResponse execute(HttpRequest request)

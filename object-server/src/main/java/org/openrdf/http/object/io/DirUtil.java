@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 3 Round Stones Inc., Some rights reserved.
+ * Copyright (c) 2010, Zepheira LLC, Some rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -26,24 +26,61 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.openrdf.annotations;
+package org.openrdf.http.object.io;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
-import org.openrdf.repository.object.vocabulary.MSG;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
 
 /**
- * Placed on methods with a static response headers
+ * Singleton that will delete directory on normal JVM exit.
  * 
  * @author James Leigh
  * 
  */
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ ElementType.TYPE, ElementType.METHOD })
-public @interface Header {
-	@Iri(MSG.NAMESPACE + "header")
-	String[] value();
+public class DirUtil {
+	static final Collection<File> temporary = new ArrayList<File>();
+
+	public static File createTempDir(String prefix) throws IOException {
+		String tmpDirStr = System.getProperty("java.io.tmpdir");
+		if (tmpDirStr == null) {
+			tmpDirStr = "tmp";
+		}
+		File tmpDir = new File(tmpDirStr);
+		if (!tmpDir.exists()) {
+			tmpDir.mkdirs();
+		}
+		File dir = File.createTempFile(prefix, "", tmpDir);
+		dir.delete();
+		dir.mkdirs();
+		return dir;
+	}
+
+	public static void deleteOnExit(File dir) {
+		synchronized (temporary) {
+			if (temporary.isEmpty()) {
+				Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+					public void run() {
+						synchronized (temporary) {
+							for (File dir : temporary) {
+								deleteFileOrDir(dir, 256);
+							}
+						}
+					}
+				}, "Temporary Directory Cleanup"));
+			}
+			temporary.add(dir);
+		}
+	}
+
+	static void deleteFileOrDir(File dir, int max) {
+		File[] listFiles = dir.listFiles();
+		if (listFiles != null && max > 0) {
+			for (File file : listFiles) {
+				deleteFileOrDir(file, max - 1);
+			}
+		}
+		dir.delete();
+	}
 }

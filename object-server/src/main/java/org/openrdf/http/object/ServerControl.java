@@ -106,8 +106,8 @@ public class ServerControl {
 				.desc("Remove SPARQL endpoint repository from server");
 		commands.option("endpoint").arg("SPARQL endpoint URL")
 				.desc("Adds or updates SPARQL endpoint URL");
-		commands.require("c", "conf").arg("file")
-				.desc("The local repository config file to read settings from");
+		commands.option("c", "conf").arg("file")
+				.desc("The local repository config file to update with");
 		commands.option("l", "list").desc("List endpoint IDs");
 		commands.option("i", "id").arg("Endpoint ID")
 				.desc("Endpoint to modify");
@@ -457,6 +457,7 @@ public class ServerControl {
 	}
 
 	private void setPid(String pid) throws Exception {
+		info("Connecting to " + pid);
 		vm = getRemoteVirtualMachine(pid);
 		mbsc = getMBeanConnection(vm);
 	}

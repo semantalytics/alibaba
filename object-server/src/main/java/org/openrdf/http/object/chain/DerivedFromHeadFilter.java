@@ -29,113 +29,114 @@
  */
 package org.openrdf.http.object.chain;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Future;
 
 import org.apache.http.Header;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpException;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
+import org.apache.http.ProtocolVersion;
+import org.apache.http.RequestLine;
+import org.apache.http.concurrent.BasicFuture;
 import org.apache.http.concurrent.FutureCallback;
+import org.apache.http.message.BasicHttpRequest;
 import org.apache.http.protocol.HttpContext;
+import org.openrdf.http.object.helpers.ChainedFutureCallback;
 import org.openrdf.http.object.helpers.ObjectContext;
-import org.openrdf.http.object.helpers.Request;
-import org.openrdf.http.object.helpers.ResourceTarget;
 import org.openrdf.http.object.helpers.ResponseCallback;
 
 /**
- * Copies HEAD response responseHeaders to other responses.
+ * Stores HEAD response response for use with other filters.
  * 
  * @author James Leigh
  * 
  */
-public class ContentHeadersFilter implements AsyncExecChain {
+public class DerivedFromHeadFilter implements AsyncExecChain {
 	private static final Set<String> contentHeaders = new HashSet<String>(
 			Arrays.asList("age", "cache-control", "content-encoding",
 					"content-language", "content-length", "content-md5",
 					"content-disposition", "content-range", "content-type",
 					"transfer-encoding", "expires", "location", "pragma", "refresh"));
-	private final AsyncExecChain delegate;
+	final AsyncExecChain delegate;
 
-	public ContentHeadersFilter(AsyncExecChain delegate) {
+	public DerivedFromHeadFilter(AsyncExecChain delegate) {
 		this.delegate = delegate;
 	}
 
 	@Override
-	public Future<HttpResponse> execute(HttpHost target,
+	public Future<HttpResponse> execute(final HttpHost target,
 			final HttpRequest request, final HttpContext context,
+			final FutureCallback<HttpResponse> callback) {
+		if ("HEAD".equals(request.getRequestLine().getMethod()))
+			return delegate.execute(target, request, context, callback);
+		HttpRequest head = asHeadRequest(request);
+		final ObjectContext ctx = ObjectContext.adapt(context);
+		final BasicFuture<HttpResponse> future = new BasicFuture<HttpResponse>(callback);
+		final ChainedFutureCallback chained = new ChainedFutureCallback(future);
+		ctx.setOriginalRequest(request);
+		delegate.execute(target, head, context, new ResponseCallback(chained) {
+			public void completed(HttpResponse headResponse) {
+				try {
+					ctx.setDerivedFromHeadResponse(headResponse);
+					ctx.setOriginalRequest(null);
+					delegateRequest(target, request, context, chained);
+				} catch (RuntimeException ex) {
+					failed(ex);
+				}
+			}
+
+			public void failed(Exception ex) {
+				ctx.setOriginalRequest(null);
+				super.failed(ex);
+			}
+
+			public void cancelled() {
+				ctx.setOriginalRequest(null);
+				super.cancelled();
+			}
+		});
+		return future;
+	}
+
+	Future<HttpResponse> delegateRequest(HttpHost target,
+			HttpRequest request, HttpContext context,
 			FutureCallback<HttpResponse> callback) {
 		final ObjectContext ctx = ObjectContext.adapt(context);
-		final Request req = new Request(request, ctx);
 		return delegate.execute(target, request, context, new ResponseCallback(callback) {
-			public void completed(HttpResponse result) {
+			public void completed(HttpResponse rb) {
 				try {
-					HttpResponse head = ctx.getDerivedFromHeadResponse();
-					HttpRequest oreq = ctx.getOriginalRequest();
-					ResourceTarget resource = ctx.getResourceTarget();
-					if (head == null && oreq != null
-							&& resource.getHandlerMethod(req) != null) {
-						head = resource.head(oreq);
-					}
-					addHeaders(req, context, head, result);
-					super.completed(result);
+					ctx.setDerivedFromHeadResponse(null);
+					super.completed(rb);
 				} catch (RuntimeException ex) {
-					super.failed(ex);
-				} catch (IOException ex) {
-					super.failed(ex);
-				} catch (HttpException ex) {
-					super.failed(ex);
+					failed(ex);
 				}
+			}
+
+			public void failed(Exception ex) {
+				ctx.setDerivedFromHeadResponse(null);
+				super.failed(ex);
+			}
+
+			public void cancelled() {
+				ctx.setDerivedFromHeadResponse(null);
+				super.cancelled();
 			}
 		});
 	}
 
-	void addHeaders(Request req, HttpContext context, HttpResponse head,
-			HttpResponse rb) {
-		if (head != null) {
-			Header derivedFrom = head.getFirstHeader("Content-Version");
-			Header version = rb.getFirstHeader("Content-Version");
-			if (version != null && derivedFrom != null
-					&& !version.getValue().equals(derivedFrom.getValue())) {
-				for (Header hd : head.getHeaders("Content-Version")) {
-					rb.addHeader("Derived-From", hd.getValue());
-				}
-			}
-			int code = rb.getStatusLine().getStatusCode();
-			for (Header hd : head.getAllHeaders()) {
-				String name = hd.getName();
-				boolean safe = "GET".equals(req.getMethod()) || "HEAD".equals(req.getMethod());
-				if (safe && code < 400 && code != 304
-						|| !contentHeaders.contains(name.toLowerCase())) {
-					addIfAbsent(name, head, rb);
-				}
+	private HttpRequest asHeadRequest(HttpRequest request) {
+		RequestLine line = request.getRequestLine();
+		ProtocolVersion ver = line.getProtocolVersion();
+		BasicHttpRequest head = new BasicHttpRequest("HEAD", line.getUri(), ver);
+		for (Header header : request.getAllHeaders()) {
+			if (!contentHeaders.contains(header.getName().toLowerCase())) {
+				head.addHeader(header);
 			}
 		}
-		HttpEntity entity = rb.getEntity();
-		if (entity != null) {
-			if (!rb.containsHeader("Content-Encoding") && entity.getContentEncoding() != null) {
-				rb.setHeader(entity.getContentEncoding());
-			}
-			if (!rb.containsHeader("Content-Type") && entity.getContentType() != null) {
-				rb.setHeader(entity.getContentType());
-			}
-			if (!rb.containsHeader("Content-Length") && entity.getContentLength() >= 0) {
-				rb.setHeader("Content-Length", Long.toString(entity.getContentLength()));
-			}
-		}
-	}
-
-	private void addIfAbsent(String name, HttpResponse head, HttpResponse rb) {
-		if (!rb.containsHeader(name) && head.containsHeader(name)) {
-			for (Header hd : head.getHeaders(name)) {
-				rb.addHeader(hd);
-			}
-		}
+		return head;
 	}
 
 }

@@ -13,7 +13,7 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.message.BasicHttpEntityEnclosingRequest;
 import org.apache.http.message.BasicHttpRequest;
 import org.apache.http.util.EntityUtils;
-import org.openrdf.annotations.Header;
+import org.openrdf.annotations.HeaderParam;
 import org.openrdf.annotations.Iri;
 import org.openrdf.annotations.Method;
 import org.openrdf.annotations.Param;
@@ -89,21 +89,21 @@ public class TestResourceTarget extends TestCase {
 		@Method("GET")
 		@Path("cookie")
 		@Type("text/plain")
-		public String echoCookie(@Header("Cookie") String cookie) {
+		public String echoCookie(@HeaderParam("Biscut") String cookie) {
 			return cookie;
 		}
 
 		@Method("GET")
 		@Path("cookie2")
 		@Type("text/plain")
-		public String echoCookie2(@Header("Cookie") String[] cookie) {
+		public String echoCookie2(@HeaderParam("Biscut") String[] cookie) {
 			return Arrays.asList(cookie).toString();
 		}
 
 		@Method("GET")
 		@Path("accept")
 		@Type("text/plain")
-		public String echoAccept(@Header("Accept") @Param("accept") String[] accept) {
+		public String echoAccept(@HeaderParam("Accept") @Param("accept") String[] accept) {
 			String str = Arrays.toString(accept);
 			return str.substring(1, str.length()-1);
 		}
@@ -195,7 +195,7 @@ public class TestResourceTarget extends TestCase {
 
 	public void testAllowedHeaders() throws Exception {
 		ResourceTarget target = getResource(RESOURCE);
-		assertEquals(Collections.singleton("Cookie"), target.getAllowedHeaders("GET", RESOURCE + "cookie"));
+		assertEquals(Collections.singleton("Biscut"), target.getAllowedHeaders("GET", RESOURCE + "cookie"));
 		assertEquals(Collections.singleton("Accept"), target.getAllowedHeaders("GET", RESOURCE + "accept"));
 	}
 
@@ -294,20 +294,20 @@ public class TestResourceTarget extends TestCase {
 	public void testInvokeHeader() throws Exception {
 		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE + "cookie", HttpVersion.HTTP_1_1);
-		request.setHeader("Cookie", "yum");
+		request.setHeader("Biscut", "yum");
 		HttpUriResponse resp = target.invoke(request);
 		assertEquals("yum", EntityUtils.toString(resp.getEntity()));
-		assertTrue(Arrays.toString(resp.getHeaders("Vary")).contains("Cookie"));
+		assertTrue(Arrays.toString(resp.getHeaders("Vary")).contains("Biscut"));
 	}
 
 	public void testInvokeMultiHeader() throws Exception {
 		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE + "cookie2", HttpVersion.HTTP_1_1);
-		request.addHeader("Cookie", "hum");
-		request.addHeader("Cookie", "yum");
+		request.addHeader("Biscut", "hum");
+		request.addHeader("Biscut", "yum");
 		HttpUriResponse resp = target.invoke(request);
 		assertEquals("[hum, yum]", EntityUtils.toString(resp.getEntity()));
-		assertTrue(Arrays.toString(resp.getHeaders("Vary")).contains("Cookie"));
+		assertTrue(Arrays.toString(resp.getHeaders("Vary")).contains("Biscut"));
 	}
 
 	public void testInvokeQueryParam() throws Exception {

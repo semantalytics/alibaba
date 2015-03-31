@@ -105,7 +105,6 @@ public class TransactionHandler implements AsyncExecChain {
 			boolean success = false;
 			try {
 				con.begin();
-				context.setObjectConnection(con);
 				RDFObject object = getRequestedObject(con, req.getIRI());
 				final ResourceTarget op = new ResourceTarget(object, context);
 				context.setResourceTarget(op);
@@ -122,21 +121,18 @@ public class TransactionHandler implements AsyncExecChain {
 							failed(ex);
 						} finally {
 							context.setResourceTarget(null);
-							context.setObjectConnection(null);
 						}
 					}
 
 					public void failed(Exception ex) {
 						endTransaction(con);
 						context.setResourceTarget(null);
-						context.setObjectConnection(null);
 						super.failed(ex);
 					}
 
 					public void cancelled() {
 						endTransaction(con);
 						context.setResourceTarget(null);
-						context.setObjectConnection(null);
 						super.cancelled();
 					}
 				});

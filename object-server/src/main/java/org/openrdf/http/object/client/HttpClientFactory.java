@@ -55,7 +55,7 @@ import org.apache.http.impl.execchain.ClientExecChain;
 import org.apache.http.message.BasicHeader;
 import org.apache.http.protocol.HttpContext;
 import org.openrdf.http.object.Version;
-import org.openrdf.http.object.io.FileUtil;
+import org.openrdf.http.object.io.DirUtil;
 
 /**
  * Manages the connections and cache entries for outgoing requests.
@@ -69,8 +69,8 @@ public class HttpClientFactory implements Closeable {
 	static HttpClientFactory instance;
 	static {
 		try {
-			File dir = FileUtil.createTempDir("http-client-cache");
-			FileUtil.deleteOnExit(dir);
+			File dir = DirUtil.createTempDir("http-client-cache");
+			DirUtil.deleteOnExit(dir);
 			setCacheDirectory(dir);
 		} catch (IOException e) {
 			throw new AssertionError(e);

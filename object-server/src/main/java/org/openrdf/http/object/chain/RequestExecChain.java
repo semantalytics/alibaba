@@ -102,13 +102,15 @@ public class RequestExecChain implements AsyncExecChain, ClientExecChain {
 		handler = new NotFoundHandler(handler);
 		// exec in triaging thread
 		AsyncExecChain filter = new PooledExecChain(handler, handling);
+		filter = new GETHeadResponseFilter(filter);
+		filter = new ResponseExceptionHandler(filter);
 		filter = new ExpectContinueHandler(filter);
 		filter = new OptionsHandler(filter);
+		filter = new ContentHeadersFilter(filter);
+		filter = new HttpRequestChainInterceptorExecChain(filter);
 		filter = remoteCache = new ModifiedSinceHandler(filter);
 		filter = new UnmodifiedSinceHandler(filter);
-		filter = new ResponseExceptionHandler(filter);
-		filter = new HttpRequestChainInterceptorExecChain(filter);
-		filter = new ContentHeadersFilter(filter);
+		filter = new DerivedFromHeadFilter(filter);
 		filter = transaction = new TransactionHandler(filter, closing);
 		filter = new GZipFilter(filter);
 		// exec in i/o thread

@@ -18,7 +18,7 @@ import org.apache.commons.io.FileUtils;
 import org.openrdf.OpenRDFException;
 import org.openrdf.annotations.Method;
 import org.openrdf.annotations.Type;
-import org.openrdf.http.object.io.FileUtil;
+import org.openrdf.http.object.io.DirUtil;
 import org.openrdf.http.object.management.ObjectServerMXBean;
 import org.openrdf.model.URI;
 import org.openrdf.repository.object.ObjectConnection;
@@ -67,8 +67,8 @@ public class TestServerControl extends TestCase {
 	}
 
 	public void setUp() throws Exception {
-		dataDir = FileUtil.createTempDir("server");
-		FileUtil.deleteOnExit(dataDir);
+		dataDir = DirUtil.createTempDir("server");
+		DirUtil.deleteOnExit(dataDir);
 		control = new ServerControl();
 	}
 
@@ -102,7 +102,7 @@ public class TestServerControl extends TestCase {
 	}
 
 	public void testListRepositories() throws Exception {
-		control.init("-d", dataDir.getAbsolutePath(), "-p", port, "-add", "http://example.com/sparql", "-x",
+		control.init("-d", dataDir.getAbsolutePath(), "-p", port, "-endpoint", "http://example.com/sparql", "-x",
 				"http://example.com/", "-list");
 		control.start();
 	}

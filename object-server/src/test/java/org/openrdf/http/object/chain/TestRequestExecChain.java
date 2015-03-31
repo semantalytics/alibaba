@@ -337,17 +337,19 @@ public class TestRequestExecChain extends TestCase {
 		chain.resetCacheNow();
 		InterceptorTester.interceptCount = 0;
 		InterceptorTester.processCount = 0;
+		InterceptorTester.callback = null;
 		InterceptorTester.response = new BasicHttpResponse(
 				HttpVersion.HTTP_1_1, 405, "Testing Authorization");
 		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE,
 				HttpVersion.HTTP_1_1);
 		request.setHeader("Accept", "text/plain");
 		assertEquals(405, execute(request).getStatusLine().getStatusCode());
-		assertEquals(1, InterceptorTester.interceptCount);
-		assertEquals(1, InterceptorTester.processCount);
-		assertEquals(200, execute(request).getStatusLine().getStatusCode());
+		InterceptorTester.response = null;
 		assertEquals(2, InterceptorTester.interceptCount);
 		assertEquals(2, InterceptorTester.processCount);
+		assertEquals(200, execute(request).getStatusLine().getStatusCode());
+		assertEquals(4, InterceptorTester.interceptCount);
+		assertEquals(4, InterceptorTester.processCount);
 	}
 
 	public void testContentVersion() throws Exception {

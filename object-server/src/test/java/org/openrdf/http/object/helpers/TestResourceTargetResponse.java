@@ -12,8 +12,6 @@ import org.openrdf.annotations.Method;
 import org.openrdf.annotations.Path;
 import org.openrdf.annotations.Type;
 import org.openrdf.http.object.client.HttpUriResponse;
-import org.openrdf.http.object.helpers.ObjectContext;
-import org.openrdf.http.object.helpers.ResourceTarget;
 import org.openrdf.model.ValueFactory;
 import org.openrdf.model.vocabulary.RDF;
 import org.openrdf.query.QueryEvaluationException;
@@ -29,7 +27,7 @@ import org.openrdf.sail.memory.MemoryStore;
 public class TestResourceTargetResponse extends TestCase {
 	private static final String RESOURCE = "http://example.com/";
 
-	public static class TestResponse {
+	public static abstract class TestResponse {
 
 		@Method("POST")
 		@Path("echo")
