@@ -212,8 +212,6 @@ public class MediaType implements Serializable {
 			return isParametersAcceptable(accept);
 		if (getSubType().endsWith("+" + accept.getSubType()))
 			return isParametersAcceptable(accept);
-		if (accept.getSubType().endsWith("+" + getSubType()))
-			return isParametersAcceptable(accept);
 		return false;
 	}
 
