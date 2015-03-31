@@ -17,6 +17,8 @@
 package org.openrdf.http.object.client;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
@@ -26,11 +28,10 @@ import org.apache.http.HttpResponse;
 import org.apache.http.HttpResponseInterceptor;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.protocol.HttpCoreContext;
-import org.openrdf.http.object.util.DomainNameSystemResolver;
 
 public class GUnzipInterceptor implements HttpResponseInterceptor {
-	private static final String hostname = DomainNameSystemResolver.getInstance().getLocalHostName();
-	private static final String WARN_214 = "214 " + hostname
+	private final String hostname = getLocalHostName();
+	private final String WARN_214 = "214 " + hostname
 			+ " \"Transformation applied\"";
 
 	@Override
@@ -62,5 +63,13 @@ public class GUnzipInterceptor implements HttpResponseInterceptor {
 			return centity;
 		}
 		return new GUnzipEntity(entity);
+	}
+
+	private String getLocalHostName() {
+		try {
+			return InetAddress.getLocalHost().getHostName().toLowerCase();
+		} catch (UnknownHostException e) {
+			return "localhost";
+		}
 	}
 }

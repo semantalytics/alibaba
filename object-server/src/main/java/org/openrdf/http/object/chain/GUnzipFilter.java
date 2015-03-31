@@ -29,6 +29,8 @@
  */
 package org.openrdf.http.object.chain;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.concurrent.Future;
 
 import org.apache.http.Header;
@@ -45,7 +47,6 @@ import org.openrdf.http.object.client.GUnzipEntity;
 import org.openrdf.http.object.client.GZipEntity;
 import org.openrdf.http.object.helpers.Request;
 import org.openrdf.http.object.helpers.ResponseCallback;
-import org.openrdf.http.object.util.DomainNameSystemResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,8 +57,8 @@ import org.slf4j.LoggerFactory;
 public class GUnzipFilter implements AsyncExecChain {
 	private static final BasicStatusLine STATUS_203 = new BasicStatusLine(
 			HttpVersion.HTTP_1_1, 203, "Non-Authoritative Information");
-	private static final String hostname = DomainNameSystemResolver.getInstance().getLocalHostName();
-	private static final String WARN_214 = "214 " + hostname
+	private final String hostname = getLocalHostName();
+	private final String WARN_214 = "214 " + hostname
 			+ " \"Transformation applied\"";
 	private final Logger logger = LoggerFactory.getLogger(GUnzipFilter.class);
 	private final AsyncExecChain delegate;
@@ -157,5 +158,13 @@ public class GUnzipFilter implements AsyncExecChain {
 			return centity;
 		}
 		return new GUnzipEntity(entity);
+	}
+
+	private String getLocalHostName() {
+		try {
+			return InetAddress.getLocalHost().getHostName().toLowerCase();
+		} catch (UnknownHostException e) {
+			return "localhost";
+		}
 	}
 }

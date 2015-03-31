@@ -30,19 +30,20 @@
 package org.openrdf.http.object.chain;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 import org.apache.http.HttpException;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpResponseInterceptor;
 import org.apache.http.protocol.HttpContext;
-import org.openrdf.http.object.util.DomainNameSystemResolver;
 
 /**
  * Add a Server header to the response.
  */
 public class ServerNameFilter implements HttpResponseInterceptor {
 	private static final String PROTOCOL = "1.1";
-	private static final String HOSTNAME = DomainNameSystemResolver.getInstance().getLocalHostName();
+	private final String HOSTNAME = getLocalHostName();
 
 	private String name;
 	private String via;
@@ -94,6 +95,14 @@ public class ServerNameFilter implements HttpResponseInterceptor {
 		}
 		sb.append(" (").append(name).append(")");
 		via = sb.toString();
+	}
+
+	private String getLocalHostName() {
+		try {
+			return InetAddress.getLocalHost().getHostName().toLowerCase();
+		} catch (UnknownHostException e) {
+			return "localhost";
+		}
 	}
 
 }
