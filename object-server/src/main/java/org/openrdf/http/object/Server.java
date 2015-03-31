@@ -251,12 +251,16 @@ public class Server {
 		}
 	}
 
+	/**
+	 * Wait until server starts listening on a port and exit when it stops
+	 */
 	public void await() throws InterruptedException, OpenRDFException {
 		synchronized (node) {
-			node.wait(500); // give server a chance to start endpoint threads
-			while (node.isRunning()) {
+			boolean started = false;
+			while (!started || node.isRunning()) {
 				poke();
 				node.wait();
+				started = started || node.isRunning();
 			}
 		}
 	}
