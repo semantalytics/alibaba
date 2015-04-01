@@ -19,6 +19,7 @@ package org.openrdf.http.object.management;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.lang.management.ManagementFactory;
@@ -28,6 +29,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -184,7 +186,7 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 	}
 
 	public boolean isRunning() {
-		return server != null && server.isRunning();
+		return server != null && server.isRunning() && !stopping;
 	}
 
 	public boolean isShutDown() {
@@ -431,6 +433,7 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 		if (server == null)
 			return;
 		try {
+			stopping = false;
 			starting = true;
 			if (getPorts().length() == 0 && getSSLPorts().length() == 0) {
 				logger.info("{} is not bound to any port", getServerName());
@@ -442,11 +445,19 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 			System.gc();
 			System.runFinalization();
 			Thread.yield();
+			for (int i = 100; i < 10000 && !isRunning(); i*=2) {
+				Thread.sleep(i); // give workers a chance to start
+			}
 			long uptime = ManagementFactory.getRuntimeMXBean().getUptime();
 			logger.info("{} started after {} seconds", getServerName(),
 					uptime / 1000.0);
 		} catch (IOException e) {
 			logger.error(e.toString(), e);
+			throw e;
+		} catch (InterruptedException cause) {
+			logger.error(cause.toString(), cause);
+			InterruptedIOException e = new InterruptedIOException(cause.getMessage());
+			e.initCause(cause);
 			throw e;
 		} finally {
 			starting = false;
@@ -455,28 +466,26 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 	}
 
 	public synchronized void stop() throws IOException, OpenRDFException {
-		if (!isRunning())
-			return;
 		stopping = true;
 		try {
 			if (server != null) {
 				server.stop();
 			}
 		} finally {
-			stopping = false;
 			notifyAll();
 		}
 	}
 
 	public synchronized void destroy() throws IOException, OpenRDFException {
-		stop();
 		try {
+			stop();
 			if (server != null) {
 				server.destroy();
 				server = null;
 			}
 		} finally {
 			manager.shutDown();
+			stopping = false;
 			notifyAll();
 		}
 	}
@@ -555,9 +564,9 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 		if (portStr != null && portStr.length() > 0) {
 			List<String> values = new ArrayList<String>(Arrays.asList(portStr
 					.split("\\D+")));
-			values.remove("");
+			values.removeAll(Collections.singleton(""));
 			ports = new int[values.size()];
-			for (int i = 0; i < values.size(); i++) {
+			for (int i = 0; i < ports.length; i++) {
 				ports[i] = Integer.parseInt(values.get(i));
 			}
 		}

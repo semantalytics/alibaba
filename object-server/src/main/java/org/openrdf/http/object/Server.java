@@ -256,11 +256,10 @@ public class Server {
 	 */
 	public void await() throws InterruptedException, OpenRDFException {
 		synchronized (node) {
-			boolean started = false;
-			while (!started || node.isRunning()) {
-				poke();
+			poke();
+			while (!node.isShutDown()) {
 				node.wait();
-				started = started || node.isRunning();
+				poke();
 			}
 		}
 	}
