@@ -53,11 +53,11 @@ public class HttpRequestChainInterceptorExecChain implements AsyncExecChain {
 				return new CompletedResponse(callback, response);
 			}
 		} catch (IOException ex) {
-			callback.failed(ex);
+			return new CompletedResponse(callback, ex);
 		} catch (HttpException ex) {
-			callback.failed(ex);
+			return new CompletedResponse(callback, ex);
 		} catch (RuntimeException ex) {
-			callback.failed(ex);
+			return new CompletedResponse(callback, ex);
 		}
 		return delegate.execute(host, request, context, callback);
 	}

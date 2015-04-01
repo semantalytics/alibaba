@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 
 import javax.activation.MimeType;
 import javax.activation.MimeTypeParseException;
@@ -97,7 +98,7 @@ import org.slf4j.LoggerFactory;
  * 
  */
 public class ResourceTarget {
-	private static final String DEFAULT_PATH = "$|\\?.*";
+	private static final Pattern DEFAULT_PATH = PathMatcher.compile("$|\\?.*");
 
 	private interface MapStringArray extends Map<String, String[]> {
 	}
@@ -140,7 +141,7 @@ public class ResourceTarget {
 			org.openrdf.annotations.Method ann = m.getAnnotation(org.openrdf.annotations.Method.class);
 			if (ann == null)
 				continue;
-			if (matches(url, getPathRegex(m))) {
+			if (getLongestMatchingPath(m, url) != null) {
 				methods.add(m);
 			}
 			set.addAll(Arrays.asList(ann.value()));
@@ -317,30 +318,31 @@ public class ResourceTarget {
 				continue;
 			if (req_method != null && !Arrays.asList(ann.value()).contains(req_method))
 				continue;
-			if (matches(url, getPathRegex(m))) {
+			if (getLongestMatchingPath(m, url) != null) {
 				methods.add(m);
 			}
 		}
 		return methods;
 	}
 
-	private String[] getPathRegex(Method m) {
-		Path path = m.getAnnotation(Path.class);
-		if (path == null)
-			return new String[]{DEFAULT_PATH};
-		return path.value();
-	}
-
-	private boolean matches(String url, String... regexes) {
+	private String getLongestMatchingPath(Method method, String url) {
 		String iri = target.getResource().stringValue();
 		if (!url.startsWith(iri))
-			throw new InternalServerError("URL " + url +  " does not start with IRI " + iri);
+			throw new InternalServerError("URL " + url
+					+ " does not start with IRI " + iri);
+		Path path = method.getAnnotation(Path.class);
 		PathMatcher m = new PathMatcher(url, iri.length());
-		for (String regex : regexes) {
-			if (m.matches(regex == null ? DEFAULT_PATH : regex))
-				return true;
+		if (path == null)
+			return m.matches(DEFAULT_PATH) ? "": null;
+		String longest = null;
+		for (Pattern regex : PathMatcher.compile(path)) {
+			if (!m.matches(regex))
+				continue;
+			if (longest == null || regex.pattern().length() > longest.length()) {
+				longest = regex.pattern();
+			}
 		}
-		return false;
+		return longest;
 	}
 
 	private Collection<Method> findAcceptableMethods(Request request, Collection<Method> methods, boolean messageBody) {
@@ -514,7 +516,7 @@ public class ResourceTarget {
 		Collection<Method> submethods = filterSubMethods(filtered);
 		if (submethods.isEmpty())
 			return null;
-		Collection<Method> longerPath = filterLongestPathMethods(submethods);
+		Collection<Method> longerPath = filterLongestPathMethods(submethods, request.getRequestURL());
 		if (longerPath.size() == 1)
 			return longerPath.iterator().next();
 		Method best = findBestMethodByRequestType(request, longerPath);
@@ -609,17 +611,15 @@ public class ResourceTarget {
 	}
 
 	private Collection<Method> filterLongestPathMethods(
-			Collection<Method> methods) {
+			Collection<Method> methods, String url) {
 		int longest = 0;
 		Collection<Method> result = new ArrayList<Method>(methods.size());
 		for (Method m : methods) {
-			Path p = m.getAnnotation(org.openrdf.annotations.Path.class);
+			String path = getLongestMatchingPath(m, url);
 			int length = 0;
-			if (p != null) {
-				for (String path : p.value()) {
-					if (path.length() > length) {
-						length = path.length();
-					}
+			if (path != null) {
+				if (path.length() > length) {
+					length = path.length();
 				}
 			}
 			if (length > longest) {
@@ -769,12 +769,17 @@ public class ResourceTarget {
 	private Map<String, String> getPathVariables(String url, Method method) {
 		String iri = target.getResource().stringValue();
 		assert url.startsWith(iri);
-		PathMatcher m = new PathMatcher(url, iri.length());
 		Map<String, String> values = new LinkedHashMap<String, String>();
-		for (String regex : getPathRegex(method)) {
-			Map<String, String> match = m.match(regex);
-			if (match != null) {
-				values.putAll(match);
+		Path path = method.getAnnotation(Path.class);
+		if (path == null) {
+			values.put("0", url.substring(iri.length()));
+		} else {
+			PathMatcher m = new PathMatcher(url, iri.length());
+			for (Pattern regex : PathMatcher.compile(path)) {
+				Map<String, String> match = m.match(regex);
+				if (match != null) {
+					values.putAll(match);
+				}
 			}
 		}
 		return values;

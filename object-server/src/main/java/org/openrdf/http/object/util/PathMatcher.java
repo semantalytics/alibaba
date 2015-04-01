@@ -1,14 +1,42 @@
 package org.openrdf.http.object.util;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+import org.openrdf.annotations.Path;
+
 public class PathMatcher {
+	private static Map<Path, Pattern[]> patterns = Collections
+			.synchronizedMap(new WeakHashMap<Path, Pattern[]>());
+
+	public static Pattern[] compile(Path path) {
+		Pattern[] result = patterns.get(path);
+		if (result == null) {
+			result = new Pattern[path.value().length];
+			int i = 0;
+			for (String p : path.value()) {
+				result[i++] = compile(p);
+			}
+			patterns.put(path, result);
+		}
+		return result;
+	}
+
+	public static Pattern compile(String regex) {
+		try {
+			return Pattern.compile(regex);
+		} catch (PatternSyntaxException e) {
+			return Pattern.compile(regex, Pattern.LITERAL);
+		}
+	}
+
 	private static final Pattern NAMED_GROUP_PATTERN = Pattern
 			.compile("\\(\\?<(\\w+)>");
 
@@ -34,14 +62,6 @@ public class PathMatcher {
 
 	public Map<String, String> match(Pattern pattern) {
 		return groups(pattern.matcher(url));
-	}
-
-	private Pattern compile(String regex) {
-		try {
-			return Pattern.compile(regex);
-		} catch (PatternSyntaxException e) {
-			return Pattern.compile(regex, Pattern.LITERAL);
-		}
 	}
 
 	private boolean startingAt(Matcher m) {
