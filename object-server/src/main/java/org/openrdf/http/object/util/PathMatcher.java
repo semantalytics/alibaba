@@ -49,7 +49,7 @@ public class PathMatcher {
 	}
 
 	public boolean matches(String regex) {
-		return startingAt(compile(regex).matcher(url));
+		return matches(compile(regex));
 	}
 
 	public boolean matches(Pattern pattern) {
@@ -57,7 +57,7 @@ public class PathMatcher {
 	}
 
 	public Map<String, String> match(String regex) {
-		return groups(compile(regex).matcher(url));
+		return match(compile(regex));
 	}
 
 	public Map<String, String> match(Pattern pattern) {
@@ -84,9 +84,12 @@ public class PathMatcher {
 
 	private List<String> extractGroupNames(Matcher m) {
 		List<String> groupNames = new ArrayList<String>();
-		Matcher matcher = NAMED_GROUP_PATTERN.matcher(m.pattern().pattern());
-		while (matcher.find()) {
-			groupNames.add(matcher.group(1));
+		Pattern pattern = m.pattern();
+		if ((pattern.flags() & Pattern.LITERAL) == 0) {
+			Matcher matcher = NAMED_GROUP_PATTERN.matcher(pattern.pattern());
+			while (matcher.find()) {
+				groupNames.add(matcher.group(1));
+			}
 		}
 		return groupNames;
 	}
