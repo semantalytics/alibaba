@@ -769,11 +769,11 @@ public class ResourceTarget {
 	private Map<String, String> getPathVariables(String url, Method method) {
 		String iri = target.getResource().stringValue();
 		assert url.startsWith(iri);
-		Map<String, String> values = new LinkedHashMap<String, String>();
 		Path path = method.getAnnotation(Path.class);
 		if (path == null) {
-			values.put("0", url.substring(iri.length()));
+			return Collections.emptyMap();
 		} else {
+			Map<String, String> values = new LinkedHashMap<String, String>();
 			PathMatcher m = new PathMatcher(url, iri.length());
 			for (Pattern regex : PathMatcher.compile(path)) {
 				Map<String, String> match = m.match(regex);
@@ -781,8 +781,8 @@ public class ResourceTarget {
 					values.putAll(match);
 				}
 			}
+			return values;
 		}
-		return values;
 	}
 
 	private Fluid getParameter(Request req, Annotation[] anns, Class<?> ptype,
