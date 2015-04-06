@@ -93,12 +93,16 @@ public class TestServerControl extends TestCase {
 
 	public void testStop() throws Exception {
 		Server server = new Server();
-		server.init("-d", dataDir.getAbsolutePath(), "--trust");
-		assertNotNull(getMBean("*:*", ObjectServerMXBean.class));
-		control.init("-p", port, "-status", "-stop");
-		control.start();
-		server.poke();
-		assertNull(getMBean("*:*", ObjectServerMXBean.class));
+		try {
+			server.init("-d", dataDir.getAbsolutePath(), "--trust");
+			assertNotNull(getMBean("*:*", ObjectServerMXBean.class));
+			control.init("-p", port, "-status", "-stop");
+			control.start();
+			server.poke();
+			assertNull(getMBean("*:*", ObjectServerMXBean.class));
+		} finally {
+			server.destroy();
+		}
 	}
 
 	public void testListRepositories() throws Exception {
@@ -111,45 +115,53 @@ public class TestServerControl extends TestCase {
 		String url = "http://localhost:" + port + "/";
 		String PROLOG = "BASE <" + url + ">\n" + PREFIX;
 		Server server = new Server();
-		server.init("-d", dataDir.getAbsolutePath(), "--trust");
-		ObjectServerMXBean objectServer = getMBean("*:*",
-				ObjectServerMXBean.class);
-		objectServer.addRepository(url, PREFIX
-				+ "<#config> a rep:Repository;\n"
-				+ "rep:repositoryID 'localhost';\n" + "rdfs:label '" + url
-				+ "';\n" + "rep:repositoryImpl [\n"
-				+ "rep:repositoryType 'openrdf:SailRepository';\n"
-				+ "sr:sailImpl [sail:sailType 'openrdf:NativeStore']\n" + ""
-				+ "].\n");
-		server.poke(); // update registered repositories
-		control.init("-p", port, "-id", "localhost", "-update", PROLOG
-				+ "INSERT DATA {<> a <TestClass>}", "-query", PROLOG
-				+ "DESCRIBE <>");
-		control.start();
+		try {
+			server.init("-d", dataDir.getAbsolutePath(), "--trust");
+			ObjectServerMXBean objectServer = getMBean("*:*",
+					ObjectServerMXBean.class);
+			objectServer.addRepository(url, PREFIX
+					+ "<#config> a rep:Repository;\n"
+					+ "rep:repositoryID 'localhost';\n" + "rdfs:label '" + url
+					+ "';\n" + "rep:repositoryImpl [\n"
+					+ "rep:repositoryType 'openrdf:SailRepository';\n"
+					+ "sr:sailImpl [sail:sailType 'openrdf:NativeStore']\n" + ""
+					+ "].\n");
+			server.poke(); // update registered repositories
+			control.init("-p", port, "-id", "localhost", "-update", PROLOG
+					+ "INSERT DATA {<> a <TestClass>}", "-query", PROLOG
+					+ "DESCRIBE <>");
+			control.start();
+		} finally {
+			server.destroy();
+		}
 	}
 
 	public void testReadWrite() throws Exception {
 		String url = "http://localhost:" + port + "/";
 		Server server = new Server();
-		server.init("-d", dataDir.getAbsolutePath(), "--trust");
-		ObjectServerMXBean objectServer = getMBean("*:*",
-				ObjectServerMXBean.class);
-		objectServer.addRepository(url, PREFIX
-				+ "<#config> a rep:Repository;\n"
-				+ "rep:repositoryID 'localhost';\n" + "rdfs:label '" + url
-				+ "';\n" + "rep:repositoryImpl [\n"
-				+ "rep:repositoryType 'openrdf:SailRepository';\n"
-				+ "sr:sailImpl [sail:sailType 'openrdf:NativeStore']\n" + ""
-				+ "].\n");
-		server.poke(); // update registered repositories
-		File read = File.createTempFile("read", "", dataDir);
-		File write = File.createTempFile("read", "", dataDir);
-		FileUtils.writeStringToFile(write, "Hello World!");
-		control.init("-p", port, "-id", "localhost", "-write", url, "-file", write.getAbsolutePath());
-		control.start();
-		control.init("-p", port, "-id", "localhost", "-read", url, "-file", read.getAbsolutePath());
-		control.start();
-		assertEquals("Hello World!", FileUtils.readFileToString(read));
+		try {
+			server.init("-d", dataDir.getAbsolutePath(), "--trust");
+			ObjectServerMXBean objectServer = getMBean("*:*",
+					ObjectServerMXBean.class);
+			objectServer.addRepository(url, PREFIX
+					+ "<#config> a rep:Repository;\n"
+					+ "rep:repositoryID 'localhost';\n" + "rdfs:label '" + url
+					+ "';\n" + "rep:repositoryImpl [\n"
+					+ "rep:repositoryType 'openrdf:SailRepository';\n"
+					+ "sr:sailImpl [sail:sailType 'openrdf:NativeStore']\n" + ""
+					+ "].\n");
+			server.poke(); // update registered repositories
+			File read = File.createTempFile("read", "", dataDir);
+			File write = File.createTempFile("read", "", dataDir);
+			FileUtils.writeStringToFile(write, "Hello World!");
+			control.init("-p", port, "-id", "localhost", "-write", url, "-file", write.getAbsolutePath());
+			control.start();
+			control.init("-p", port, "-id", "localhost", "-read", url, "-file", read.getAbsolutePath());
+			control.start();
+			assertEquals("Hello World!", FileUtils.readFileToString(read));
+		} finally {
+			server.destroy();
+		}
 	}
 
 	private <T> T getMBean(String name, Class<T> btype) throws MalformedObjectNameException {
