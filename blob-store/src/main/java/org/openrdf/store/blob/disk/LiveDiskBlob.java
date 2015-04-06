@@ -130,7 +130,7 @@ public class LiveDiskBlob extends BlobObject {
 
 	public long getLength() throws IOException {
 		BlobVersion version = store.newVersion();
-		return version.open(uri).getLastModified();
+		return version.open(uri).getLength();
 	}
 
 	public long getLastModified() {
