@@ -5,14 +5,14 @@ Object Server
 
  When a request is received, the scheme and hierarchical part is used to find a resource by IRI in an RDF store, or an IRI prefix ending in a slash. The matched resource's rdf:type is then used to determinate resource class and associated Java classes. The request method, absolute request URL, and Content-Type/Accept headers are used to determine a Java method to invoke. The result is then serialized as the HTTP response.
  
- To start the HTTP object server run the main class org.openrdf.http.object.Server.
+ To start the HTTP object server run the main class org.openrdf.http.object.Server or use the provided bin/object-server.sh/.bat script.
  The server has a required command line options to assign the RDF data
  directory. Use command line options to assign ports and a server name. For details run the server with the '-h' option.
 
 RDF Graph Store
 ---------------
 
- Create request handlers in Java and assign a resource class using the @Iri annotation. The @Method annotation is used to identify the request method and is required. Use the @Path annotation to both filter, validate, and extract path and query parameters using a regular expression. The @Param annotation can then be used to select those parameters. @Param can be passed a regular expression group (number or name) or a query string parameter name. Use @Type annotation on methods to provide a response content-type and indicate the returned object is just a response body (not the entire response). Use @Type annotation on a method parameters to indicate supported request content-types and to be populated with the request body.
+ Create request handlers in Java and assign a resource class using the @Iri annotation. The @Method annotation is used to identify the request method and is required. Use the @Path annotation to both filter, validate, and extract path and query parameters using a regular expression. The @Param annotation can then be used to select those parameters. @Param can be passed a regular expression group (number or name) or a query string parameter name. Use @Type annotation on methods to provide a response content-type and indicate that the returned object is just a response body (not the entire response). Use @Type annotation on a method parameters to indicate supported request content-types and to be populated with the request body.
 
  @Type annotated methods can return, and @Type annotated method parameters can be, any registered concept, a concept Set, Model, GraphQueryResult, TupleQueryResult, HttpResponse, InputStream, Readable, ReadableByteChannel, XMLEventReader, Document, Element, DocumentFragment, ByteArrayOutputStream, byte[], or String.
 
@@ -118,7 +118,7 @@ RDF Graph Store
     Disconnecting from data
     Bye
 
- Once the RDF store is created, assign the URL prefix to the store. Any HTTP requests that start with this prefix will be resolved using the RDF store provided.
+ Once the RDF store is created, assign the URL prefix to the store. Any HTTP requests that starts with this prefix will be resolved using the RDF store provided.
 
     bin/control-object-server.sh -d data -i native -x http://localhost:8080/
     INFO: Serving http://localhost:8080/ from data/repositories/native/
@@ -141,7 +141,7 @@ RDF Graph Store
     $ curl -H accept:text/turtle http://localhost:8080/graphs/twain
     $ curl -H accept:application/rdf+xml http://localhost:8080/graphs/twain
 
- If you get a 405 error check that you included the GraphStore.class in the classpath. You should see a "Scanning" message in the server output. If not you either don't have the classpath setup or you are missing the META-INF/org.openrdf.concepts file.
+ If you get a 405 error check that you included the GraphStore.class in the classpath. You should see a "Scanning" message in the server output. If not, you either don't have the classpath setup or you are missing the META-INF/org.openrdf.concepts file.
 
  The server can be stopped gracefully using the following command
     $ bin/control-object-server.sh -d data -stop
