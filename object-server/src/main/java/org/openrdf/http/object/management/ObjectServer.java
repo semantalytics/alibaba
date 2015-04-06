@@ -408,10 +408,13 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 	}
 
 	public synchronized void init() throws OpenRDFException, IOException {
-		stop();
 		try {
+			logger.debug("Initializing {}", this);
 			if (!manager.isCompiled()) {
 				recompileSchema();
+			}
+			if (server != null) {
+				server.destroy();
 			}
 			server = createServer(this.serverCacheDir, this.timeout,
 					this.ports, this.sslPorts);
@@ -433,6 +436,7 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 		if (server == null)
 			return;
 		try {
+			logger.debug("Starting {}", this);
 			stopping = false;
 			starting = true;
 			if (getPorts().length() == 0 && getSSLPorts().length() == 0) {
@@ -466,6 +470,7 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 	}
 
 	public synchronized void stop() throws IOException, OpenRDFException {
+		logger.debug("Stopping {}", this);
 		stopping = true;
 		try {
 			if (server != null) {
@@ -486,12 +491,15 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 		} finally {
 			manager.shutDown();
 			stopping = false;
+			logger.debug("Destroyed {}", this);
 			notifyAll();
 		}
 	}
 
 	public synchronized void restart() throws IOException, OpenRDFException {
-		stop();
+		if (server != null) {
+			server.stop();
+		}
 		resetConnections();
 		if (server != null) {
 			server.destroy();
