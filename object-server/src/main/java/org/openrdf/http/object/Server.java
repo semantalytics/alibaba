@@ -161,6 +161,7 @@ public class Server {
 			if (line.has("dataDir")) {
 				dataDir = new File(line.get("dataDir"));
 			}
+			storePID(line.get("pid"), dataDir);
 			String serverName = line.get("serverName");
 			String ports = line.has("port") ? Arrays.toString(line.getAll("port")) : null;
 			String ssl = line.has("ssl") ? Arrays.toString(line.getAll("ssl")) : null;
@@ -195,7 +196,6 @@ public class Server {
 			registerMBean(keystore, mbean(KeyStoreImpl.class));
 			poke();
 			node.init();
-			storePID(line.get("pid"), dataDir);
 			if (!line.has("trust")) {
 				ServerPolicy.apply(new String[0], loggingBean
 						.getLoggingPropertiesFile(), new File(dataDir,
