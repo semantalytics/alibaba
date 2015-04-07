@@ -98,6 +98,7 @@ import org.slf4j.LoggerFactory;
  * 
  */
 public class ResourceTarget {
+	private static final Pattern EMPTY_PATTERN = Pattern.compile("");
 	private static final Pattern DEFAULT_PATH = PathMatcher.compile("$|\\?.*");
 
 	private interface MapStringArray extends Map<String, String[]> {
@@ -325,7 +326,7 @@ public class ResourceTarget {
 		return methods;
 	}
 
-	private String getLongestMatchingPath(Method method, String url) {
+	private Pattern getLongestMatchingPath(Method method, String url) {
 		String iri = target.getResource().stringValue();
 		if (!url.startsWith(iri))
 			throw new InternalServerError("URL " + url
@@ -333,16 +334,26 @@ public class ResourceTarget {
 		Path path = method.getAnnotation(Path.class);
 		PathMatcher m = new PathMatcher(url, iri.length());
 		if (path == null)
-			return m.matches(DEFAULT_PATH) ? "": null;
-		String longest = null;
+			return m.matches(DEFAULT_PATH) ? EMPTY_PATTERN: null;
+		Pattern longest = null;
 		for (Pattern regex : PathMatcher.compile(path)) {
 			if (!m.matches(regex))
 				continue;
-			if (longest == null || regex.pattern().length() > longest.length()) {
-				longest = regex.pattern();
+			if (longest == null) {
+				longest = regex;
+			}
+			int rlen = regex.pattern().length();
+			int llen = longest.pattern().length();
+			if (rlen > llen || rlen == llen && isLiteral(regex)
+					&& !isLiteral(longest)) {
+				longest = regex;
 			}
 		}
 		return longest;
+	}
+
+	private boolean isLiteral(Pattern regex) {
+		return (regex.flags() & Pattern.LITERAL) != 0;
 	}
 
 	private Collection<Method> findAcceptableMethods(Request request, Collection<Method> methods, boolean messageBody) {
@@ -612,21 +623,19 @@ public class ResourceTarget {
 
 	private Collection<Method> filterLongestPathMethods(
 			Collection<Method> methods, String url) {
-		int longest = 0;
+		int length = -1;
+		Pattern longest = null;
 		Collection<Method> result = new ArrayList<Method>(methods.size());
 		for (Method m : methods) {
-			String path = getLongestMatchingPath(m, url);
-			int length = 0;
-			if (path != null) {
-				if (path.length() > length) {
-					length = path.length();
-				}
-			}
-			if (length > longest) {
+			Pattern path = getLongestMatchingPath(m, url);
+			int len = path == null ? -1 : path.pattern().length();
+			if (len > length || len == length && isLiteral(path)
+					&& !isLiteral(longest)) {
 				result.clear();
-				longest = length;
+				longest = path;
+				length = len;
 			}
-			if (length >= longest) {
+			if (len >= length && (isLiteral(path) || !isLiteral(longest))) {
 				result.add(m);
 			}
 		}
