@@ -10,31 +10,21 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-import org.openrdf.annotations.Path;
-
 public class PathMatcher {
-	private static Map<Path, Pattern[]> patterns = Collections
-			.synchronizedMap(new WeakHashMap<Path, Pattern[]>());
-
-	public static Pattern[] compile(Path path) {
-		Pattern[] result = patterns.get(path);
-		if (result == null) {
-			result = new Pattern[path.value().length];
-			int i = 0;
-			for (String p : path.value()) {
-				result[i++] = compile(p);
-			}
-			patterns.put(path, result);
-		}
-		return result;
-	}
+	private static Map<String, Pattern> patterns = Collections
+			.synchronizedMap(new WeakHashMap<String, Pattern>());
 
 	public static Pattern compile(String regex) {
+		Pattern result = patterns.get(regex);
+		if (result != null)
+			return result;
 		try {
-			return Pattern.compile(regex);
+			patterns.put(regex, result = Pattern.compile(regex));
 		} catch (PatternSyntaxException e) {
-			return Pattern.compile(regex, Pattern.LITERAL);
+			patterns.put(regex,
+					result = Pattern.compile(regex, Pattern.LITERAL));
 		}
+		return result;
 	}
 
 	private static final Pattern NAMED_GROUP_PATTERN = Pattern

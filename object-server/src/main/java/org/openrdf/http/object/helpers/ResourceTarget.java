@@ -336,17 +336,18 @@ public class ResourceTarget {
 		if (path == null)
 			return m.matches(DEFAULT_PATH) ? EMPTY_PATTERN: null;
 		Pattern longest = null;
-		for (Pattern regex : PathMatcher.compile(path)) {
-			if (!m.matches(regex))
+		for (String regex : path.value()) {
+			Pattern pattern = PathMatcher.compile(regex);
+			if (!m.matches(pattern))
 				continue;
 			if (longest == null) {
-				longest = regex;
+				longest = pattern;
 			}
-			int rlen = regex.pattern().length();
+			int rlen = pattern.pattern().length();
 			int llen = longest.pattern().length();
-			if (rlen > llen || rlen == llen && isLiteral(regex)
+			if (rlen > llen || rlen == llen && isLiteral(pattern)
 					&& !isLiteral(longest)) {
-				longest = regex;
+				longest = pattern;
 			}
 		}
 		return longest;
@@ -784,7 +785,7 @@ public class ResourceTarget {
 		} else {
 			Map<String, String> values = new LinkedHashMap<String, String>();
 			PathMatcher m = new PathMatcher(url, iri.length());
-			for (Pattern regex : PathMatcher.compile(path)) {
+			for (String regex : path.value()) {
 				Map<String, String> match = m.match(regex);
 				if (match != null) {
 					values.putAll(match);
