@@ -20,7 +20,7 @@ import java.io.IOException;
 
 import org.openrdf.OpenRDFException;
 
-public interface ObjectServerMXBean {
+public interface ObjectServerMBean {
 
 	String getServerName() throws IOException;
 

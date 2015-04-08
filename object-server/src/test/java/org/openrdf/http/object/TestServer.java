@@ -10,10 +10,12 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.lang.management.ManagementFactory;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.security.KeyStore;
+import java.util.concurrent.CountDownLatch;
 import java.util.zip.GZIPInputStream;
 
 import javax.management.MBeanServer;
@@ -35,9 +37,10 @@ import org.openrdf.annotations.Method;
 import org.openrdf.annotations.Type;
 import org.openrdf.http.object.io.ChannelUtil;
 import org.openrdf.http.object.io.DirUtil;
-import org.openrdf.http.object.management.JVMUsageMXBean;
+import org.openrdf.http.object.management.ConnectionBean;
+import org.openrdf.http.object.management.JVMUsageMBean;
 import org.openrdf.http.object.management.KeyStoreMXBean;
-import org.openrdf.http.object.management.ObjectServerMXBean;
+import org.openrdf.http.object.management.ObjectServerMBean;
 import org.openrdf.http.object.management.RepositoryMXBean;
 import org.openrdf.model.URI;
 import org.openrdf.repository.object.ObjectConnection;
@@ -60,6 +63,7 @@ public class TestServer extends TestCase {
 	}
 
 	public static abstract class TestResponse implements RDFObject {
+		public static CountDownLatch latch;
 
 		@Method("GET")
 		@Type("text/plain")
@@ -67,6 +71,15 @@ public class TestServer extends TestCase {
 			ObjectConnection con = this.getObjectConnection();
 			BlobObject blob = con.getBlobObject((URI) this.getResource());
 			return blob.getLength() > 0 ? blob.getCharContent(true).toString() : null;
+		}
+
+		@Method("POST")
+		@Type("text/plain")
+		public String post() throws OpenRDFException, IOException, InterruptedException {
+			if (latch != null) {
+				latch.await();
+			}
+			return "Hello World!";
 		}
 	}
 
@@ -96,27 +109,27 @@ public class TestServer extends TestCase {
 	}
 
 	public void testMXBean() throws Exception {
-		assertNull(getMBean("*:*", ObjectServerMXBean.class));
+		assertNull(getMBean("*:*", ObjectServerMBean.class));
 		server.init("-d", dataDir.getAbsolutePath(), "--trust");
-		ObjectServerMXBean server = getMBean("*:*", ObjectServerMXBean.class);
+		ObjectServerMBean server = getMBean("*:*", ObjectServerMBean.class);
 		assertNotNull(server);
 		assertFalse(server.isRunning());
 		assertFalse(server.isCompilingInProgress());
 		assertFalse(server.isStartingInProgress());
 		assertFalse(server.isStoppingInProgress());
-		JVMUsageMXBean usage = getMBean("*:*", JVMUsageMXBean.class);
+		JVMUsageMBean usage = getMBean("*:*", JVMUsageMBean.class);
 		assertNotNull(usage.getJVMUsage());
 		assertTrue(usage.getJVMUsage().length > 3);
 	}
 
-	public void testRepositoryMXBean() throws Exception {
+	public void testConnectionMXBean() throws Exception {
 		server.init("-d", dataDir.getAbsolutePath(), "--trust");
-		String url = "http://localhost:" + port + "/";
+		final String url = "http://localhost:" + port + "/";
 		String PROLOG = "BASE <" + url + ">\n" + PREFIX;
 		RepositoryMXBean system = getMBean("*:*,name=SYSTEM", RepositoryMXBean.class);
 		system.sparqlUpdate(PROLOG + "INSERT DATA {<TestClass> a owl:Class;\n"
 				+ "msg:mixin '" + TestResponse.class.getName() + "'}");
-		ObjectServerMXBean objectServer = getMBean("*:*", ObjectServerMXBean.class);
+		ObjectServerMBean objectServer = getMBean("*:*", ObjectServerMBean.class);
 		objectServer.recompileSchema();
 		objectServer.addRepository(url, PREFIX
 				+ "<#config> a rep:Repository;\n"
@@ -131,7 +144,53 @@ public class TestServer extends TestCase {
 		repository.storeCharacterBlob(url, "Hello World!");
 		objectServer.setPorts(port);
 		objectServer.start();
-		assertHelloWorld("Hello World!", new URL(url).openConnection());
+		final CountDownLatch start = new CountDownLatch(1);
+		TestResponse.latch = new CountDownLatch(1);
+		try {
+			new Thread(new Runnable() {
+				public void run() {
+					try {
+						start.countDown();
+						assertHelloWorld("POST", "Hello World!", new URL(url).openConnection());
+					} catch (MalformedURLException e) {
+						e.printStackTrace();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+			}).start();
+			start.await();
+			Thread.sleep(100);
+			String pending = getPendingRequest(objectServer);
+			assertEquals("POST / HTTP/1.1", pending);
+		} finally {
+			TestResponse.latch.countDown();
+		}
+	}
+
+	public void testRepositoryMXBean() throws Exception {
+		server.init("-d", dataDir.getAbsolutePath(), "--trust");
+		String url = "http://localhost:" + port + "/";
+		String PROLOG = "BASE <" + url + ">\n" + PREFIX;
+		RepositoryMXBean system = getMBean("*:*,name=SYSTEM", RepositoryMXBean.class);
+		system.sparqlUpdate(PROLOG + "INSERT DATA {<TestClass> a owl:Class;\n"
+				+ "msg:mixin '" + TestResponse.class.getName() + "'}");
+		ObjectServerMBean objectServer = getMBean("*:*", ObjectServerMBean.class);
+		objectServer.recompileSchema();
+		objectServer.addRepository(url, PREFIX
+				+ "<#config> a rep:Repository;\n"
+				+ "rep:repositoryID 'localhost';\n" + "rdfs:label '" + url
+				+ "';\n" + "rep:repositoryImpl [\n"
+				+ "rep:repositoryType 'openrdf:SailRepository';\n"
+				+ "sr:sailImpl [sail:sailType 'openrdf:NativeStore']\n" + ""
+				+ "].\n");
+		server.poke(); // update registered repositories
+		RepositoryMXBean repository = getMBean("*:*,name=localhost", RepositoryMXBean.class);
+		repository.sparqlUpdate(PROLOG + "INSERT DATA {<> a <TestClass>}");
+		repository.storeCharacterBlob(url, "Hello World!");
+		objectServer.setPorts(port);
+		objectServer.start();
+		assertHelloWorld("GET", "Hello World!", new URL(url).openConnection());
 	}
 
 	public void testKeyStoreMXBean() throws Exception {
@@ -154,7 +213,7 @@ public class TestServer extends TestCase {
 		RepositoryMXBean system = getMBean("*:*,name=SYSTEM", RepositoryMXBean.class);
 		system.sparqlUpdate(PROLOG + "INSERT DATA {<TestClass> a owl:Class;\n"
 				+ "msg:mixin '" + TestResponse.class.getName() + "'}");
-		ObjectServerMXBean objectServer = getMBean("*:*", ObjectServerMXBean.class);
+		ObjectServerMBean objectServer = getMBean("*:*", ObjectServerMBean.class);
 		objectServer.recompileSchema();
 		objectServer.addRepository(url, PREFIX
 				+ "<#config> a rep:Repository;\n"
@@ -180,7 +239,7 @@ public class TestServer extends TestCase {
 		HttpsURLConnection con = (HttpsURLConnection) new URL(url).openConnection();
 		con.setSSLSocketFactory(sslcontext.getSocketFactory());
 		con.setHostnameVerifier(createHostnameVerifier());
-		assertHelloWorld("Hello World!", con);
+		assertHelloWorld("GET", "Hello World!", con);
 		System.clearProperty("javax.net.ssl.keyStore");
 		System.clearProperty("javax.net.ssl.keyStorePassword");
 	}
@@ -193,6 +252,15 @@ public class TestServer extends TestCase {
 		};
 	}
 
+	private String getPendingRequest(ObjectServerMBean objectServer) {
+		for (ConnectionBean conn : objectServer.getConnections()) {
+			for (String pending : conn.getPending()) {
+				return pending;
+			}
+		}
+		return null;
+	}
+
 	private <T> T getMBean(String name, Class<T> btype) throws MalformedObjectNameException {
 		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
 		QueryExp instanceOf = Query.isInstanceOf(Query.value(btype.getName()));
@@ -202,10 +270,10 @@ public class TestServer extends TestCase {
 		return null;
 	}
 
-	private void assertHelloWorld(String expected, URLConnection http)
+	void assertHelloWorld(String method, String expected, URLConnection http)
 			throws ProtocolException, IOException {
 		HttpURLConnection con = (HttpURLConnection) http;
-		con.setRequestMethod("GET");
+		con.setRequestMethod(method);
 		con.setRequestProperty("Accept", "*/*");
 		con.setRequestProperty("Accept-Encoding", "gzip");
 		assertEquals(con.getResponseMessage(), 200, con.getResponseCode());

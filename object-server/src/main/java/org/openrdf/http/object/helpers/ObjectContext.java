@@ -34,6 +34,7 @@ import java.util.Queue;
 
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
+import org.apache.http.nio.NHttpConnection;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
 
@@ -162,7 +163,9 @@ public class ObjectContext implements HttpContext {
 	}
 
 	public Exchange[] getPendingExchange() {
-		Queue<Exchange> queue = (Queue<Exchange>) getAttribute(PROCESSING_ATTR);
+		NHttpConnection conn = (NHttpConnection) context.getAttribute("http.connection");
+		HttpContext ctx = conn == null ? context : conn.getContext();
+		Queue<Exchange> queue = (Queue<Exchange>) ctx.getAttribute(PROCESSING_ATTR);
 		if (queue == null)
 			return null;
 		synchronized (queue) {
@@ -171,9 +174,11 @@ public class ObjectContext implements HttpContext {
 	}
 
 	public Queue<Exchange> getOrCreateProcessingQueue() {
-		Queue<Exchange> queue = (Queue<Exchange>) getAttribute(PROCESSING_ATTR);
+		NHttpConnection conn = (NHttpConnection) context.getAttribute("http.connection");
+		HttpContext ctx = conn == null ? context : conn.getContext();
+		Queue<Exchange> queue = (Queue<Exchange>) ctx.getAttribute(PROCESSING_ATTR);
 		if (queue == null) {
-			setAttribute(PROCESSING_ATTR, queue = new LinkedList<Exchange>());
+			ctx.setAttribute(PROCESSING_ATTR, queue = new LinkedList<Exchange>());
 		}
 		return queue;
 	}

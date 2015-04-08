@@ -32,7 +32,7 @@ import java.util.GregorianCalendar;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 
-public class JVMUsage implements JVMUsageMXBean {
+public class JVMUsage implements JVMUsageMBean {
 
 	public String[] getJVMUsage() throws Exception {
 		int i = 0;

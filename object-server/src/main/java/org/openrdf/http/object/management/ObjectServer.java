@@ -62,7 +62,7 @@ import org.openrdf.rio.helpers.StatementCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
+public class ObjectServer implements ObjectServerMBean, RepositoryResolver {
 	private final Logger logger = LoggerFactory.getLogger(ObjectServer.class);
 	private final ObjectRepositoryManager manager;
 	private final File serverCacheDir;
@@ -228,7 +228,7 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 	public synchronized ConnectionBean[] getConnections() {
 		NHttpConnection[] connections = server.getOpenConnections();
 		ConnectionBean[] beans = new ConnectionBean[connections.length];
-		for (int i = 0; i < beans.length; i++) {
+		for (int i = 0; i < connections.length; i++) {
 			ConnectionBean bean = new ConnectionBean();
 			NHttpConnection conn = connections[i];
 			beans[i] = bean;
@@ -282,6 +282,8 @@ public class ObjectServer implements ObjectServerMXBean, RepositoryResolver {
 					}
 				}
 				bean.setPending(pending);
+			} else {
+				bean.setPending(new String[0]);
 			}
 		}
 		return beans;

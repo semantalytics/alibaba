@@ -57,8 +57,8 @@ import org.openrdf.http.object.cli.Command;
 import org.openrdf.http.object.cli.CommandSet;
 import org.openrdf.http.object.concurrent.ThreadPoolMXBean;
 import org.openrdf.http.object.io.ChannelUtil;
-import org.openrdf.http.object.management.JVMUsageMXBean;
-import org.openrdf.http.object.management.ObjectServerMXBean;
+import org.openrdf.http.object.management.JVMUsageMBean;
+import org.openrdf.http.object.management.ObjectServerMBean;
 import org.openrdf.http.object.management.RepositoryMXBean;
 
 /**
@@ -172,8 +172,8 @@ public class ServerControl {
 
 	private Object vm;
 	private MBeanServerConnection mbsc;
-	private JVMUsageMXBean usage;
-	private ObjectServerMXBean server;
+	private JVMUsageMBean usage;
+	private ObjectServerMBean server;
 	private Command line;
 	private Server internalServer;
 
@@ -220,15 +220,15 @@ public class ServerControl {
 				File pidFile = new File(run, "object-server.pid");
 				if (pidFile.canRead()) {
 					setPid(IOUtil.readString(pidFile).trim());
-				} else if (getObjectNames(ObjectServerMXBean.class, mbsc).isEmpty()) {
+				} else if (getObjectNames(ObjectServerMBean.class, mbsc).isEmpty()) {
 					initInternalServer();
 				}
 			}
-			for (ObjectName name : getObjectNames(ObjectServerMXBean.class, mbsc)) {
-				server = JMX.newMXBeanProxy(mbsc, name, ObjectServerMXBean.class);
+			for (ObjectName name : getObjectNames(ObjectServerMBean.class, mbsc)) {
+				server = JMX.newMXBeanProxy(mbsc, name, ObjectServerMBean.class);
 			}
-			for (ObjectName name : getObjectNames(JVMUsageMXBean.class, mbsc)) {
-				usage = JMX.newMXBeanProxy(mbsc, name, JVMUsageMXBean.class);
+			for (ObjectName name : getObjectNames(JVMUsageMBean.class, mbsc)) {
+				usage = JMX.newMXBeanProxy(mbsc, name, JVMUsageMBean.class);
 			}
 			if (server == null) {
 				System.err.println("Object server was not found, provide a different pid or dataDir option");
@@ -496,9 +496,9 @@ public class ServerControl {
 
 	private void connectionDump(MBeanServerConnection mbsc, String filename)
 			throws MalformedObjectNameException, IOException {
-		for (ObjectName name : getObjectNames(ObjectServerMXBean.class, mbsc)) {
-			ObjectServerMXBean server = JMX.newMXBeanProxy(mbsc, name,
-					ObjectServerMXBean.class);
+		for (ObjectName name : getObjectNames(ObjectServerMBean.class, mbsc)) {
+			ObjectServerMBean server = JMX.newMXBeanProxy(mbsc, name,
+					ObjectServerMBean.class);
 			server.connectionDumpToFile(filename);
 			info(filename);
 		}

@@ -19,7 +19,7 @@ import org.openrdf.OpenRDFException;
 import org.openrdf.annotations.Method;
 import org.openrdf.annotations.Type;
 import org.openrdf.http.object.io.DirUtil;
-import org.openrdf.http.object.management.ObjectServerMXBean;
+import org.openrdf.http.object.management.ObjectServerMBean;
 import org.openrdf.model.URI;
 import org.openrdf.repository.object.ObjectConnection;
 import org.openrdf.repository.object.RDFObject;
@@ -79,15 +79,15 @@ public class TestServerControl extends TestCase {
 	public void testServerName() throws Exception {
 		control.init("-d", dataDir.getAbsolutePath(), "-n", "test name");
 		control.start();
-		assertEquals("test name", getMBean("*:*", ObjectServerMXBean.class)
+		assertEquals("test name", getMBean("*:*", ObjectServerMBean.class)
 				.getServerName());
 	}
 
 	public void testPorts() throws Exception {
 		control.init("-d", dataDir.getAbsolutePath(), "-p", port, "-s", ssl);
 		control.start();
-		assertEquals(port, getMBean("*:*", ObjectServerMXBean.class).getPorts());
-		assertEquals(ssl, getMBean("*:*", ObjectServerMXBean.class)
+		assertEquals(port, getMBean("*:*", ObjectServerMBean.class).getPorts());
+		assertEquals(ssl, getMBean("*:*", ObjectServerMBean.class)
 				.getSSLPorts());
 	}
 
@@ -95,11 +95,11 @@ public class TestServerControl extends TestCase {
 		Server server = new Server();
 		try {
 			server.init("-d", dataDir.getAbsolutePath(), "--trust");
-			assertNotNull(getMBean("*:*", ObjectServerMXBean.class));
+			assertNotNull(getMBean("*:*", ObjectServerMBean.class));
 			control.init("-p", port, "-status", "-stop");
 			control.start();
 			server.poke();
-			assertNull(getMBean("*:*", ObjectServerMXBean.class));
+			assertNull(getMBean("*:*", ObjectServerMBean.class));
 		} finally {
 			server.destroy();
 		}
@@ -117,8 +117,8 @@ public class TestServerControl extends TestCase {
 		Server server = new Server();
 		try {
 			server.init("-d", dataDir.getAbsolutePath(), "--trust");
-			ObjectServerMXBean objectServer = getMBean("*:*",
-					ObjectServerMXBean.class);
+			ObjectServerMBean objectServer = getMBean("*:*",
+					ObjectServerMBean.class);
 			objectServer.addRepository(url, PREFIX
 					+ "<#config> a rep:Repository;\n"
 					+ "rep:repositoryID 'localhost';\n" + "rdfs:label '" + url
@@ -141,8 +141,8 @@ public class TestServerControl extends TestCase {
 		Server server = new Server();
 		try {
 			server.init("-d", dataDir.getAbsolutePath(), "--trust");
-			ObjectServerMXBean objectServer = getMBean("*:*",
-					ObjectServerMXBean.class);
+			ObjectServerMBean objectServer = getMBean("*:*",
+					ObjectServerMBean.class);
 			objectServer.addRepository(url, PREFIX
 					+ "<#config> a rep:Repository;\n"
 					+ "rep:repositoryID 'localhost';\n" + "rdfs:label '" + url

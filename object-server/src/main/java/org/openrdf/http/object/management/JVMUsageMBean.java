@@ -19,7 +19,7 @@
 package org.openrdf.http.object.management;
 
 
-public interface JVMUsageMXBean {
+public interface JVMUsageMBean {
 
 	String[] getJVMUsage() throws Exception;
 }
