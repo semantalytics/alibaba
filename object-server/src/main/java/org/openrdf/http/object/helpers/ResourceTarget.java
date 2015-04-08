@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -46,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.WeakHashMap;
 import java.util.regex.Pattern;
 
 import javax.activation.MimeType;
@@ -107,8 +109,10 @@ public class ResourceTarget {
 	private static final Type mapOfStringArrayType = MapStringArray.class
 			.getGenericInterfaces()[0];
 	private static final String SUB_CLASS_OF = "http://www.w3.org/2000/01/rdf-schema#subClassOf";
-	private final Logger logger = LoggerFactory.getLogger(ResourceTarget.class);
+	private static final WeakHashMap<Class<?>, Map<Method, Collection<String>>> methodsByClass = new WeakHashMap<Class<?>, Map<Method,Collection<String>>>();
 
+	private final Logger logger = LoggerFactory.getLogger(ResourceTarget.class);
+	private final Map<Method, Collection<String>> methods;
 	private final FluidFactory ff = FluidFactory.getInstance();
 	private final ObjectContext context;
 	private final ValueFactory vf;
@@ -123,6 +127,22 @@ public class ResourceTarget {
 		this.con = target.getObjectConnection();
 		this.vf = con.getValueFactory();
 		this.writer = ff.builder(con);
+		synchronized (methodsByClass){
+			Map<Method, Collection<String>> map = methodsByClass.get(target.getClass());
+			if (map == null) {
+				map = new HashMap<Method, Collection<String>>();
+				for (Method m : target.getClass().getMethods()) {
+					if (m.isAnnotationPresent(ParameterTypes.class))
+						continue;
+					org.openrdf.annotations.Method ann = m.getAnnotation(org.openrdf.annotations.Method.class);
+					if (ann == null)
+						continue;
+					map.put(m, Arrays.asList(ann.value()));
+				}
+				methodsByClass.put(target.getClass(), map);
+			}
+			methods = map;
+		}
 	}
 
 	public String toString() {
@@ -135,17 +155,13 @@ public class ResourceTarget {
 
 	public Set<String> getAllowedMethods(String url) {
 		Set<String> set = new TreeSet<String>();
-		Collection<Method> methods = new ArrayList<Method>();
-		for (Method m : target.getClass().getMethods()) {
-			if (m.isAnnotationPresent(ParameterTypes.class))
-				continue;
-			org.openrdf.annotations.Method ann = m.getAnnotation(org.openrdf.annotations.Method.class);
-			if (ann == null)
-				continue;
+		Collection<Method> list = new ArrayList<Method>();
+		for (Map.Entry<Method, Collection<String>> e : methods.entrySet()) {
+			Method m = e.getKey();
 			if (getLongestMatchingPath(m, url) != null) {
-				methods.add(m);
+				list.add(m);
 			}
-			set.addAll(Arrays.asList(ann.value()));
+			set.addAll(e.getValue());
 		}
 		if (set.contains("GET")) {
 			set.add("HEAD");
@@ -310,20 +326,15 @@ public class ResourceTarget {
 	}
 
 	private Collection<Method> findHandlers(String req_method, String url) {
-		Collection<Method> methods = new ArrayList<Method>();
-		for (Method m : target.getClass().getMethods()) {
-			if (m.isAnnotationPresent(ParameterTypes.class))
+		Collection<Method> list = new ArrayList<Method>();
+		for (Map.Entry<Method, Collection<String>> e : methods.entrySet()) {
+			if (req_method != null && !e.getValue().contains(req_method))
 				continue;
-			org.openrdf.annotations.Method ann = m.getAnnotation(org.openrdf.annotations.Method.class);
-			if (ann == null)
-				continue;
-			if (req_method != null && !Arrays.asList(ann.value()).contains(req_method))
-				continue;
-			if (getLongestMatchingPath(m, url) != null) {
-				methods.add(m);
+			if (getLongestMatchingPath(e.getKey(), url) != null) {
+				list.add(e.getKey());
 			}
 		}
-		return methods;
+		return list;
 	}
 
 	private Pattern getLongestMatchingPath(Method method, String url) {
