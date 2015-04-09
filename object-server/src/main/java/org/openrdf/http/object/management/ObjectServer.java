@@ -43,6 +43,7 @@ import org.openrdf.http.object.Version;
 import org.openrdf.http.object.helpers.Exchange;
 import org.openrdf.http.object.helpers.ObjectContext;
 import org.openrdf.http.object.io.DirUtil;
+import org.openrdf.http.object.util.PrefixMap;
 import org.openrdf.model.Model;
 import org.openrdf.model.Resource;
 import org.openrdf.model.impl.LinkedHashModel;
@@ -50,10 +51,9 @@ import org.openrdf.model.vocabulary.RDF;
 import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.RepositoryException;
 import org.openrdf.repository.config.RepositoryConfig;
-import org.openrdf.repository.config.RepositoryConfigException;
 import org.openrdf.repository.config.RepositoryConfigSchema;
+import org.openrdf.repository.manager.RepositoryProvider;
 import org.openrdf.repository.object.ObjectRepository;
-import org.openrdf.repository.sail.config.RepositoryResolver;
 import org.openrdf.rio.RDFFormat;
 import org.openrdf.rio.RDFHandlerException;
 import org.openrdf.rio.RDFParser;
@@ -62,9 +62,9 @@ import org.openrdf.rio.helpers.StatementCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ObjectServer implements ObjectServerMBean, RepositoryResolver {
+public class ObjectServer implements ObjectServerMBean {
 	private final Logger logger = LoggerFactory.getLogger(ObjectServer.class);
-	private final ObjectRepositoryManager manager;
+	private final PrefixMap<ObjectRepositoryManager> managers = new PrefixMap<ObjectRepositoryManager>();
 	private final File serverCacheDir;
 	private String serverName = ObjectServer.class.getSimpleName();
 	private int[] ports = new int[0];
@@ -74,35 +74,43 @@ public class ObjectServer implements ObjectServerMBean, RepositoryResolver {
 	private volatile boolean stopping;
 	WebServer server;
 
-	public ObjectServer(File dataDir) throws OpenRDFException,
+	public ObjectServer(File... dataDir) throws OpenRDFException,
 			IOException {
-		this(dataDir, ObjectServer.class.getClassLoader());
+		this(ObjectServer.class.getClassLoader(), dataDir);
 	}
 
-	public ObjectServer(File dataDir, File cacheDir) throws OpenRDFException,
+	public ObjectServer(ClassLoader cl, File... dataDir) throws OpenRDFException,
 			IOException {
-		this(dataDir, cacheDir, ObjectServer.class.getClassLoader());
-	}
-
-	public ObjectServer(File dataDir, ClassLoader cl) throws OpenRDFException,
-			IOException {
-		this.manager = new ObjectRepositoryManager(dataDir, cl);
+		for (int i=0;i<dataDir.length;i++) {
+			dataDir[i].mkdirs();
+			ObjectRepositoryManager manager = new ObjectRepositoryManager(dataDir[i], cl);
+			this.managers.put(dataDir[i].toURI().toASCIIString(), manager);
+		}
 		serverCacheDir = DirUtil.createTempDir("object-server-cache");
 		DirUtil.deleteOnExit(serverCacheDir);
 	}
 
-	public ObjectServer(File dataDir, File cacheDir, ClassLoader cl)
+	public ObjectServer(File cacheDir, ClassLoader cl, File... dataDir)
 			throws OpenRDFException, IOException {
-		this.manager = new ObjectRepositoryManager(dataDir, new File(cacheDir, "lib"), cl);
+		File libDir = new File(cacheDir, "lib");
+		for (int i=0;i<dataDir.length;i++) {
+			dataDir[i].mkdirs();
+			ObjectRepositoryManager manager = new ObjectRepositoryManager(dataDir[i], libDir, cl);
+			this.managers.put(dataDir[i].toURI().toASCIIString(), manager);
+		}
 		serverCacheDir = new File(cacheDir, "server");
 	}
 
 	public String toString() {
 		try {
-			return manager.getLocation().toString();
+			StringBuilder sb = new StringBuilder();
+			for (ObjectRepositoryManager manager : managers.values()) {
+				sb.append(manager.getLocation().toString()).append(' ');
+			}
+			return sb.toString();
 		} catch (MalformedURLException e) {
 			logger.warn(e.toString(), e);
-			return manager.toString();
+			return managers.values().toString();
 		}
 	}
 
@@ -182,7 +190,11 @@ public class ObjectServer implements ObjectServerMBean, RepositoryResolver {
 	}
 
 	public boolean isCompilingInProgress() {
-		return manager.isCompiling();
+		for (ObjectRepositoryManager manager : managers.values()) {
+			if (manager.isCompiling())
+				return true;
+		}
+		return false;
 	}
 
 	public boolean isRunning() {
@@ -190,7 +202,11 @@ public class ObjectServer implements ObjectServerMBean, RepositoryResolver {
 	}
 
 	public boolean isShutDown() {
-		return !manager.isInitialized();
+		for (ObjectRepositoryManager manager : managers.values()) {
+			if (manager.isInitialized())
+				return false;
+		}
+		return true;
 	}
 
 	@Override
@@ -213,7 +229,9 @@ public class ObjectServer implements ObjectServerMBean, RepositoryResolver {
 	@Override
 	public synchronized void recompileSchema() throws IOException, OpenRDFException {
 		try {
-			manager.recompileSchema();
+			for (ObjectRepositoryManager manager : managers.values()) {
+				manager.recompileSchema();
+			}
 		} finally {
 			notifyAll();
 		}
@@ -320,44 +338,57 @@ public class ObjectServer implements ObjectServerMBean, RepositoryResolver {
 		logger.info("Connection dump: {}", outputFile);
 	}
 
-	public RepositoryConnection openSchemaConnection()
-			throws RepositoryException {
+	public RepositoryConnection openSchemaConnection(String location)
+			throws OpenRDFException {
+		ObjectRepositoryManager manager = managers.getClosest(location);
+		if (manager == null)
+			throw new IllegalArgumentException("Unknown repository location: " + location);
 		return manager.openSchemaConnection();
 	}
 
-	public synchronized String[] getRepositoryIDs()
-			throws RepositoryException {
-		Set<String> ids = new TreeSet<String>(manager.getRepositoryIDs());
-		return ids.toArray(new String[ids.size()]);
-	}
-
-	public RepositoryMXBean getRepositoryMXBean(String id)
-			throws RepositoryConfigException, RepositoryException {
-		return new RepositoryMXBeanImpl(manager, id);
-	}
-
-	public ObjectRepository getRepository(String id)
-			throws RepositoryException, RepositoryConfigException {
-		return manager.getObjectRepository(id);
-	}
-
-	public String[] getRepositoryPrefixes(String id) throws OpenRDFException {
-		return manager.getRepositoryPrefixes(id);
-	}
-
-	public synchronized void addRepositoryPrefix(String id, String prefix)
+	public synchronized String[] getRepositoryLocations()
 			throws OpenRDFException {
+		Set<String> result = new TreeSet<String>();
+		for (ObjectRepositoryManager manager : managers.values()) {
+			for (String id : manager.getRepositoryIDs()) {
+				result.add(manager.getRepositoryLocation(id).toExternalForm());
+			}
+		}
+		return result.toArray(new String[result.size()]);
+	}
+
+	public RepositoryMXBean getRepositoryMXBean(String location)
+			throws OpenRDFException {
+		String id = RepositoryProvider.getRepositoryIdOfRepository(location);
+		return new RepositoryMXBeanImpl(getManagerFor(location), id);
+	}
+
+	public ObjectRepository getRepository(String location)
+			throws OpenRDFException {
+		String id = RepositoryProvider.getRepositoryIdOfRepository(location);
+		return getManagerFor(location).getObjectRepository(id);
+	}
+
+	public String[] getRepositoryPrefixes(String location) throws OpenRDFException {
+		String id = RepositoryProvider.getRepositoryIdOfRepository(location);
+		return getManagerFor(location).getRepositoryPrefixes(id);
+	}
+
+	public synchronized void addRepositoryPrefix(String location, String prefix)
+			throws OpenRDFException {
+		String id = RepositoryProvider.getRepositoryIdOfRepository(location);
+		ObjectRepositoryManager manager = getManagerFor(location);
 		manager.addRepositoryPrefix(id, prefix);
 		if (server != null) {
-			startRepository(id);
+			startRepository(manager, id);
 		}
 		notifyAll();
 	}
 
-	public synchronized void setRepositoryPrefixes(String id, String[] prefixes)
+	public synchronized void setRepositoryPrefixes(String location, String[] prefixes)
 			throws OpenRDFException {
-		if (!manager.isRepositoryPresent(id))
-			throw new IllegalArgumentException("Unknown repository ID: " + id);
+		String id = RepositoryProvider.getRepositoryIdOfRepository(location);
+		ObjectRepositoryManager manager = getManagerFor(location);
 		if (server != null) {
 			String[] existing = manager.getRepositoryPrefixes(id);
 			List<String> removed = new ArrayList<String>(
@@ -369,14 +400,17 @@ public class ObjectServer implements ObjectServerMBean, RepositoryResolver {
 		}
 		manager.setRepositoryPrefixes(id, prefixes);
 		if (server != null) {
-			startRepository(id);
+			startRepository(manager, id);
 		}
 		notifyAll();
 	}
 
-	public synchronized String addRepository(String base, String configString)
-			throws OpenRDFException, IOException {
-		Model graph = parseTurtleGraph(configString, base);
+	public synchronized String addRepository(String location, String base,
+			String configString) throws OpenRDFException, IOException {
+		ObjectRepositoryManager manager = managers.getClosest(location);
+		if (manager == null)
+			throw new IllegalArgumentException("Unknown repository location: " + location);
+		Model graph = parseTurtleGraph(manager, configString, base);
 		Resource node = graph.filter(null, RDF.TYPE,
 				RepositoryConfigSchema.REPOSITORY).subjectResource();
 		RepositoryConfig config = RepositoryConfig.create(graph, node);
@@ -394,17 +428,19 @@ public class ObjectServer implements ObjectServerMBean, RepositoryResolver {
 			manager.addRepository(config);
 		}
 		if (server != null) {
-			startRepository(id);
+			startRepository(manager, id);
 		}
 		notifyAll();
-		return config.getID();
+		return manager.getRepositoryLocation(id).toExternalForm();
 	}
 
-	public synchronized boolean removeRepository(String id)
+	public synchronized boolean removeRepository(String location)
 			throws OpenRDFException {
-		if (!manager.isRepositoryPresent(id))
+		String id = RepositoryProvider.getRepositoryIdOfRepository(location);
+		ObjectRepositoryManager manager = managers.getClosest(location);
+		if (manager == null || !manager.isRepositoryPresent(id))
 			return false;
-		stopRepository(id);
+		stopRepository(manager, id);
 		notifyAll();
 		return manager.removeRepository(id);
 	}
@@ -412,16 +448,20 @@ public class ObjectServer implements ObjectServerMBean, RepositoryResolver {
 	public synchronized void init() throws OpenRDFException, IOException {
 		try {
 			logger.debug("Initializing {}", this);
-			if (!manager.isCompiled()) {
-				recompileSchema();
+			for (ObjectRepositoryManager manager : managers.values()) {
+				if (!manager.isCompiled()) {
+					recompileSchema();
+				}
 			}
 			if (server != null) {
 				server.destroy();
 			}
 			server = createServer(this.serverCacheDir, this.timeout,
 					this.ports, this.sslPorts);
-			for (String id : manager.getRepositoryIDs()) {
-				startRepository(id);
+			for (ObjectRepositoryManager manager : managers.values()) {
+				for (String id : manager.getRepositoryIDs()) {
+					startRepository(manager, id);
+				}
 			}
 		} catch (IOException e) {
 			logger.error(e.toString(), e);
@@ -491,7 +531,9 @@ public class ObjectServer implements ObjectServerMBean, RepositoryResolver {
 				server = null;
 			}
 		} finally {
-			manager.shutDown();
+			for (ObjectRepositoryManager manager : managers.values()) {
+				manager.shutDown();
+			}
 			stopping = false;
 			logger.debug("Destroyed {}", this);
 			notifyAll();
@@ -507,11 +549,23 @@ public class ObjectServer implements ObjectServerMBean, RepositoryResolver {
 			server.destroy();
 			server = null;
 		}
-		manager.refresh();
+		for (ObjectRepositoryManager manager : managers.values()) {
+			manager.refresh();
+		}
 		recompileSchema();
 		server = createServer(this.serverCacheDir, this.timeout,
 				this.ports, this.sslPorts);
 		start();
+	}
+
+	private ObjectRepositoryManager getManagerFor(String location) throws OpenRDFException {
+		ObjectRepositoryManager manager = managers.getClosest(location);
+		if (manager == null)
+			throw new IllegalArgumentException("Unknown repository location: " + location);
+		String id = RepositoryProvider.getRepositoryIdOfRepository(location);
+		if (!manager.isRepositoryPresent(id))
+			throw new IllegalArgumentException("Unknown repository location: " + location);
+		return manager;
 	}
 
 	private WebServer createServer(File serverCacheDir, int timeout,
@@ -523,9 +577,9 @@ public class ObjectServer implements ObjectServerMBean, RepositoryResolver {
 		return server;
 	}
 
-	private synchronized void startRepository(String id)
-			throws OpenRDFException {
-		String[] prefixes = getRepositoryPrefixes(id);
+	private synchronized void startRepository(ObjectRepositoryManager manager,
+			String id) throws OpenRDFException {
+		String[] prefixes = manager.getRepositoryPrefixes(id);
 		if (prefixes != null && prefixes.length > 0) {
 			URL url = manager.getRepositoryLocation(id);
 			ObjectRepository obj = manager.getObjectRepository(id);
@@ -536,7 +590,8 @@ public class ObjectServer implements ObjectServerMBean, RepositoryResolver {
 		}
 	}
 
-	private synchronized void stopRepository(String id) throws OpenRDFException {
+	private synchronized void stopRepository(ObjectRepositoryManager manager,
+			String id) throws OpenRDFException {
 		if (manager.isRepositoryPresent(id)) {
 			for (String prefix : getRepositoryPrefixes(id)) {
 				URL url = manager.getRepositoryLocation(id);
@@ -546,11 +601,11 @@ public class ObjectServer implements ObjectServerMBean, RepositoryResolver {
 		}
 	}
 
-	private Model parseTurtleGraph(String configString, String base) throws IOException,
-			OpenRDFException {
+	private Model parseTurtleGraph(ObjectRepositoryManager manager, String configString,
+			String base) throws IOException, OpenRDFException {
 		Model graph = new LinkedHashModel();
 		RDFParser rdfParser = Rio.createParser(RDFFormat.TURTLE);
-		final RepositoryConnection con = this.openSchemaConnection();
+		final RepositoryConnection con = manager.openSchemaConnection();
 		try {
 			rdfParser.setRDFHandler(new StatementCollector(graph) {
 				public void handleNamespace(String prefix, String uri)

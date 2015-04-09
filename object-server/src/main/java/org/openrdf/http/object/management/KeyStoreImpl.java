@@ -34,16 +34,6 @@ import org.apache.commons.codec.binary.Base64;
 public class KeyStoreImpl implements KeyStoreMXBean {
 	private static final int CERT_EXPIRE_DAYS = 31;
 
-	private final File cerDir;
-
-	public KeyStoreImpl(File cerDir) {
-		this.cerDir = cerDir;
-	}
-
-	public String toString() {
-		return cerDir.toString();
-	}
-
 	public long getCertificateExperation() throws GeneralSecurityException,
 			IOException {
 		String alias = getKeyAlias();

@@ -204,7 +204,8 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 			}
 		}
 		RepositoryConfig config = manager.getRepositoryConfig(id);
-		Matcher m = HTTP_DOTALL.matcher(config.getTitle());
+		String title = config.getTitle() == null ? "" : config.getTitle();
+		Matcher m = HTTP_DOTALL.matcher(title);
 		config.setTitle(m.replaceAll("") + desc);
 		manager.addRepositoryConfig(config);
 	}

@@ -18,6 +18,8 @@
  */
 package org.openrdf.http.object;
 
+import info.aduna.net.ParsedURI;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileWriter;
@@ -30,7 +32,9 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.InstanceNotFoundException;
@@ -157,9 +161,13 @@ public class Server {
 					// ignore
 				}
 			}
-			File dataDir = new File(".");
+			File[] dataDir = new File[]{new File("")};
 			if (line.has("dataDir")) {
-				dataDir = new File(line.get("dataDir"));
+				dataDir = new File[line.getAll("dataDir").length];
+				int i=0;
+				for (String name : line.getAll("dataDir")) {
+					dataDir[i++] = new File(name);
+				}
 			}
 			storePID(line.get("pid"), dataDir);
 			String serverName = line.get("serverName");
@@ -183,7 +191,7 @@ public class Server {
 			}
 			ClassLoader cl = Server.class.getClassLoader();
 			ClassLoader cp = getClasspath(line.get("classpath"), cl);
-			node = new ObjectServer(dataDir, cp);
+			node = new ObjectServer(cp, dataDir);
 			node.setServerName(serverName);
 			node.setPorts(ports);
 			node.setSSLPorts(ssl);
@@ -191,15 +199,18 @@ public class Server {
 			registerMBean(new JVMUsage(), mbean(JVMUsage.class));
 			LoggingProperties loggingBean = new LoggingProperties();
 			registerMBean(loggingBean, mbean(LoggingProperties.class));
-			File etc = new File(dataDir, "etc");
-			KeyStoreImpl keystore = new KeyStoreImpl(etc);
+			KeyStoreImpl keystore = new KeyStoreImpl();
 			registerMBean(keystore, mbean(KeyStoreImpl.class));
 			poke();
 			node.init();
 			if (!line.has("trust")) {
-				ServerPolicy.apply(new String[0], loggingBean
-						.getLoggingPropertiesFile(), new File(dataDir,
-						"repositories"));
+				File[] writable = new File[dataDir.length + 1];
+				for (int i = 0; i < dataDir.length; i++) {
+					writable[i] = new File(dataDir[i], "repositories");
+				}
+				writable[dataDir.length] = loggingBean
+						.getLoggingPropertiesFile();
+				ServerPolicy.apply(new String[0], writable);
 			}
 		} catch (Throwable e) {
 			while (e.getCause() != null) {
@@ -282,25 +293,25 @@ public class Server {
 			}
 		} else {
 			node.poke();
-			List<String> active = Arrays.asList(node.getRepositoryIDs());
+			Map<String, String> active = indexByPath(Arrays.asList(node.getRepositoryLocations()));
 			try {
 				QueryExp instanceOf = Query.isInstanceOf(Query.value(RepositoryMXBean.class.getName()));
 				for (ObjectName on : mbs.queryNames(new ObjectName(repositories + ",*"), instanceOf)) {
-					if (!active.contains(on.getKeyProperty("name"))) {
+					if (!active.keySet().contains(on.getKeyProperty("name"))) {
 						mbs.unregisterMBean(on);
 					}
 				}
 			} catch (JMException e) {
 				logger.error(e.toString(), e);
 			}
-			for (String id : active) {
+			for (Map.Entry<String, String> e : active.entrySet()) {
 				try {
-					String oname = repositories + ",name=" + id;
+					String oname = repositories + ",name=" + e.getKey();
 					if (!mbs.isRegistered(new ObjectName(oname))) {
-						registerMBean(node.getRepositoryMXBean(id), oname);
+						registerMBean(node.getRepositoryMXBean(e.getValue()), oname);
 					}
-				} catch (MalformedObjectNameException e) {
-					logger.error(e.toString(), e);
+				} catch (MalformedObjectNameException ex) {
+					logger.error(ex.toString(), ex);
 				}
 			}
 		}
@@ -374,24 +385,40 @@ public class Server {
 		return new URLClassLoader(urls, parent);
 	}
 
-	private void storePID(String pidFile, File dataDir) throws IOException {
-		File file;
+	private void storePID(String pidFile, File[] dataDir) throws IOException {
+		File[] files;
 		if (pidFile != null) {
-			file = new File(pidFile);
+			files = new File[]{new File(pidFile)};
+			files[0].getParentFile().mkdirs();
+			files[0].deleteOnExit();
 		} else {
-			File run = new File(dataDir, "run");
-			file = new File(run, "object-server.pid");
+			files = new File[dataDir.length];
+			for (int i=0;i<dataDir.length;i++) {
+				File run = new File(dataDir[i], "run");
+				files[i] = new File(run, "object-server.pid");
+				files[i].getParentFile().mkdirs();
+				files[i].deleteOnExit();
+			}
 		}
-		file.getParentFile().mkdirs();
-		file.deleteOnExit();
 		RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
 		String pid = bean.getName().replaceAll("@.*", "");
-		FileWriter writer = new FileWriter(file);
-		try {
-			writer.append(pid);
-		} finally {
-			writer.close();
+		for (File file : files) {
+			FileWriter writer = new FileWriter(file);
+			try {
+				writer.append(pid);
+			} finally {
+				writer.close();
+			}
 		}
+	}
+
+	private Map<String, String> indexByPath(List<String> list) {
+		Map<String, String> result = new LinkedHashMap<String, String>(
+				list.size());
+		for (String item : list) {
+			result.put(new ParsedURI(item).getPath(), item);
+		}
+		return result;
 	}
 
 	private String getRepositoryMBeanPrefix() {

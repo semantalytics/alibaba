@@ -126,12 +126,13 @@ public class TestServer extends TestCase {
 		server.init("-d", dataDir.getAbsolutePath(), "--trust");
 		final String url = "http://localhost:" + port + "/";
 		String PROLOG = "BASE <" + url + ">\n" + PREFIX;
-		RepositoryMXBean system = getMBean("*:*,name=SYSTEM", RepositoryMXBean.class);
+		String name = "*:*,name=" + dataDir.getPath() + "/repositories/";
+		RepositoryMXBean system = getMBean(name + "SYSTEM/", RepositoryMXBean.class);
 		system.sparqlUpdate(PROLOG + "INSERT DATA {<TestClass> a owl:Class;\n"
 				+ "msg:mixin '" + TestResponse.class.getName() + "'}");
 		ObjectServerMBean objectServer = getMBean("*:*", ObjectServerMBean.class);
 		objectServer.recompileSchema();
-		objectServer.addRepository(url, PREFIX
+		objectServer.addRepository(dataDir.toURI().toASCIIString(), url, PREFIX
 				+ "<#config> a rep:Repository;\n"
 				+ "rep:repositoryID 'localhost';\n" + "rdfs:label '" + url
 				+ "';\n" + "rep:repositoryImpl [\n"
@@ -139,12 +140,13 @@ public class TestServer extends TestCase {
 				+ "sr:sailImpl [sail:sailType 'openrdf:NativeStore']\n" + ""
 				+ "].\n");
 		server.poke(); // update registered repositories
-		RepositoryMXBean repository = getMBean("*:*,name=localhost", RepositoryMXBean.class);
+		RepositoryMXBean repository = getMBean(name + "localhost/", RepositoryMXBean.class);
 		repository.sparqlUpdate(PROLOG + "INSERT DATA {<> a <TestClass>}");
 		repository.storeCharacterBlob(url, "Hello World!");
 		objectServer.setPorts(port);
 		objectServer.start();
 		final CountDownLatch start = new CountDownLatch(1);
+		final CountDownLatch stop = new CountDownLatch(1);
 		TestResponse.latch = new CountDownLatch(1);
 		try {
 			new Thread(new Runnable() {
@@ -156,6 +158,8 @@ public class TestServer extends TestCase {
 						e.printStackTrace();
 					} catch (IOException e) {
 						e.printStackTrace();
+					} finally {
+						stop.countDown();
 					}
 				}
 			}).start();
@@ -166,18 +170,20 @@ public class TestServer extends TestCase {
 		} finally {
 			TestResponse.latch.countDown();
 		}
+		stop.await();
 	}
 
 	public void testRepositoryMXBean() throws Exception {
 		server.init("-d", dataDir.getAbsolutePath(), "--trust");
 		String url = "http://localhost:" + port + "/";
 		String PROLOG = "BASE <" + url + ">\n" + PREFIX;
-		RepositoryMXBean system = getMBean("*:*,name=SYSTEM", RepositoryMXBean.class);
+		String name = "*:*,name=" + dataDir.getPath() + "/repositories/";
+		RepositoryMXBean system = getMBean(name + "SYSTEM/", RepositoryMXBean.class);
 		system.sparqlUpdate(PROLOG + "INSERT DATA {<TestClass> a owl:Class;\n"
 				+ "msg:mixin '" + TestResponse.class.getName() + "'}");
 		ObjectServerMBean objectServer = getMBean("*:*", ObjectServerMBean.class);
 		objectServer.recompileSchema();
-		objectServer.addRepository(url, PREFIX
+		objectServer.addRepository(dataDir.toURI().toASCIIString(), url, PREFIX
 				+ "<#config> a rep:Repository;\n"
 				+ "rep:repositoryID 'localhost';\n" + "rdfs:label '" + url
 				+ "';\n" + "rep:repositoryImpl [\n"
@@ -185,7 +191,7 @@ public class TestServer extends TestCase {
 				+ "sr:sailImpl [sail:sailType 'openrdf:NativeStore']\n" + ""
 				+ "].\n");
 		server.poke(); // update registered repositories
-		RepositoryMXBean repository = getMBean("*:*,name=localhost", RepositoryMXBean.class);
+		RepositoryMXBean repository = getMBean(name + "localhost/", RepositoryMXBean.class);
 		repository.sparqlUpdate(PROLOG + "INSERT DATA {<> a <TestClass>}");
 		repository.storeCharacterBlob(url, "Hello World!");
 		objectServer.setPorts(port);
@@ -210,12 +216,13 @@ public class TestServer extends TestCase {
 		server.init("-d", dataDir.getAbsolutePath(), "-p", port, "-s", ssl, "--trust");
 		String url = "https://localhost:" + ssl + "/";
 		String PROLOG = "BASE <" + url + ">\n" + PREFIX;
-		RepositoryMXBean system = getMBean("*:*,name=SYSTEM", RepositoryMXBean.class);
+		String name = "*:*,name=" + dataDir.getPath() + "/repositories/";
+		RepositoryMXBean system = getMBean(name + "SYSTEM/", RepositoryMXBean.class);
 		system.sparqlUpdate(PROLOG + "INSERT DATA {<TestClass> a owl:Class;\n"
 				+ "msg:mixin '" + TestResponse.class.getName() + "'}");
 		ObjectServerMBean objectServer = getMBean("*:*", ObjectServerMBean.class);
 		objectServer.recompileSchema();
-		objectServer.addRepository(url, PREFIX
+		objectServer.addRepository(dataDir.toURI().toASCIIString(), url, PREFIX
 				+ "<#config> a rep:Repository;\n"
 				+ "rep:repositoryID 'localhost';\n" + "rdfs:label '" + url
 				+ "';\n" + "rep:repositoryImpl [\n"
@@ -223,7 +230,7 @@ public class TestServer extends TestCase {
 				+ "sr:sailImpl [sail:sailType 'openrdf:NativeStore']\n" + ""
 				+ "].\n");
 		server.poke(); // update registered repositories
-		RepositoryMXBean repository = getMBean("*:*,name=localhost", RepositoryMXBean.class);
+		RepositoryMXBean repository = getMBean(name + "localhost/", RepositoryMXBean.class);
 		repository.sparqlUpdate(PROLOG + "INSERT DATA {<> a <TestClass>}");
 		repository.storeCharacterBlob(url, "Hello World!");
 		server.start();

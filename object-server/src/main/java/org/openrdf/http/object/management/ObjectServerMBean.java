@@ -62,18 +62,18 @@ public interface ObjectServerMBean {
 
 	void connectionDumpToFile(String outputFile) throws IOException;
 
-	String addRepository(String base, String config) throws OpenRDFException,
+	String addRepository(String location, String base, String config) throws OpenRDFException,
 			IOException;
 
-	boolean removeRepository(String id) throws OpenRDFException;
+	boolean removeRepository(String location) throws OpenRDFException;
 
-	String[] getRepositoryIDs() throws OpenRDFException;
+	String[] getRepositoryLocations() throws OpenRDFException;
 
-	String[] getRepositoryPrefixes(String id) throws OpenRDFException;
+	String[] getRepositoryPrefixes(String location) throws OpenRDFException;
 
-	void addRepositoryPrefix(String id, String prefix) throws OpenRDFException;
+	void addRepositoryPrefix(String location, String prefix) throws OpenRDFException;
 
-	void setRepositoryPrefixes(String id, String[] prefixes) throws OpenRDFException;
+	void setRepositoryPrefixes(String location, String[] prefixes) throws OpenRDFException;
 
 	void init() throws IOException, OpenRDFException;
 

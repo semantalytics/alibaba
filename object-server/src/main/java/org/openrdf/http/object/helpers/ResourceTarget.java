@@ -109,7 +109,7 @@ public class ResourceTarget {
 	private static final Type mapOfStringArrayType = MapStringArray.class
 			.getGenericInterfaces()[0];
 	private static final String SUB_CLASS_OF = "http://www.w3.org/2000/01/rdf-schema#subClassOf";
-	private static final WeakHashMap<Class<?>, Map<Method, Collection<String>>> methodsByClass = new WeakHashMap<Class<?>, Map<Method,Collection<String>>>();
+	private static final WeakHashMap<Class<?>, Map<Method, Collection<String>>> methodsByClass = new WeakHashMap<Class<?>, Map<Method, Collection<String>>>();
 
 	private final Logger logger = LoggerFactory.getLogger(ResourceTarget.class);
 	private final Map<Method, Collection<String>> methods;

@@ -48,6 +48,7 @@ public class TestObjectServer extends TestCase {
 	private String port;
 	private String base;
 	private ObjectServer server;
+	private File dataDir;
 
 	public TestObjectServer(String name) {
 		super(name);
@@ -59,7 +60,7 @@ public class TestObjectServer extends TestCase {
 	}
 
 	public void setUp() throws Exception {
-		File dataDir = DirUtil.createTempDir("object-server");
+		dataDir = DirUtil.createTempDir("object-server");
 		DirUtil.deleteOnExit(dataDir);
 		server = new ObjectServer(dataDir);
 		server.setPorts(port);
@@ -70,21 +71,22 @@ public class TestObjectServer extends TestCase {
 	}
 
 	public void testCompile() throws Exception {
-		RepositoryConnection sys = server.openSchemaConnection();
+		String loc = server.addRepository(dataDir.toURI().toASCIIString(),
+				base, PREFIX + "<#config> a rep:Repository;\n"
+						+ "rep:repositoryID 'localhost';\n" + "rdfs:label '"
+						+ base + "';\n" + "rep:repositoryImpl [\n"
+						+ "rep:repositoryType 'openrdf:SailRepository';\n"
+						+ "sr:sailImpl [sail:sailType 'openrdf:NativeStore']\n"
+						+ "" + "].\n");
+		RepositoryConnection sys = server.openSchemaConnection(loc);
 		try {
 			sys.add(new StringReader(PREFIX + "<TestClass> a owl:Class;\n"
-					+ "msg:mixin '" + TestResponse.class.getName()
-					+ "'.\n"), base, RDFFormat.TURTLE);
+					+ "msg:mixin '" + TestResponse.class.getName() + "'.\n"),
+					base, RDFFormat.TURTLE);
 		} finally {
 			sys.close();
 		}
-		server.addRepository(base, PREFIX + "<#config> a rep:Repository;\n"
-				+ "rep:repositoryID 'localhost';\n" + "rdfs:label '" + base
-				+ "';\n" + "rep:repositoryImpl [\n"
-				+ "rep:repositoryType 'openrdf:SailRepository';\n"
-				+ "sr:sailImpl [sail:sailType 'openrdf:NativeStore']\n" + ""
-				+ "].\n");
-		ObjectConnection local = server.getRepository("localhost")
+		ObjectConnection local = server.getRepository(loc)
 				.getConnection();
 		try {
 			local.add(new StringReader(PREFIX + "<> a <TestClass>.\n"), base,
@@ -98,7 +100,14 @@ public class TestObjectServer extends TestCase {
 	}
 
 	public void testDynamicResources() throws Exception {
-		RepositoryConnection sys = server.openSchemaConnection();
+		String loc = server.addRepository(dataDir.toURI().toASCIIString(),
+				base, PREFIX + "<#config> a rep:Repository;\n"
+						+ "rep:repositoryID 'localhost';\n" + "rdfs:label '"
+						+ base + "';\n" + "rep:repositoryImpl [\n"
+						+ "rep:repositoryType 'openrdf:SailRepository';\n"
+						+ "sr:sailImpl [sail:sailType 'openrdf:NativeStore']\n"
+						+ "" + "].\n");
+		RepositoryConnection sys = server.openSchemaConnection(loc);
 		try {
 			sys.add(new StringReader(PREFIX + "<TestClass> a owl:Class;\n"
 					+ "msg:mixin '" + TestResponse.class.getName()
@@ -106,15 +115,9 @@ public class TestObjectServer extends TestCase {
 		} finally {
 			sys.close();
 		}
-		server.addRepository(base, PREFIX + "<#config> a rep:Repository;\n"
-				+ "rep:repositoryID 'localhost';\n" + "rdfs:label '" + base
-				+ "';\n" + "rep:repositoryImpl [\n"
-				+ "rep:repositoryType 'openrdf:SailRepository';\n"
-				+ "sr:sailImpl [sail:sailType 'openrdf:NativeStore']\n" + ""
-				+ "].\n");
 		server.init();
 		server.start();
-		ObjectConnection local = server.getRepository("localhost")
+		ObjectConnection local = server.getRepository(loc)
 				.getConnection();
 		try {
 			local.add(new StringReader(PREFIX + "<dynamic> a <TestClass>.\n"), base,
@@ -126,7 +129,7 @@ public class TestObjectServer extends TestCase {
 	}
 
 	public void testDynamicRepository() throws Exception {
-		RepositoryConnection sys = server.openSchemaConnection();
+		RepositoryConnection sys = server.openSchemaConnection(dataDir.toURI().toASCIIString());
 		try {
 			sys.add(new StringReader(PREFIX + "<TestClass> a owl:Class;\n"
 					+ "msg:mixin '" + TestResponse.class.getName()
@@ -136,13 +139,14 @@ public class TestObjectServer extends TestCase {
 		}
 		server.init();
 		server.start();
-		server.addRepository(base, PREFIX + "<#config> a rep:Repository;\n"
-				+ "rep:repositoryID 'localhost';\n" + "rdfs:label '" + base
-				+ "';\n" + "rep:repositoryImpl [\n"
-				+ "rep:repositoryType 'openrdf:SailRepository';\n"
-				+ "sr:sailImpl [sail:sailType 'openrdf:NativeStore']\n" + ""
-				+ "].\n");
-		ObjectConnection local = server.getRepository("localhost")
+		String loc = server.addRepository(dataDir.toURI().toASCIIString(),
+				base, PREFIX + "<#config> a rep:Repository;\n"
+						+ "rep:repositoryID 'localhost';\n" + "rdfs:label '"
+						+ base + "';\n" + "rep:repositoryImpl [\n"
+						+ "rep:repositoryType 'openrdf:SailRepository';\n"
+						+ "sr:sailImpl [sail:sailType 'openrdf:NativeStore']\n"
+						+ "" + "].\n");
+		ObjectConnection local = server.getRepository(loc)
 				.getConnection();
 		try {
 			local.add(new StringReader(PREFIX + "<dynamic> a <TestClass>.\n"), base,
@@ -156,7 +160,7 @@ public class TestObjectServer extends TestCase {
 	public void testRecompile() throws Exception {
 		server.init();
 		server.start();
-		RepositoryConnection sys = server.openSchemaConnection();
+		RepositoryConnection sys = server.openSchemaConnection(dataDir.toURI().toASCIIString());
 		try {
 			sys.add(new StringReader(PREFIX + "<TestClass> a owl:Class;\n"
 					+ "msg:mixin '" + TestResponse.class.getName()
@@ -164,13 +168,14 @@ public class TestObjectServer extends TestCase {
 		} finally {
 			sys.close();
 		}
-		server.addRepository(base, PREFIX + "<#config> a rep:Repository;\n"
-				+ "rep:repositoryID 'localhost';\n" + "rdfs:label '" + base
-				+ "';\n" + "rep:repositoryImpl [\n"
-				+ "rep:repositoryType 'openrdf:SailRepository';\n"
-				+ "sr:sailImpl [sail:sailType 'openrdf:NativeStore']\n" + ""
-				+ "].\n");
-		ObjectConnection local = server.getRepository("localhost")
+		String loc = server.addRepository(dataDir.toURI().toASCIIString(),
+				base, PREFIX + "<#config> a rep:Repository;\n"
+						+ "rep:repositoryID 'localhost';\n" + "rdfs:label '"
+						+ base + "';\n" + "rep:repositoryImpl [\n"
+						+ "rep:repositoryType 'openrdf:SailRepository';\n"
+						+ "sr:sailImpl [sail:sailType 'openrdf:NativeStore']\n"
+						+ "" + "].\n");
+		ObjectConnection local = server.getRepository(loc)
 				.getConnection();
 		try {
 			local.add(new StringReader(PREFIX + "<dynamic> a <TestClass>.\n"), base,

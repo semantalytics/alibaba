@@ -106,7 +106,9 @@ public class TestServerControl extends TestCase {
 	}
 
 	public void testListRepositories() throws Exception {
-		control.init("-d", dataDir.getAbsolutePath(), "-p", port, "-endpoint", "http://example.com/sparql", "-x",
+		control.init("-d", dataDir.getAbsolutePath(), "-p", port, "-i",
+				"sparql", "-endpoint",
+				"http://example.com/repositories/sparql", "-x",
 				"http://example.com/", "-list");
 		control.start();
 	}
@@ -119,15 +121,16 @@ public class TestServerControl extends TestCase {
 			server.init("-d", dataDir.getAbsolutePath(), "--trust");
 			ObjectServerMBean objectServer = getMBean("*:*",
 					ObjectServerMBean.class);
-			objectServer.addRepository(url, PREFIX
+			String dir = dataDir.toURI().toASCIIString();
+			String loc = objectServer.addRepository(dir, url, PREFIX
 					+ "<#config> a rep:Repository;\n"
 					+ "rep:repositoryID 'localhost';\n" + "rdfs:label '" + url
 					+ "';\n" + "rep:repositoryImpl [\n"
 					+ "rep:repositoryType 'openrdf:SailRepository';\n"
-					+ "sr:sailImpl [sail:sailType 'openrdf:NativeStore']\n" + ""
-					+ "].\n");
+					+ "sr:sailImpl [sail:sailType 'openrdf:NativeStore']\n"
+					+ "" + "].\n");
 			server.poke(); // update registered repositories
-			control.init("-p", port, "-id", "localhost", "-update", PROLOG
+			control.init("-p", port, "-i", loc, "-update", PROLOG
 					+ "INSERT DATA {<> a <TestClass>}", "-query", PROLOG
 					+ "DESCRIBE <>");
 			control.start();
@@ -143,7 +146,8 @@ public class TestServerControl extends TestCase {
 			server.init("-d", dataDir.getAbsolutePath(), "--trust");
 			ObjectServerMBean objectServer = getMBean("*:*",
 					ObjectServerMBean.class);
-			objectServer.addRepository(url, PREFIX
+			String dir = dataDir.toURI().toASCIIString();
+			String loc = objectServer.addRepository(dir, url, PREFIX
 					+ "<#config> a rep:Repository;\n"
 					+ "rep:repositoryID 'localhost';\n" + "rdfs:label '" + url
 					+ "';\n" + "rep:repositoryImpl [\n"
@@ -154,9 +158,9 @@ public class TestServerControl extends TestCase {
 			File read = File.createTempFile("read", "", dataDir);
 			File write = File.createTempFile("read", "", dataDir);
 			FileUtils.writeStringToFile(write, "Hello World!");
-			control.init("-p", port, "-id", "localhost", "-write", url, "-file", write.getAbsolutePath());
+			control.init("-p", port, "-i", loc, "-write", url, "-file", write.getAbsolutePath());
 			control.start();
-			control.init("-p", port, "-id", "localhost", "-read", url, "-file", read.getAbsolutePath());
+			control.init("-p", port, "-i", loc, "-read", url, "-file", read.getAbsolutePath());
 			control.start();
 			assertEquals("Hello World!", FileUtils.readFileToString(read));
 		} finally {

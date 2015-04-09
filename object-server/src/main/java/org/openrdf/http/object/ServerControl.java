@@ -17,6 +17,7 @@
 package org.openrdf.http.object;
 
 import info.aduna.io.IOUtil;
+import info.aduna.net.ParsedURI;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -30,6 +31,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.UndeclaredThrowableException;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.rmi.UnmarshalException;
@@ -60,6 +62,7 @@ import org.openrdf.http.object.io.ChannelUtil;
 import org.openrdf.http.object.management.JVMUsageMBean;
 import org.openrdf.http.object.management.ObjectServerMBean;
 import org.openrdf.http.object.management.RepositoryMXBean;
+import org.openrdf.repository.manager.RepositoryProvider;
 
 /**
  * Command line tool for monitoring and controlling the server.
@@ -68,6 +71,7 @@ import org.openrdf.http.object.management.RepositoryMXBean;
  * 
  */
 public class ServerControl {
+	private static final String REPOSITORIES = "repositories";
 	private static final String ATTACH_MACHINE = "com.sun.tools.attach.VirtualMachine";
 	private static final String REPO_NAME = Server.class.getPackage().getName() + ":*,name=";
 	public static final String NAME = Version.getInstance().getVersion();
@@ -102,14 +106,14 @@ public class ServerControl {
 		commands.option("dump")
 				.arg("directory")
 				.desc("Use the directory to dump the server status in the given directory");
-		commands.option("remove").arg("Endpoint ID")
+		commands.option("remove").arg("Local endpoint file: location")
 				.desc("Remove SPARQL endpoint repository from server");
-		commands.option("endpoint").arg("SPARQL endpoint URL")
+		commands.option("endpoint").arg("Remote SPARQL endpoint URL")
 				.desc("Adds or updates SPARQL endpoint URL");
 		commands.option("c", "conf").arg("file")
 				.desc("The local repository config file to update with");
-		commands.option("l", "list").desc("List endpoint IDs");
-		commands.option("i", "id").arg("Endpoint ID")
+		commands.option("l", "list").desc("List local endpoint locations");
+		commands.option("i", "identifier").arg("Local endpoint location")
 				.desc("Endpoint to modify");
 		commands.option("x", "prefix").arg("URL prefix")
 				.desc("URL prefix to map to the given endpoint");
@@ -200,10 +204,27 @@ public class ServerControl {
 				line.printParseError();
 				System.exit(2);
 				return;
-			} else if (!line.has("id")
-					&& (line.has("update") || line.has("query")
+			} else if (!line.has("identifier")
+					&& (line.has("endpoint") || line.has("conf")
+							|| line.has("update") || line.has("query")
 							|| line.has("read") || line.has("write"))) {
-				System.err.println("Missing required option: id");
+				System.err.println("Missing required option: identifier");
+				line.printHelp();
+				System.exit(2);
+				return;
+			} else if (line.has("identifier")
+					&& line.has("endpoint")
+					&& line.getAll("identifier").length < line
+							.getAll("endpoint").length) {
+				System.err.println("Not enough identifier arguments");
+				line.printHelp();
+				System.exit(2);
+				return;
+			} else if (line.has("identifier")
+					&& line.has("conf")
+					&& line.getAll("identifier").length < line
+							.getAll("conf").length) {
+				System.err.println("Not enough identifier arguments");
 				line.printHelp();
 				System.exit(2);
 				return;
@@ -221,7 +242,7 @@ public class ServerControl {
 				if (pidFile.canRead()) {
 					setPid(IOUtil.readString(pidFile).trim());
 				} else if (getObjectNames(ObjectServerMBean.class, mbsc).isEmpty()) {
-					initInternalServer();
+					initInternalServer(line.getAll("dataDir"));
 				}
 			}
 			for (ObjectName name : getObjectNames(ObjectServerMBean.class, mbsc)) {
@@ -276,43 +297,38 @@ public class ServerControl {
 			}
 		}
 		if (line.has("endpoint")) {
+			String[] ids = getLocations();
 			String[] urls = line.getAll("endpoint");
-			String[] ids = line.getAll("id");
-			if (ids == null || urls.length != ids.length) {
-				ids = new String[urls.length];
-				for (int i = 0; i < urls.length; i++) {
-					String w = urls[i].replaceAll("\\W*$", "").replaceAll(
-							".*\\W", "");
-					ids[i] = w + Integer.toHexString(urls[i].hashCode());
-				}
-			}
 			for (int i = 0; i < urls.length; i++) {
+				String id = RepositoryProvider
+						.getRepositoryIdOfRepository(ids[i]);
 				System.out.println("Assigning endpoint " + urls[i] + " to ID "
-						+ ids[i]);
-				String config = ENDPOINT_CONFIG.replace("{id}", ids[i])
-						.replace("{url}", urls[i]);
+						+ id);
+				String config = ENDPOINT_CONFIG.replace("{id}", id).replace(
+						"{url}", urls[i]);
 				String base = new File("").toURI().toASCIIString();
-				server.addRepository(base, config);
+				server.addRepository(ids[i], base, config);
 			}
 		}
 		if (line.has("conf")) {
+			String[] ids = getLocations();
 			String[] files = line.getAll("conf");
 			for (int i = 0; i < files.length; i++) {
 				File file = new File(files[i]);
 				String config = FileUtils.readFileToString(file);
 				String base = file.toURI().toASCIIString();
-				String id = server.addRepository(base, config);
+				String id = server.addRepository(ids[i], base, config);
 				System.out.println("Assigning endpoint " + files[i] + " to ID "
 						+ id);
 			}
 		}
 		if (line.has("list")) {
-			for (String id : server.getRepositoryIDs()) {
+			for (String id : server.getRepositoryLocations()) {
 				System.out.println(id);
 			}
 		}
-		if (line.has("id") && line.has("prefix")) {
-			String[] ids = line.getAll("id");
+		if (line.has("identifier") && line.has("prefix")) {
+			String[] ids = getLocations();
 			String[] prefixes = line.getAll("prefix");
 			for (int i = 0; i < prefixes.length; i++) {
 				if (i >= ids.length) {
@@ -325,9 +341,10 @@ public class ServerControl {
 		}
 		if (line.has("update")) {
 			for (String update : line.getAll("update")) {
-				for (String id : line.getAll("id")) {
+				for (String loc : getLocations()) {
+					String path = new ParsedURI(loc).getPath();
 					QueryExp instanceOf = Query.isInstanceOf(Query.value(RepositoryMXBean.class.getName()));
-					Set<ObjectName> names = mbsc.queryNames(new ObjectName(REPO_NAME + id), instanceOf);
+					Set<ObjectName> names = mbsc.queryNames(new ObjectName(REPO_NAME + path), instanceOf);
 					for (ObjectName name : names) {
 						RepositoryMXBean repo = JMX.newMXBeanProxy(mbsc, name, RepositoryMXBean.class);
 						repo.sparqlUpdate(update);
@@ -337,9 +354,10 @@ public class ServerControl {
 		}
 		if (line.has("query")) {
 			for (String query : line.getAll("query")) {
-				for (String id : line.getAll("id")) {
+				for (String loc : getLocations()) {
+					String path = new ParsedURI(loc).getPath();
 					QueryExp instanceOf = Query.isInstanceOf(Query.value(RepositoryMXBean.class.getName()));
-					Set<ObjectName> names = mbsc.queryNames(new ObjectName(REPO_NAME + id), instanceOf);
+					Set<ObjectName> names = mbsc.queryNames(new ObjectName(REPO_NAME + path), instanceOf);
 					for (ObjectName name : names) {
 						RepositoryMXBean repo = JMX.newMXBeanProxy(mbsc, name, RepositoryMXBean.class);
 						for (String line : repo.sparqlQuery(query)) {
@@ -352,9 +370,10 @@ public class ServerControl {
 		if (line.has("write")) {
 			byte[] content = FileUtils.readFileToByteArray(new File(line.get("file")));
 			for (String uri : line.getAll("write")) {
-				for (String id : line.getAll("id")) {
+				for (String loc : getLocations()) {
+					String path = new ParsedURI(loc).getPath();
 					QueryExp instanceOf = Query.isInstanceOf(Query.value(RepositoryMXBean.class.getName()));
-					Set<ObjectName> names = mbsc.queryNames(new ObjectName(REPO_NAME + id), instanceOf);
+					Set<ObjectName> names = mbsc.queryNames(new ObjectName(REPO_NAME + path), instanceOf);
 					for (ObjectName name : names) {
 						RepositoryMXBean repo = JMX.newMXBeanProxy(mbsc, name, RepositoryMXBean.class);
 						repo.storeBinaryBlob(uri, content);
@@ -364,9 +383,10 @@ public class ServerControl {
 		}
 		if (line.has("read")) {
 			for (String uri : line.getAll("read")) {
-				for (String id : line.getAll("id")) {
+				for (String loc : getLocations()) {
+					String path = new ParsedURI(loc).getPath();
 					QueryExp instanceOf = Query.isInstanceOf(Query.value(RepositoryMXBean.class.getName()));
-					Set<ObjectName> names = mbsc.queryNames(new ObjectName(REPO_NAME + id), instanceOf);
+					Set<ObjectName> names = mbsc.queryNames(new ObjectName(REPO_NAME + path), instanceOf);
 					for (ObjectName name : names) {
 						RepositoryMXBean repo = JMX.newMXBeanProxy(mbsc, name, RepositoryMXBean.class);
 						byte[] content = repo.readBinaryBlob(uri);
@@ -704,9 +724,30 @@ public class ServerControl {
 		return connector.getMBeanServerConnection();
 	}
 
-	private void initInternalServer() {
+	private String[] getLocations() {
+		String[] ids = line.getAll("identifier");
+		if (ids == null || !line.has("dataDir"))
+			return ids;
+		String[] dataDir = line.getAll("dataDir");
+		String[] locations = new String[ids.length];
+		for (int i=0; i<ids.length; i++) {
+			File repositories = new File(dataDir[Math.max(i, dataDir.length-1)], REPOSITORIES);
+			if (URI.create(ids[i]).isAbsolute()) {
+				locations[i] = ids[i];
+			} else {
+				locations[i] = new File(repositories, ids[i]).toURI().toASCIIString();
+			}
+		}
+		return locations;
+	}
+
+	private void initInternalServer(String[] dataDir) {
+		String[] args = new String[dataDir.length + 2];
+		args[0] = "--trust";
+		args[1] = "--dataDir";
+		System.arraycopy(dataDir, 0, args, 2, dataDir.length);
 		internalServer = new Server();
-		internalServer.init("--dataDir", line.get("dataDir"), "--trust");
+		internalServer.init(args);
 	}
 
 }
