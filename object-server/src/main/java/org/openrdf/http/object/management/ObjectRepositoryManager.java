@@ -2,6 +2,7 @@ package org.openrdf.http.object.management;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -46,6 +47,7 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 	private final Map<String, ObjectRepository> repositories = new HashMap<String, ObjectRepository>();
 	private final LocalRepositoryManager manager;
 	private final CompiledObjectSchema service;
+	private final SchemaListener listener;
 
 	public ObjectRepositoryManager(File dataDir) throws OpenRDFException,
 			IOException {
@@ -53,7 +55,8 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 				.getRepositoryManager(dataDir);
 		this.manager = manager;
 		SystemRepository sys = manager.getSystemRepository();
-		service = new CompiledObjectSchema(watch(sys));
+		listener = new SchemaListener(sys, this);
+		service = new CompiledObjectSchema(sys);
 	}
 
 	public ObjectRepositoryManager(File dataDir, ClassLoader cl)
@@ -62,7 +65,8 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 				.getRepositoryManager(dataDir);
 		this.manager = manager;
 		SystemRepository sys = manager.getSystemRepository();
-		service = new CompiledObjectSchema(watch(sys), cl);
+		listener = new SchemaListener(sys, this);
+		service = new CompiledObjectSchema(sys, cl);
 	}
 
 	public ObjectRepositoryManager(File dataDir, File libDir, ClassLoader cl)
@@ -71,7 +75,8 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 				.getRepositoryManager(dataDir);
 		this.manager = manager;
 		SystemRepository sys = manager.getSystemRepository();
-		service = new CompiledObjectSchema(watch(sys), libDir, cl);
+		listener = new SchemaListener(sys, this);
+		service = new CompiledObjectSchema(sys, libDir, cl);
 	}
 
 	public URL getLocation() throws MalformedURLException {
@@ -95,6 +100,7 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 	}
 
 	public synchronized void shutDown() throws RepositoryException {
+		listener.release();
 		for (ObjectRepository repo : repositories.values()) {
 			repo.shutDown();
 		}
@@ -210,69 +216,21 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 		manager.addRepositoryConfig(config);
 	}
 
-	private Repository watch(SystemRepository repo) {
-		repo.addRepositoryConnectionListener(new RepositoryConnectionListenerAdapter() {
-			private Map<RepositoryConnection, Boolean> changed = new WeakHashMap<RepositoryConnection, Boolean>();
-			private Map<RepositoryConnection, Boolean> modified = new WeakHashMap<RepositoryConnection, Boolean>();
-
-			public void clear(RepositoryConnection conn, Resource... contexts) {
-				modified.put(conn, true);
+	void schemaChanged() {
+		if (isCompiled()) {
+			try {
+				recompileSchema();
+			} catch (IOException e) {
+				logger.error(e.toString(), e);
+			} catch (OpenRDFException e) {
+				logger.error(e.toString(), e);
+			} catch (RuntimeException e) {
+				logger.error(e.toString(), e);
+			} catch (Error e) {
+				logger.error(e.toString(), e);
+				throw e;
 			}
-
-			public void remove(RepositoryConnection conn, Resource subject,
-					URI predicate, Value object, Resource... contexts) {
-				modified.put(conn, true);
-			}
-
-			public void add(RepositoryConnection conn, Resource subject,
-					URI predicate, Value object, Resource... contexts) {
-				modified.put(conn, true);
-			}
-
-			public void execute(RepositoryConnection conn, QueryLanguage ql,
-					String update, String baseURI, Update operation) {
-				modified.put(conn, true);
-			}
-
-			public void begin(RepositoryConnection conn) {
-				if (!changed.containsKey(conn) && modified.containsKey(conn)) {
-					changed.put(conn, true);
-				}
-			}
-
-			public void rollback(RepositoryConnection conn) {
-				modified.remove(conn);
-			}
-
-			public void commit(RepositoryConnection conn) {
-				if (!changed.containsKey(conn) && modified.containsKey(conn)) {
-					changed.put(conn, true);
-				}
-			}
-
-			public void close(RepositoryConnection conn) {
-				if (isCompiled()
-						&& (changed.containsKey(conn) || modified
-								.containsKey(conn))) {
-					try {
-						recompileSchema();
-					} catch (IOException e) {
-						logger.error(e.toString(), e);
-					} catch (OpenRDFException e) {
-						logger.error(e.toString(), e);
-					} catch (RuntimeException e) {
-						logger.error(e.toString(), e);
-					} catch (Error e) {
-						logger.error(e.toString(), e);
-						throw e;
-					} finally {
-						changed.remove(conn);
-						modified.remove(conn);
-					}
-				}
-			}
-		});
-		return repo;
+		}
 	}
 
 	private String[] splitURLs(String desc) {
@@ -286,4 +244,73 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 		return list.toArray(new String[list.size()]);
 	}
 
+	private static final class SchemaListener extends
+			RepositoryConnectionListenerAdapter {
+		private final Map<RepositoryConnection, Boolean> changed = new WeakHashMap<RepositoryConnection, Boolean>();
+		private final Map<RepositoryConnection, Boolean> modified = new WeakHashMap<RepositoryConnection, Boolean>();
+		private final SystemRepository sys;
+		private final WeakReference<ObjectRepositoryManager> ref;
+
+		public SchemaListener(SystemRepository sys, ObjectRepositoryManager manager) {
+			this.sys = sys;
+			this.ref = new WeakReference<ObjectRepositoryManager>(manager);
+			sys.addRepositoryConnectionListener(this);
+		}
+
+		public void clear(RepositoryConnection conn, Resource... contexts) {
+			modified.put(conn, true);
+		}
+
+		public void remove(RepositoryConnection conn, Resource subject,
+				URI predicate, Value object, Resource... contexts) {
+			modified.put(conn, true);
+		}
+
+		public void add(RepositoryConnection conn, Resource subject,
+				URI predicate, Value object, Resource... contexts) {
+			modified.put(conn, true);
+		}
+
+		public void execute(RepositoryConnection conn, QueryLanguage ql,
+				String update, String baseURI, Update operation) {
+			modified.put(conn, true);
+		}
+
+		public void begin(RepositoryConnection conn) {
+			if (!changed.containsKey(conn) && modified.containsKey(conn)) {
+				changed.put(conn, true);
+			}
+		}
+
+		public void rollback(RepositoryConnection conn) {
+			modified.remove(conn);
+		}
+
+		public void commit(RepositoryConnection conn) {
+			if (!changed.containsKey(conn) && modified.containsKey(conn)) {
+				changed.put(conn, true);
+			}
+		}
+
+		public void close(RepositoryConnection conn) {
+			if (changed.containsKey(conn) || modified
+							.containsKey(conn)) {
+				try {
+					ObjectRepositoryManager orm = ref.get();
+					if (orm == null) {
+						sys.removeRepositoryConnectionListener(this);
+					} else {
+						orm.schemaChanged();
+					}
+				} finally {
+					changed.remove(conn);
+					modified.remove(conn);
+				}
+			}
+		}
+
+		public void release() {
+			sys.removeRepositoryConnectionListener(this);
+		}
+	}
 }
