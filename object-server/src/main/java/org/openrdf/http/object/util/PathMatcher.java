@@ -30,10 +30,10 @@ public class PathMatcher {
 	private static final Pattern NAMED_GROUP_PATTERN = Pattern
 			.compile("\\(\\?<(\\w+)>");
 
-	private String url;
+	private CharSequence url;
 	private int start;
 
-	public PathMatcher(String url, int start) {
+	public PathMatcher(CharSequence url, int start) {
 		this.url = url;
 		this.start = start;
 	}

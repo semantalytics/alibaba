@@ -338,11 +338,14 @@ public class ResourceClass {
 		return result;
 	}
 
-	private Method findMethod(HttpRequest request, String url, int startingAt) throws RepositoryException {
+	private Method findMethod(HttpRequest request, String url, int startingAt)
+			throws RepositoryException {
 		boolean messageBody = isMessageBody(request);
-		Collection<Method> methods = findHandlers(request.getRequestLine().getMethod(), url, startingAt);
+		Collection<Method> methods = findHandlers(request.getRequestLine()
+				.getMethod(), url, startingAt);
 		if (!methods.isEmpty()) {
-			Method method = findBestMethod(request, url, startingAt, findAcceptableMethods(request, url, methods, messageBody));
+			Method method = findBestMethod(request, url, startingAt,
+					findAcceptableMethods(request, methods, messageBody));
 			if (method != null)
 				return method;
 		}
@@ -401,11 +404,12 @@ public class ResourceClass {
 		return (regex.flags() & Pattern.LITERAL) != 0;
 	}
 
-	private Collection<Method> findAcceptableMethods(HttpRequest request, String url, Collection<Method> methods, boolean messageBody) {
+	private Collection<Method> findAcceptableMethods(HttpRequest request,
+			Collection<Method> methods, boolean messageBody) {
 		String readable = null;
 		String acceptable = null;
 		Collection<Method> list = new LinkedHashSet<Method>(methods.size());
-		Fluid body = getBody(request, url);
+		Fluid body = getBody(request);
 		loop: for (Method method : methods) {
 			Collection<String> readableTypes;
 			readableTypes = getReadableTypes(body, method, messageBody);
@@ -447,7 +451,7 @@ public class ResourceClass {
 		return list;
 	}
 
-	private Fluid getBody(HttpRequest request, String url) {
+	private Fluid getBody(HttpRequest request) {
 		Header[] headers = request.getHeaders("Content-Type");
 		String[] mediaType;
 		if (headers == null || headers.length == 0) {
@@ -540,7 +544,8 @@ public class ResourceClass {
 		return readable;
 	}
 
-	private Method findBestMethod(HttpRequest request, String url, int startingAt, Collection<Method> methods) {
+	private Method findBestMethod(HttpRequest request, String url,
+			int startingAt, Collection<Method> methods) {
 		if (methods.isEmpty())
 			return null;
 		if (methods.size() == 1) {
@@ -555,7 +560,7 @@ public class ResourceClass {
 		Collection<Method> longerPath = filterLongestPathMethods(submethods, url, startingAt);
 		if (longerPath.size() == 1)
 			return longerPath.iterator().next();
-		Method best = findBestMethodByRequestType(request, url, longerPath);
+		Method best = findBestMethodByRequestType(request, longerPath);
 		if (best == null)
 			return submethods.iterator().next();
 		return best;
@@ -667,10 +672,10 @@ public class ResourceClass {
 		return result;
 	}
 
-	private Method findBestMethodByRequestType(HttpRequest request, String url, Collection<Method> methods) {
+	private Method findBestMethodByRequestType(HttpRequest request, Collection<Method> methods) {
 		Method best = null;
 		double quality = Double.MIN_VALUE;
-		Fluid body = getBody(request, url);
+		Fluid body = getBody(request);
 		for (Method method : methods) {
 			Type[] gtypes = method.getGenericParameterTypes();
 			for (int i=0,n=method.getParameterTypes().length; i<n; i++) {
