@@ -130,6 +130,8 @@ public class ObjectFactory {
 	 * Creates an anonymous object with no rdf:type.
 	 */
 	public RDFObject createObject() {
+		if (connection == null)
+			throw new IllegalStateException("No ObjectConnection");
 		BNode node = connection.getValueFactory().createBNode();
 		return createBean(node, resolver.resolveBlankEntity());
 
@@ -139,6 +141,8 @@ public class ObjectFactory {
 	 * Creates an object with no rdf:type.
 	 */
 	public RDFObject createObject(String uri) {
+		if (connection == null)
+			throw new IllegalStateException("No ObjectConnection");
 		ValueFactory vf = connection.getValueFactory();
 		return createObject(vf.createURI(uri));
 	}
@@ -157,6 +161,8 @@ public class ObjectFactory {
 	 * Creates an object with an assumed rdf:type.
 	 */
 	public <T> T createObject(String uri, Class<T> type) {
+		if (connection == null)
+			throw new IllegalStateException("No ObjectConnection");
 		ValueFactory vf = connection.getValueFactory();
 		return createObject(vf.createURI(uri), type);
 	}
@@ -188,6 +194,8 @@ public class ObjectFactory {
 	 * Creates an object with assumed rdf:types.
 	 */
 	public RDFObject createObject(String uri, URI... types) {
+		if (connection == null)
+			throw new IllegalStateException("No ObjectConnection");
 		ValueFactory vf = connection.getValueFactory();
 		return createObject(vf.createURI(uri), types);
 	}
@@ -205,6 +213,8 @@ public class ObjectFactory {
 	 * Creates an object with assumed rdf:types.
 	 */
 	public RDFObject createObject(String uri,  Set<URI> types) {
+		if (connection == null)
+			throw new IllegalStateException("No ObjectConnection");
 		ValueFactory vf = connection.getValueFactory();
 		return createObject(vf.createURI(uri), types);
 	}
@@ -366,6 +376,8 @@ public class ObjectFactory {
 	}
 
 	private RDFObject createBean(Resource resource, Class<?> proxy) {
+		if (connection == null)
+			throw new IllegalStateException("No ObjectConnection");
 		try {
 			ObjectQueryFactory factory = createObjectQueryFactory(proxy);
 			Object obj = newInstance(proxy);
