@@ -70,8 +70,7 @@ public class DatatypeWriter implements Consumer<Object> {
 	private String asString(Object result, FluidBuilder builder) {
 		if (result == null)
 			return null;
-		return builder.getObjectConnection().getObjectFactory()
-				.createLiteral(result).getLabel();
+		return builder.getObjectFactory().createLiteral(result).getLabel();
 	}
 
 }

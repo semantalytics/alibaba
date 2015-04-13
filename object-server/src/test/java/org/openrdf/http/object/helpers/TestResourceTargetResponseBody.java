@@ -510,6 +510,6 @@ public class TestResourceTargetResponseBody extends TestCase {
 			RepositoryException {
 		RDFObject object = con.getObjects(RDFObject.class,
 				con.getValueFactory().createURI(RESOURCE)).singleResult();
-		return new ResourceTarget(object, context);
+		return new ResourceTargetFactory().createResourceTarget(object, context);
 	}
 }

@@ -44,6 +44,7 @@ import org.openrdf.http.object.helpers.CompletedResponse;
 import org.openrdf.http.object.helpers.ObjectContext;
 import org.openrdf.http.object.helpers.Request;
 import org.openrdf.http.object.helpers.ResourceTarget;
+import org.openrdf.http.object.helpers.ResourceTargetFactory;
 import org.openrdf.http.object.helpers.ResponseBuilder;
 import org.openrdf.http.object.helpers.ResponseCallback;
 import org.openrdf.http.object.io.ChannelUtil;
@@ -63,6 +64,7 @@ public class TransactionHandler implements AsyncExecChain {
 
 	private final Logger logger = LoggerFactory.getLogger(ResourceTarget.class);
 	private final PrefixMap<ObjectRepository> repositories = new PrefixMap<ObjectRepository>();
+	private final ResourceTargetFactory factory = new ResourceTargetFactory();
 	private final AsyncExecChain handler;
 	final Executor executor;
 
@@ -106,7 +108,7 @@ public class TransactionHandler implements AsyncExecChain {
 			try {
 				con.begin();
 				RDFObject object = getRequestedObject(con, req.getIRI());
-				final ResourceTarget op = new ResourceTarget(object, context);
+				final ResourceTarget op = factory.createResourceTarget(object, context);
 				context.setResourceTarget(op);
 				Future<HttpResponse> future = handler.execute(target, request, context, new ResponseCallback(callback) {
 					public void completed(HttpResponse result) {

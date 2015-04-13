@@ -32,11 +32,11 @@ import org.apache.http.message.BasicHttpEntityEnclosingRequest;
 import org.apache.http.message.BasicHttpRequest;
 import org.apache.http.message.BasicHttpResponse;
 import org.apache.http.util.EntityUtils;
+import org.openrdf.annotations.HeaderParam;
 import org.openrdf.annotations.Method;
 import org.openrdf.annotations.Param;
 import org.openrdf.annotations.Path;
 import org.openrdf.annotations.Type;
-import org.openrdf.http.object.chain.RequestExecChain;
 import org.openrdf.http.object.exceptions.BadGateway;
 import org.openrdf.http.object.exceptions.BadRequest;
 import org.openrdf.http.object.helpers.ObjectContext;
@@ -101,6 +101,20 @@ public class TestRequestExecChain extends TestCase {
 		@Type("text/plain")
 		public String getPath(@Param("0") String path) {
 			return path;
+		}
+
+		@Method("GET")
+		@Path("cookie")
+		@Type("text/plain")
+		public String echoCookie(@HeaderParam("Biscut") String cookie) {
+			return cookie;
+		}
+
+		@Method("GET")
+		@Path("cookie2")
+		@Type("text/plain")
+		public String echoCookie2(@HeaderParam("Biscut") String[] cookie) {
+			return Arrays.asList(cookie).toString();
 		}
 	}
 
@@ -515,7 +529,23 @@ public class TestRequestExecChain extends TestCase {
 		assertEquals(resp.getStatusLine().getReasonPhrase(), 200, resp
 				.getStatusLine().getStatusCode());
 		assertEquals(json, EntityUtils.toString(resp.getEntity()));
-	
+	}
+
+	public void testInvokeHeader() throws Exception {
+		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE + "cookie", HttpVersion.HTTP_1_1);
+		request.setHeader("Biscut", "yum");
+		HttpResponse resp = execute(request);
+		assertEquals("yum", EntityUtils.toString(resp.getEntity()));
+		assertTrue(Arrays.toString(resp.getHeaders("Vary")).contains("Biscut"));
+	}
+
+	public void testInvokeMultiHeader() throws Exception {
+		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE + "cookie2", HttpVersion.HTTP_1_1);
+		request.addHeader("Biscut", "hum");
+		request.addHeader("Biscut", "yum");
+		HttpResponse resp = execute(request);
+		assertEquals("[hum, yum]", EntityUtils.toString(resp.getEntity()));
+		assertTrue(Arrays.toString(resp.getHeaders("Vary")).contains("Biscut"));
 	}
 
 	public void testPing() throws Exception {

@@ -50,12 +50,15 @@ public class PrimitiveBodyWriter implements Consumer<Object> {
 	@Override
 	public Fluid consume(Object result, String base, FluidType ftype,
 			FluidBuilder builder) {
+		String str = null;
 		if (result == null && ftype.is(Boolean.TYPE)) {
-			result = "false";
+			str = "false";
 		} else if (result == null && ftype.isPrimitive()) {
-			result = "0";
+			str = "0";
+		} else if (result != null) {
+			str = result.toString();
 		}
-		return builder.consume(result.toString(), base, ftype.as(String.class));
+		return builder.consume(str, base, ftype.as(String.class));
 	}
 
 	private boolean isPrimitive(Class<?> asClass) {

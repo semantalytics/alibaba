@@ -31,27 +31,19 @@ package org.openrdf.http.object.helpers;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
-import java.util.WeakHashMap;
-import java.util.regex.Pattern;
 
-import javax.activation.MimeType;
-import javax.activation.MimeTypeParseException;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerConfigurationException;
 
@@ -60,29 +52,19 @@ import org.apache.http.HttpEntity;
 import org.apache.http.HttpException;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
-import org.apache.http.HttpVersion;
-import org.apache.http.StatusLine;
-import org.apache.http.message.BasicHeader;
-import org.apache.http.message.BasicHttpResponse;
-import org.apache.http.message.BasicStatusLine;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.protocol.HttpContext;
-import org.openrdf.annotations.Iri;
-import org.openrdf.annotations.Param;
-import org.openrdf.annotations.ParameterTypes;
-import org.openrdf.annotations.Path;
 import org.openrdf.http.object.client.HttpUriResponse;
 import org.openrdf.http.object.exceptions.InternalServerError;
 import org.openrdf.http.object.exceptions.MethodNotAllowed;
-import org.openrdf.http.object.exceptions.NotAcceptable;
 import org.openrdf.http.object.exceptions.NotFound;
 import org.openrdf.http.object.exceptions.ResponseException;
-import org.openrdf.http.object.exceptions.UnsupportedMediaType;
 import org.openrdf.http.object.fluid.Fluid;
 import org.openrdf.http.object.fluid.FluidBuilder;
 import org.openrdf.http.object.fluid.FluidException;
 import org.openrdf.http.object.fluid.FluidFactory;
 import org.openrdf.http.object.fluid.FluidType;
-import org.openrdf.http.object.util.PathMatcher;
 import org.openrdf.model.URI;
 import org.openrdf.model.ValueFactory;
 import org.openrdf.query.QueryEvaluationException;
@@ -100,49 +82,24 @@ import org.slf4j.LoggerFactory;
  * 
  */
 public class ResourceTarget {
-	private static final Pattern EMPTY_PATTERN = Pattern.compile("");
-	private static final Pattern DEFAULT_PATH = PathMatcher.compile("$|\\?.*");
-
-	private interface MapStringArray extends Map<String, String[]> {
-	}
-
-	private static final Type mapOfStringArrayType = MapStringArray.class
-			.getGenericInterfaces()[0];
-	private static final String SUB_CLASS_OF = "http://www.w3.org/2000/01/rdf-schema#subClassOf";
-	private static final WeakHashMap<Class<?>, Map<Method, Collection<String>>> methodsByClass = new WeakHashMap<Class<?>, Map<Method, Collection<String>>>();
-
+	private static final Charset UTF8 = Charset.forName("UTF-8");
 	private final Logger logger = LoggerFactory.getLogger(ResourceTarget.class);
-	private final Map<Method, Collection<String>> methods;
 	private final FluidFactory ff = FluidFactory.getInstance();
+	private final ResourceClass rClass;
 	private final ObjectContext context;
 	private final ValueFactory vf;
 	private final ObjectConnection con;
 	private RDFObject target;
 	private final FluidBuilder writer;
 
-	public ResourceTarget(RDFObject target, HttpContext context)
-			throws QueryEvaluationException, RepositoryException {
+	public ResourceTarget(ResourceClass rClass, RDFObject target,
+			HttpContext context) {
+		this.rClass = rClass;
 		this.target = target;
 		this.context = ObjectContext.adapt(context);
 		this.con = target.getObjectConnection();
 		this.vf = con.getValueFactory();
 		this.writer = ff.builder(con);
-		synchronized (methodsByClass){
-			Map<Method, Collection<String>> map = methodsByClass.get(target.getClass());
-			if (map == null) {
-				map = new HashMap<Method, Collection<String>>();
-				for (Method m : target.getClass().getMethods()) {
-					if (m.isAnnotationPresent(ParameterTypes.class))
-						continue;
-					org.openrdf.annotations.Method ann = m.getAnnotation(org.openrdf.annotations.Method.class);
-					if (ann == null)
-						continue;
-					map.put(m, Arrays.asList(ann.value()));
-				}
-				methodsByClass.put(target.getClass(), map);
-			}
-			methods = map;
-		}
 	}
 
 	public String toString() {
@@ -154,61 +111,29 @@ public class ResourceTarget {
 	}
 
 	public Set<String> getAllowedMethods(String url) {
-		Set<String> set = new TreeSet<String>();
-		Collection<Method> list = new ArrayList<Method>();
-		for (Map.Entry<Method, Collection<String>> e : methods.entrySet()) {
-			Method m = e.getKey();
-			if (getLongestMatchingPath(m, url) != null) {
-				list.add(m);
-			}
-			set.addAll(e.getValue());
-		}
-		if (set.contains("GET")) {
-			set.add("HEAD");
-		}
-		return set;
+		return rClass.getAllowedMethods();
 	}
 
 	public Collection<String> getAllowedHeaders(String m, String url) {
-		Collection<String> result = new TreeSet<String>();
-		for (Method method : findHandlers(m, url)) {
-			result.addAll(getVaryHeaders(method));
-		}
-		return result;
+		String iri = target.getResource().stringValue();
+		if (!url.startsWith(iri))
+			throw new InternalServerError("URL " + url
+					+ " does not start with IRI " + iri);
+		return rClass.getAllowedHeaders(m, url, iri.length());
 	}
 
 	public String getAccept(String req_method, String url) {
-		Collection<String> types = new HashSet<String>();
-		for (Method method : findHandlers(req_method, url)) {
-			for (Annotation[] anns : method.getParameterAnnotations()) {
-				if (getParameterNames(anns) != null
-						|| getHeaderNames(anns) != null)
-					continue;
-				for (String media : getParameterMediaTypes(anns)) {
-					if ("*/*".equals(media))
-						continue;
-					try {
-						MimeType type = new MimeType(media);
-						if (!"*".equals(type.getPrimaryType())
-								|| !"*".equals(type.getSubType())) {
-							type.removeParameter("q");
-							types.add(type.toString());
-						}
-					} catch (MimeTypeParseException e) {
-						continue;
-					}
-				}
-			}
-		}
-		if (types.isEmpty())
-			return null;
-		String string = types.toString();
-		return string.substring(1, string.length() - 1);
+		String iri = target.getResource().stringValue();
+		if (!url.startsWith(iri))
+			throw new InternalServerError("URL " + url
+					+ " does not start with IRI " + iri);
+		return rClass.getAccept(req_method, url, iri.length());
 	}
 
 	public Method getHandlerMethod(HttpRequest request) {
 		try {
-			return findMethod(new Request(request, context));
+			return rClass.getHandlerMethod(target.getResource().stringValue(),
+					request);
 		} catch (RepositoryException e) {
 			throw new InternalServerError(e);
 		} catch (ResponseException e) {
@@ -216,32 +141,17 @@ public class ResourceTarget {
 		}
 	}
 
-	public HttpUriResponse head(HttpRequest request) throws IOException, HttpException {
-		try {
-			Request req = new Request(request, context);
-			Method method = findMethod(req);
-			BasicHttpResponse response = new BasicHttpResponse(getResponseStatus(method));
-			response.setHeaders(getAdditionalHeaders(method));
-			String type = getResponseContentType(req, method);
-			if (type != null && !response.containsHeader("Content-Type")) {
-				response.addHeader("Content-Type", type);
-			}
-			String vary = getVaryHeaderValue(method);
-			if (vary != null && !response.containsHeader("Vary")) {
-				response.addHeader("Vary", vary);
-			}
-			return new HttpUriResponse(req.getRequestURL(), response);
-		} catch (RuntimeException e) {
-			throw e;
-		} catch (Exception e) {
-			throw new InternalServerError(e);
-		}
+	public HttpUriResponse head(HttpRequest request) throws IOException,
+			HttpException {
+		return rClass.head(target.getResource().stringValue(), request);
 	}
 
-	public HttpUriResponse invoke(HttpRequest request) throws IOException, HttpException {
+	public HttpUriResponse invoke(HttpRequest request) throws IOException,
+			HttpException {
 		try {
 			Request req = new Request(request, context);
-			Method method = findMethod(req);
+			String iri = target.getResource().stringValue();
+			Method method = rClass.getHandlerMethod(iri, req);
 			if (method == null && req.isSafe())
 				throw new NotFound();
 			if (method == null)
@@ -258,160 +168,6 @@ public class ResourceTarget {
 		} catch (Exception e) {
 			throw new InternalServerError(e);
 		}
-	}
-
-	private StatusLine getResponseStatus(Method method) {
-		if (method == null)
-			return new BasicStatusLine(HttpVersion.HTTP_1_1, 405, "Method Not Allowed");
-		Class<?> type = method.getReturnType();
-		if (Void.TYPE.equals(type) || Void.class.equals(type))
-			return new BasicStatusLine(HttpVersion.HTTP_1_1, 204, "No Content");
-		else
-			return new BasicStatusLine(HttpVersion.HTTP_1_1, 200, "OK");
-	}
-
-	private Header[] getAdditionalHeaders(Method method) {
-		if (method == null || !method.isAnnotationPresent(org.openrdf.annotations.Header.class))
-			return new Header[0];
-		String[] headers = method.getAnnotation(org.openrdf.annotations.Header.class).value();
-		Header[] result = new Header[headers.length];
-		for (int i=0; i<headers.length; i++) {
-			String[] split = headers[i].split("\\s*:\\s*", 2);
-			result[i] = new BasicHeader(split[0], split[1]);
-		}
-		return result;
-	}
-
-	private String getVaryHeaderValue(Method method) {
-		Collection<String> headers = getVaryHeaders(method);
-		if (headers != null && !headers.isEmpty()) {
-			StringBuilder sb = new StringBuilder();
-			for (String vary : headers) {
-				if (vary.length() > 0
-						&& !vary.equalsIgnoreCase("Authorization")
-						&& !vary.equalsIgnoreCase("Cookie")) {
-					sb.append(vary).append(',');
-				}
-			}
-			if (sb.length() > 0) {
-				return sb.substring(0, sb.length() - 1);
-			}
-		}
-		return null;
-	}
-
-	private Collection<String> getVaryHeaders(Method method) {
-		if (method == null)
-			return Collections.emptySet();
-		Collection<String> result = new TreeSet<String>();
-		for (Annotation[] anns : method.getParameterAnnotations()) {
-			for (Annotation ann : anns) {
-				if (ann.annotationType().equals(org.openrdf.annotations.HeaderParam.class)) {
-					result.addAll(Arrays.asList(((org.openrdf.annotations.HeaderParam) ann).value()));
-				}
-			}
-		}
-		return result;
-	}
-
-	private Method findMethod(Request request) throws RepositoryException {
-		boolean messageBody = request.isMessageBody();
-		Collection<Method> methods = findHandlers(request.getMethod(), request.getRequestURL());
-		if (!methods.isEmpty()) {
-			Method method = findBestMethod(request, findAcceptableMethods(request, methods, messageBody));
-			if (method != null)
-				return method;
-		}
-		return null;
-	}
-
-	private Collection<Method> findHandlers(String req_method, String url) {
-		Collection<Method> list = new ArrayList<Method>();
-		for (Map.Entry<Method, Collection<String>> e : methods.entrySet()) {
-			if (req_method != null && !e.getValue().contains(req_method))
-				continue;
-			if (getLongestMatchingPath(e.getKey(), url) != null) {
-				list.add(e.getKey());
-			}
-		}
-		return list;
-	}
-
-	private Pattern getLongestMatchingPath(Method method, String url) {
-		String iri = target.getResource().stringValue();
-		if (!url.startsWith(iri))
-			throw new InternalServerError("URL " + url
-					+ " does not start with IRI " + iri);
-		Path path = method.getAnnotation(Path.class);
-		PathMatcher m = new PathMatcher(url, iri.length());
-		if (path == null)
-			return m.matches(DEFAULT_PATH) ? EMPTY_PATTERN: null;
-		Pattern longest = null;
-		for (String regex : path.value()) {
-			Pattern pattern = PathMatcher.compile(regex);
-			if (!m.matches(pattern))
-				continue;
-			if (longest == null) {
-				longest = pattern;
-			}
-			int rlen = pattern.pattern().length();
-			int llen = longest.pattern().length();
-			if (rlen > llen || rlen == llen && isLiteral(pattern)
-					&& !isLiteral(longest)) {
-				longest = pattern;
-			}
-		}
-		return longest;
-	}
-
-	private boolean isLiteral(Pattern regex) {
-		return (regex.flags() & Pattern.LITERAL) != 0;
-	}
-
-	private Collection<Method> findAcceptableMethods(Request request, Collection<Method> methods, boolean messageBody) {
-		String readable = null;
-		String acceptable = null;
-		Collection<Method> list = new LinkedHashSet<Method>(methods.size());
-		Fluid body = getBody(request);
-		loop: for (Method method : methods) {
-			Collection<String> readableTypes;
-			readableTypes = getReadableTypes(body, method, messageBody);
-			if (readableTypes.isEmpty()) {
-				String contentType = body.getFluidType().preferred();
-				Annotation[][] anns = method.getParameterAnnotations();
-				for (int i = 0; i < anns.length; i++) {
-					String[] types = getParameterMediaTypes(anns[i]);
-					Type gtype = method.getGenericParameterTypes()[i];
-					if (body.toMedia(new FluidType(gtype, types)) == null) {
-						if (contentType == null) {
-							readable = "Cannot read unknown body into " + gtype;
-						} else {
-							readable = "Cannot read " + contentType + " into "
-									+ gtype;
-						}
-						continue loop;
-					}
-				}
-				if (readable == null && contentType != null) {
-					readable = "Cannot read " + contentType;
-				}
-				if (readable != null) {
-					continue loop;
-				}
-			}
-			if (isAcceptable(request, method)) {
-				list.add(method);
-				continue loop;
-			}
-			acceptable = "Cannot write " + method.getGenericReturnType();
-		}
-		if (list.isEmpty() && readable != null) {
-			throw new UnsupportedMediaType(readable);
-		}
-		if (list.isEmpty() && acceptable != null) {
-			throw new NotAcceptable(acceptable);
-		}
-		return list;
 	}
 
 	private Fluid getBody(Request request) {
@@ -433,283 +189,19 @@ public class ResourceTarget {
 			location = createURI(request, location).stringValue();
 		}
 		FluidType ftype = new FluidType(HttpEntity.class, mediaType);
-		return getFluidBuilder().consume(request.getEntity(), location, ftype);
+		return writer.consume(request.getEntity(), location, ftype);
 	}
 
 	private URI createURI(Request request, String uriSpec) {
 		return vf.createURI(request.resolve(uriSpec));
 	}
 
-	private FluidBuilder getFluidBuilder() {
-		return FluidFactory.getInstance().builder(con);
-	}
-
-	private boolean isAcceptable(HttpRequest request, Method method) {
-		assert method != null;
-		if (method.getReturnType().equals(Void.TYPE))
-			return true;
-		String[] types = getTypes(method);
-		Type gtype = method.getGenericReturnType();
-		if (types.length == 0 && getFluidBuilder().isConsumable(gtype, "message/http"))
-			return true;
-		FluidType ftype = new FluidType(gtype, types);
-		return writer.isConsumable(ftype) && writer.nil(ftype).toMedia(getAcceptable(request)) != null;
-	}
-
-	private FluidType getAcceptable(HttpRequest request) {
-		Header[] headers = request.getHeaders("Accept");
-		if (headers == null || headers.length == 0) {
-			return new FluidType(HttpEntity.class);
-		} else {
-			StringBuilder sb = new StringBuilder();
-			for (Header hd : headers) {
-				if (sb.length() > 0) {
-					sb.append(",");
-				}
-				sb.append(hd.getValue());
-			}
-			return new FluidType(HttpEntity.class, sb.toString().split("\\s*,\\s*"));
-		}
-	}
-
-	private String[] getTypes(Method method) {
-		org.openrdf.annotations.Type t = method
-				.getAnnotation(org.openrdf.annotations.Type.class);
-		if (t == null)
-			return new String[0];
-		return t.value();
-	}
-
-	private Collection<String> getReadableTypes(Fluid input,
-			Method method, boolean typeRequired) {
-		assert method != null;
-		Class<?>[] ptypes = method.getParameterTypes();
-		Annotation[][] anns = method.getParameterAnnotations();
-		Type[] gtypes = method.getGenericParameterTypes();
-		Object[] args = new Object[ptypes.length];
-		if (args.length == 0 && !typeRequired)
-			return Collections.singleton("*/*");
-		int empty = 0;
-		List<String> readable = new ArrayList<String>();
-		for (int i = 0; i < args.length; i++) {
-			Collection<String> set;
-			set = getReadableTypes(input, anns[i], ptypes[i], gtypes[i],
-					typeRequired);
-			if (set.isEmpty()) {
-				empty++;
-			}
-			if (getHeaderNames(anns[i]) == null
-					&& getParameterNames(anns[i]) == null) {
-				readable.addAll(set);
-			}
-		}
-		if (empty > 0 && empty == args.length && typeRequired)
-			return Collections.emptySet();
-		if (readable.isEmpty() && !typeRequired)
-			return Collections.singleton("*/*");
-		return readable;
-	}
-
-	private Collection<String> getReadableTypes(Fluid input, Annotation[] anns, Class<?> ptype,
-			Type gtype, boolean typeRequired) {
-		if (getHeaderNames(anns) != null)
-			return Collections.singleton("*/*");
-		if (getParameterNames(anns) != null)
-			return Collections.singleton("*/*");
-		List<String> readable = new ArrayList<String>();
-		String[] types = getParameterMediaTypes(anns);
-		if (types.length == 0 && typeRequired)
-			return Collections.emptySet();
-		String media = input.toMedia(new FluidType(gtype, types));
-		if (media != null) {
-			readable.add(media);
-		}
-		return readable;
-	}
-
-	private Method findBestMethod(Request request, Collection<Method> methods) {
-		if (methods.isEmpty())
-			return null;
-		if (methods.size() == 1) {
-			return methods.iterator().next();
-		}
-		Collection<Method> filtered = filterPreferResponseType(request, methods);
-		if (filtered.size() == 1)
-			return filtered.iterator().next();
-		Collection<Method> submethods = filterSubMethods(filtered);
-		if (submethods.isEmpty())
-			return null;
-		Collection<Method> longerPath = filterLongestPathMethods(submethods, request.getRequestURL());
-		if (longerPath.size() == 1)
-			return longerPath.iterator().next();
-		Method best = findBestMethodByRequestType(request, longerPath);
-		if (best == null)
-			return submethods.iterator().next();
-		return best;
-	}
-
-	private Collection<Method> filterPreferResponseType(Request request,
-			Collection<Method> methods) {
-		FluidType acceptable = getAcceptable(request);
-		Collection<Method> filtered = new HashSet<Method>(methods.size());
-		double quality = Double.MIN_VALUE;
-		for (Method m : methods) {
-			if (!m.isAnnotationPresent(org.openrdf.annotations.Type.class))
-				continue;
-			Collection<String> possible = getAllMimeTypesOf(m);
-			String[] media = possible.toArray(new String[possible.size()]);
-			double q = acceptable.as(new FluidType(acceptable.asType(), media))
-					.getQuality();
-			if (q > quality) {
-				quality = q;
-				filtered.clear();
-			}
-			if (q >= quality) {
-				filtered.add(m);
-			}
-		}
-		for (Method m : methods) {
-			if (!m.isAnnotationPresent(org.openrdf.annotations.Type.class)) {
-				filtered.add(m); // free pass if type is not known in advance
-			}
-		}
-		return filtered;
-	}
-
-	private Collection<String> getAllMimeTypesOf(Method m) {
-		Collection<String> result = new LinkedHashSet<String>();
-		if (m.isAnnotationPresent(org.openrdf.annotations.Type.class)) {
-			for (String media : m.getAnnotation(org.openrdf.annotations.Type.class).value()) {
-				result.add(media);
-			}
-		}
-		if (result.isEmpty()) {
-			result.add("*/*");
-		}
-		return result;
-	}
-
-	private Collection<Method> filterSubMethods(Collection<Method> methods) {
-		Map<String, Method> map = new LinkedHashMap<String, Method>();
-		for (Method m : methods) {
-			String iri;
-			Iri ann = m.getAnnotation(Iri.class);
-			if (ann == null) {
-				iri = m.toString();
-			} else {
-				iri = ann.value();
-			}
-			map.put(iri, m);
-		}
-		for (Method method : methods) {
-			for (String iri : getAnnotationStringValue(method, SUB_CLASS_OF)) {
-				map.remove(iri);
-			}
-		}
-		if (map.isEmpty())
-			return methods;
-		return map.values();
-	}
-
-	private String[] getAnnotationStringValue(Method method, String iri) {
-		for (Annotation ann : method.getAnnotations()) {
-			for (Method field : ann.annotationType().getMethods()) {
-				Iri airi = field.getAnnotation(Iri.class);
-				if (airi != null && iri.equals(airi.value()))
-					try {
-						Object arg = field.invoke(ann);
-						if (arg instanceof String[])
-							return (String[]) arg;
-						return new String[] { arg.toString() };
-					} catch (IllegalArgumentException e) {
-						logger.warn(e.toString(), e);
-					} catch (InvocationTargetException e) {
-						logger.warn(e.toString(), e);
-					} catch (IllegalAccessException e) {
-						logger.warn(e.toString(), e);
-					}
-			}
-		}
-		return new String[0];
-	}
-
-	private Collection<Method> filterLongestPathMethods(
-			Collection<Method> methods, String url) {
-		int length = -1;
-		Pattern longest = null;
-		Collection<Method> result = new ArrayList<Method>(methods.size());
-		for (Method m : methods) {
-			Pattern path = getLongestMatchingPath(m, url);
-			int len = path == null ? -1 : path.pattern().length();
-			if (len > length || len == length && isLiteral(path)
-					&& !isLiteral(longest)) {
-				result.clear();
-				longest = path;
-				length = len;
-			}
-			if (len >= length && (isLiteral(path) || !isLiteral(longest))) {
-				result.add(m);
-			}
-		}
-		return result;
-	}
-
-	private Method findBestMethodByRequestType(Request request, Collection<Method> methods) {
-		Method best = null;
-		double quality = Double.MIN_VALUE;
-		Fluid body = getBody(request);
-		for (Method method : methods) {
-			Type[] gtypes = method.getGenericParameterTypes();
-			Annotation[][] params = method.getParameterAnnotations();
-			for (int i=0; i<params.length; i++) {
-				Type gtype = gtypes[i];
-				Annotation[] anns = params[i];
-				if (getHeaderNames(anns) != null || getParameterNames(anns) != null)
-					continue;
-				String[] types = getParameterMediaTypes(anns);
-				if (types.length == 0)
-					continue;
-				FluidType fluidType = new FluidType(gtype, types);
-				double q = fluidType.as(body.getFluidType()).getQuality();
-				if (q > quality) {
-					quality = q;
-					best = method;
-				}
-			}
-		}
-		return best;
-	}
-
 	private RDFObject getRequestedResource() {
 		return target;
 	}
 
-	private String[] getParameterNames(Annotation[] annotations) {
-		for (int i = 0; i < annotations.length; i++) {
-			if (annotations[i].annotationType().equals(Param.class))
-				return ((Param) annotations[i]).value();
-		}
-		return null;
-	}
-
-	private String[] getHeaderNames(Annotation[] annotations) {
-		for (int i = 0; i < annotations.length; i++) {
-			if (annotations[i].annotationType().equals(org.openrdf.annotations.HeaderParam.class))
-				return ((org.openrdf.annotations.HeaderParam) annotations[i]).value();
-		}
-		return null;
-	}
-
-	private String[] getParameterMediaTypes(Annotation[] annotations) {
-		for (int i = 0; i < annotations.length; i++) {
-			if (annotations[i].annotationType().equals(org.openrdf.annotations.Type.class))
-				return ((org.openrdf.annotations.Type) annotations[i]).value();
-		}
-		return new String[0];
-	}
-
-	private HttpUriResponse invoke(Request req, Method method, boolean safe, ResponseBuilder builder)
-			throws Exception {
+	private HttpUriResponse invoke(Request req, Method method, boolean safe,
+			ResponseBuilder builder) throws Exception {
 		Fluid body = getBody(req);
 		try {
 			Object[] args;
@@ -730,10 +222,6 @@ public class ResourceTarget {
 				HttpUriResponse response = invoke(req, method, args, builder);
 				if (!safe && response.getStatusLine().getStatusCode() < 400) {
 					flush();
-				}
-				String vary = getVaryHeaderValue(method);
-				if (vary != null) {
-					response.addHeader("Vary", vary);
 				}
 				return response;
 			} finally {
@@ -767,52 +255,35 @@ public class ResourceTarget {
 	private void flush() throws RepositoryException, QueryEvaluationException,
 			IOException {
 		con.commit();
-		this.target = con.getObject(RDFObject.class, getRequestedResource().getResource());
+		this.target = con.getObject(RDFObject.class, getRequestedResource()
+				.getResource());
 	}
 
-	private Object[] getParameters(Request req, Method method,
-			Fluid input) throws Exception {
+	private Object[] getParameters(Request req, Method method, Fluid input)
+			throws Exception {
 		Class<?>[] ptypes = method.getParameterTypes();
-		Annotation[][] anns = method.getParameterAnnotations();
 		Type[] gtypes = method.getGenericParameterTypes();
-		Map<String, String> values = getPathVariables(req.getRequestURL(), method);
+		String iri = target.getResource().stringValue();
+		Map<String, String> values = rClass.getPathVariables(method,
+				req.getRequestURL(), iri.length());
 		Object[] args = new Object[ptypes.length];
 		for (int i = 0; i < args.length; i++) {
-			Fluid entity = getParameter(req, anns[i], ptypes[i], values, input);
+			Fluid entity = getParameter(req, method, i, values, input);
 			if (entity != null) {
-				String[] types = getParameterMediaTypes(anns[i]);
+				String[] types = rClass.getParameterMediaTypes(method, i);
 				args[i] = entity.as(new FluidType(gtypes[i], types));
 			}
 		}
 		return args;
 	}
 
-	private Map<String, String> getPathVariables(String url, Method method) {
-		String iri = target.getResource().stringValue();
-		assert url.startsWith(iri);
-		Path path = method.getAnnotation(Path.class);
-		if (path == null) {
-			return Collections.emptyMap();
-		} else {
-			Map<String, String> values = new LinkedHashMap<String, String>();
-			PathMatcher m = new PathMatcher(url, iri.length());
-			for (String regex : path.value()) {
-				Map<String, String> match = m.match(regex);
-				if (match != null) {
-					values.putAll(match);
-				}
-			}
-			return values;
-		}
-	}
-
-	private Fluid getParameter(Request req, Annotation[] anns, Class<?> ptype,
+	private Fluid getParameter(Request req, Method method, int i,
 			Map<String, String> values, Fluid input) throws Exception {
-		String[] names = getParameterNames(anns);
-		String[] headers = getHeaderNames(anns);
-		String[] types = getParameterMediaTypes(anns);
+		String[] names = rClass.getParameterNames(method, i);
+		String[] headers = rClass.getHeaderNames(method, i);
+		String[] types = rClass.getParameterMediaTypes(method, i);
 		if (names == null && headers == null && types.length == 0) {
-			return getFluidBuilder().media("*/*");
+			return writer.media("*/*");
 		} else if (names == null && headers == null) {
 			return input;
 		} else if (headers != null && names != null) {
@@ -840,11 +311,12 @@ public class ResourceTarget {
 		}
 		String[] array = list.toArray(new String[list.size()]);
 		FluidType ftype = new FluidType(String[].class, "text/plain", "text/*");
-		FluidBuilder fb = getFluidBuilder();
+		FluidBuilder fb = writer;
 		return fb.consume(array, req.getIRI(), ftype);
 	}
 
-	private String[] getParameterValues(Request req, String[] names, Map<String, String> values) {
+	private String[] getParameterValues(Request req, String[] names,
+			Map<String, String> values) {
 		if (names.length == 0)
 			return new String[0];
 		Map<String, String[]> map = getParameterMap(req);
@@ -861,22 +333,25 @@ public class ResourceTarget {
 		return list.toArray(new String[list.size()]);
 	}
 
-	@SuppressWarnings("unchecked")
 	private Map<String, String[]> getParameterMap(Request req) {
-		try {
-			return (Map<String, String[]>) getQueryStringParameter(req).as(
-					new FluidType(mapOfStringArrayType,
-							"application/x-www-form-urlencoded"));
-		} catch (Exception e) {
+		Map<String, String[]> map = new LinkedHashMap<String, String[]>();
+		String uri = req.getRequestLine().getUri();
+		int q = uri.indexOf('?');
+		if (q < 0)
 			return Collections.emptyMap();
+		String qs = uri.substring(q + 1);
+		for (NameValuePair pair : URLEncodedUtils.parse(qs, UTF8)) {
+			if (map.containsKey(pair.getName())) {
+				String[] previous = map.get(pair.getName());
+				String[] values = new String[previous.length + 1];
+				System.arraycopy(previous, 0, values, 0, previous.length);
+				values[previous.length] = pair.getValue();
+				map.put(pair.getName(), values);
+			} else {
+				map.put(pair.getName(), new String[] { pair.getValue() });
+			}
 		}
-	}
-
-	private Fluid getQueryStringParameter(Request request) {
-		String value = request.getQueryString();
-		FluidType ftype = new FluidType(String.class, "application/x-www-form-urlencoded");
-		FluidBuilder fb = FluidFactory.getInstance().builder(con);
-		return fb.consume(value, request.getIRI(), ftype);
+		return map;
 	}
 
 	private Fluid getHeader(Request request, String... names) {
@@ -887,35 +362,19 @@ public class ResourceTarget {
 			}
 		}
 		String[] values = list.toArray(new String[list.size()]);
-		FluidType ftype = new FluidType(String[].class, "text/plain", "text/*", "*/*");
+		FluidType ftype = new FluidType(String[].class, "text/plain", "text/*",
+				"*/*");
 		FluidBuilder fb = FluidFactory.getInstance().builder(con);
 		return fb.consume(values, request.getIRI(), ftype);
 	}
 
-	private Fluid getParameter(Request req, String[] names, Map<String, String> values) {
+	private Fluid getParameter(Request req, String[] names,
+			Map<String, String> values) {
 		String[] array = getParameterValues(req, names, values);
-		FluidType ftype = new FluidType(String[].class, "text/plain", "text/*", "*/*");
-		FluidBuilder fb = getFluidBuilder();
+		FluidType ftype = new FluidType(String[].class, "text/plain", "text/*",
+				"*/*");
+		FluidBuilder fb = writer;
 		return fb.consume(array, req.getIRI(), ftype);
-	}
-
-	private String[] getResponseTypes(Request req, Method method) {
-		String preferred = getContentType(req, method);
-		String[] types = getTypes(method);
-		if (preferred == null && types.length < 1)
-			return new String[] { "*/*" };
-		if (preferred == null)
-			return types;
-		String[] result = new String[types.length + 1];
-		result[0] = preferred;
-		System.arraycopy(types, 0, result, 1, types.length);
-		return result;
-	}
-
-	private String getContentType(Request request, Method method) {
-		Type genericType = method.getGenericReturnType();
-		String[] mediaTypes = getTypes(method);
-		return writer.nil(new FluidType(genericType, mediaTypes)).toMedia(getAcceptable(request));
 	}
 
 	private HttpUriResponse invoke(Request req, Method method, Object[] args,
@@ -925,13 +384,13 @@ public class ResourceTarget {
 			result = ((RDFObjectBehaviour) result).getBehaviourDelegate();
 		}
 		return new HttpUriResponse(req.getRequestURL(), createResponse(req,
-				result, method, getResponseTypes(req, method), rbuilder));
+				result, method, rClass.getHandlerMediaTypes(method), rbuilder));
 	}
 
 	private HttpResponse createResponse(Request req, Object result,
 			Method method, String[] responseTypes, ResponseBuilder rbuilder)
 			throws IOException, FluidException {
-		FluidBuilder builder = getFluidBuilder();
+		FluidBuilder builder = writer;
 		Type gtype = method.getGenericReturnType();
 		if (!method.isAnnotationPresent(org.openrdf.annotations.Type.class)
 				&& builder.isConsumable(gtype, "message/http")) {
@@ -947,17 +406,11 @@ public class ResourceTarget {
 				&& ((Set<?>) result).isEmpty()) {
 			return rbuilder.noContent(204, "No Content");
 		}
-		Fluid writer = builder.consume(result, req.getRequestURL(),
-				gtype, responseTypes);
-		HttpEntity entity = writer.asHttpEntity(getResponseContentType(req,
-				method));
+		Fluid writer = builder.consume(result, req.getRequestURL(), gtype,
+				responseTypes);
+		HttpEntity entity = writer.asHttpEntity(rClass.getResponseContentType(
+				req, method));
 		return rbuilder.content(200, "OK", entity);
-	}
-
-	private String getResponseContentType(Request request, Method method) {
-		if (method == null || method.getReturnType().equals(Void.TYPE))
-			return null;
-		return getContentType(request, method);
 	}
 
 }

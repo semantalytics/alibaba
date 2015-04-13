@@ -80,13 +80,6 @@ public class TestResourceTargetResponse extends TestCase {
 		assertEquals(line.getReasonPhrase(), 202, line.getStatusCode());
 	}
 
-	private ResourceTarget getResource() throws QueryEvaluationException,
-			RepositoryException {
-		RDFObject object = con.getObjects(RDFObject.class,
-				con.getValueFactory().createURI(RESOURCE)).singleResult();
-		return new ResourceTarget(object, context);
-	}
-
 	public void testRedirect() throws Exception {
 		ResourceTarget target = getResource();
 		BasicHttpEntityEnclosingRequest request = new BasicHttpEntityEnclosingRequest(
@@ -95,6 +88,13 @@ public class TestResourceTargetResponse extends TestCase {
 		StatusLine line = resp.getStatusLine();
 		assertEquals(line.getReasonPhrase(), 303, line.getStatusCode());
 		assertEquals("http://example.org/", resp.getFirstHeader("Location").getValue());
+	}
+
+	private ResourceTarget getResource() throws QueryEvaluationException,
+			RepositoryException {
+		RDFObject object = con.getObjects(RDFObject.class,
+				con.getValueFactory().createURI(RESOURCE)).singleResult();
+		return new ResourceTargetFactory().createResourceTarget(object, context);
 	}
 
 }

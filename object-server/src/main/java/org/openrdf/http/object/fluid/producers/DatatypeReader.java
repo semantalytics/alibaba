@@ -80,8 +80,8 @@ public class DatatypeReader implements Producer {
 				base, builder);
 		if (value == null)
 			return null;
-		ValueFactory vf = builder.getObjectConnection().getValueFactory();
-		ObjectFactory of = builder.getObjectConnection().getObjectFactory();
+		ValueFactory vf = builder.getValueFactory();
+		ObjectFactory of = builder.getObjectFactory();
 		URI datatype = vf.createURI("java:", type.getName());
 		Literal lit = vf.createLiteral(value, datatype);
 		return type.cast(of.createObject(lit));

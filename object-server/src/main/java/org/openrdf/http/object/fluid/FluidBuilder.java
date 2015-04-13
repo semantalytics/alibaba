@@ -31,7 +31,11 @@ import java.util.List;
 import org.openrdf.annotations.Iri;
 import org.openrdf.http.object.exceptions.BadRequest;
 import org.openrdf.http.object.io.ChannelUtil;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.impl.ValueFactoryImpl;
 import org.openrdf.repository.object.ObjectConnection;
+import org.openrdf.repository.object.ObjectFactory;
+import org.openrdf.repository.object.ObjectService;
 
 /**
  * Converts Java Objects (of supported types) to other media types.
@@ -43,13 +47,16 @@ public class FluidBuilder {
 	private final List<Consumer<?>> consumers;
 	private List<Producer> producers;
 	private final ObjectConnection con;
+	private final ObjectFactory of;
 
-	public FluidBuilder(List<Consumer<?>> consumers, List<Producer> producers) {
+	public FluidBuilder(List<Consumer<?>> consumers, List<Producer> producers,
+			ObjectService service) {
 		assert consumers != null;
 		assert producers != null;
 		this.consumers = consumers;
 		this.producers = producers;
 		this.con = null;
+		this.of = service == null ? null : service.createObjectFactory();
 	}
 
 	public FluidBuilder(List<Consumer<?>> consumers, List<Producer> producers,
@@ -60,25 +67,38 @@ public class FluidBuilder {
 		this.consumers = consumers;
 		this.producers = producers;
 		this.con = con;
+		this.of = con == null ? null : con.getObjectFactory();
 	}
 
 	@Override
 	public String toString() {
-		return con.toString();
+		if (con != null)
+			return con.toString();
+		return super.toString();
 	}
 
 	public ObjectConnection getObjectConnection() {
 		return con;
 	}
 
-	public boolean isDatatype(Class<?> type) {
+	public ObjectFactory getObjectFactory() {
+		return of;
+	}
+
+	public ValueFactory getValueFactory() {
 		if (con == null)
+			return ValueFactoryImpl.getInstance();
+		return con.getValueFactory();
+	}
+
+	public boolean isDatatype(Class<?> type) {
+		if (of == null)
 			return false;
-		return con.getObjectFactory().isDatatype(type);
+		return of.isDatatype(type);
 	}
 
 	public boolean isConcept(Class<?> component) {
-		if (con == null)
+		if (of == null)
 			return false;
 		if (component.isAnnotationPresent(Iri.class))
 			return true;
@@ -88,7 +108,7 @@ public class FluidBuilder {
 					return true;
 			}
 		}
-		return con.getObjectFactory().isNamedConcept(component);
+		return of.isNamedConcept(component);
 	}
 
 	public boolean isConsumable(Type gtype, String... media) {

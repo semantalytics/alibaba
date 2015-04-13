@@ -68,6 +68,11 @@ import org.openrdf.http.object.fluid.producers.VoidReader;
 import org.openrdf.http.object.fluid.producers.XMLEventMessageReader;
 import org.openrdf.http.object.fluid.producers.base.URIListReader;
 import org.openrdf.repository.object.ObjectConnection;
+import org.openrdf.repository.object.ObjectService;
+import org.openrdf.repository.object.ObjectServiceImpl;
+import org.openrdf.repository.object.exceptions.ObjectStoreConfigException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Creates {@link FluidBuilder} to convert between media types.
@@ -85,8 +90,10 @@ public class FluidFactory {
 		return instance;
 	}
 
+	private final Logger logger = LoggerFactory.getLogger(FluidFactory.class);
 	private List<Consumer<?>> consumers = new ArrayList<Consumer<?>>();
 	private List<Producer> producers = new ArrayList<Producer>();
+	private ObjectService service;
 
 	private void init() {
 		consumers.add(new RDFObjectURIWriter());
@@ -145,12 +152,23 @@ public class FluidFactory {
 		producers.add(new BufferedImageReader());
 	}
 
-	public FluidBuilder builder() {
-		return new FluidBuilder(consumers, producers);
-	}
-
 	public FluidBuilder builder(ObjectConnection con) {
 		return new FluidBuilder(consumers, producers, con);
+	}
+
+	public FluidBuilder builder() {
+		return new FluidBuilder(consumers, producers, getObjectService());
+	}
+
+	private synchronized ObjectService getObjectService() {
+		if (service == null) {
+			try {
+				service = new ObjectServiceImpl();
+			} catch (ObjectStoreConfigException e) {
+				logger.warn(e.toString(), e);
+			}
+		}
+		return service;
 	}
 
 }

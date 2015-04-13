@@ -171,12 +171,13 @@ public class RequestExecChain implements AsyncExecChain, ClientExecChain {
 	}
 
 	public boolean isShutdown() {
-		return handling.isShutdown() || triaging.isShutdown();
+		return handling.isShutdown() || triaging.isShutdown() || closing.isShutdown();
 	}
 
 	public void shutdown() {
 		triaging.shutdown();
 		handling.shutdown();
+		closing.shutdown();
 	}
 
 	public boolean isTerminated() {

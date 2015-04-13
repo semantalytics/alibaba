@@ -94,13 +94,6 @@ public class TestResourceTarget extends TestCase {
 		}
 
 		@Method("GET")
-		@Path("cookie2")
-		@Type("text/plain")
-		public String echoCookie2(@HeaderParam("Biscut") String[] cookie) {
-			return Arrays.asList(cookie).toString();
-		}
-
-		@Method("GET")
 		@Path("accept")
 		@Type("text/plain")
 		public String echoAccept(@HeaderParam("Accept") @Param("accept") String[] accept) {
@@ -291,25 +284,6 @@ public class TestResourceTarget extends TestCase {
 		assertEquals("plain <xml/>", EntityUtils.toString(resp.getEntity()));
 	}
 
-	public void testInvokeHeader() throws Exception {
-		ResourceTarget target = getResource(RESOURCE);
-		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE + "cookie", HttpVersion.HTTP_1_1);
-		request.setHeader("Biscut", "yum");
-		HttpUriResponse resp = target.invoke(request);
-		assertEquals("yum", EntityUtils.toString(resp.getEntity()));
-		assertTrue(Arrays.toString(resp.getHeaders("Vary")).contains("Biscut"));
-	}
-
-	public void testInvokeMultiHeader() throws Exception {
-		ResourceTarget target = getResource(RESOURCE);
-		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE + "cookie2", HttpVersion.HTTP_1_1);
-		request.addHeader("Biscut", "hum");
-		request.addHeader("Biscut", "yum");
-		HttpUriResponse resp = target.invoke(request);
-		assertEquals("[hum, yum]", EntityUtils.toString(resp.getEntity()));
-		assertTrue(Arrays.toString(resp.getHeaders("Vary")).contains("Biscut"));
-	}
-
 	public void testInvokeQueryParam() throws Exception {
 		ResourceTarget target = getResource(RESOURCE);
 		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE + "?param=value", HttpVersion.HTTP_1_1);
@@ -332,7 +306,6 @@ public class TestResourceTarget extends TestCase {
 		request.setHeader("Accept", "text/plain");
 		HttpUriResponse resp = target.invoke(request);
 		assertEquals("text/xml, text/plain", EntityUtils.toString(resp.getEntity()));
-		assertTrue(Arrays.toString(resp.getHeaders("Vary")).contains("Accept"));
 	}
 
 	public void testInvokeQueryString() throws Exception {
@@ -411,6 +384,6 @@ public class TestResourceTarget extends TestCase {
 			throws QueryEvaluationException, RepositoryException {
 		RDFObject object = con.getObjects(RDFObject.class,
 				con.getValueFactory().createURI(iri)).singleResult();
-		return new ResourceTarget(object, context);
+		return new ResourceTargetFactory().createResourceTarget(object, context);
 	}
 }
