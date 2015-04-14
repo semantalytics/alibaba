@@ -35,12 +35,8 @@ public class CompiledObjectSchema implements ObjectService {
 
 	public CompiledObjectSchema(Repository repository,
 			ClassLoader cl) throws OpenRDFException, IOException {
-		assert repository != null && cl != null;
-		this.repository = repository;
-		this.libDir = DirUtil.createTempDir("object-schema");
+		this(repository, DirUtil.createTempDir("object-schema"), cl);
 		DirUtil.deleteOnExit(libDir);
-		this.cl = cl;
-		this.fallback = new ObjectServiceImpl(cl);
 	}
 
 	public CompiledObjectSchema(Repository repository,
@@ -77,6 +73,10 @@ public class CompiledObjectSchema implements ObjectService {
 
 	public boolean isCompiling() {
 		return compiling;
+	}
+
+	public void setCompiling(boolean compiling) {
+		this.compiling = compiling;
 	}
 
 	private synchronized ObjectService getObjectService() {
