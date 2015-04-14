@@ -6,7 +6,7 @@ import org.openrdf.http.object.util.PathMatcher;
 
 import junit.framework.TestCase;
 
-public class TestPatchMatcher extends TestCase {
+public class TestPathMatcher extends TestCase {
 	private static String URI = "http://example.com/";
 	private static String PATH = "http://example.com/path/";
 	private static String QS = "http://example.com/?query";
