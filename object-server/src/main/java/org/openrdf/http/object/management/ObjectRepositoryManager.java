@@ -239,6 +239,7 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 		private final SystemRepository sys;
 		private final WeakReference<CompiledObjectSchema> ref;
 		private Future<?> recompile;
+		private boolean released;
 
 		public SchemaListener(SystemRepository sys, CompiledObjectSchema service) {
 			this.sys = sys;
@@ -287,7 +288,7 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 					CompiledObjectSchema service = ref.get();
 					if (service == null) {
 						release();
-					} else if (service.isCompiled()) {
+					} else if (!released && service.isCompiled()) {
 						service.setCompiling(true);
 						if (recompile != null && !recompile.isDone()) {
 							recompile.cancel(false);
@@ -321,9 +322,10 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 			}
 		}
 
-		public void release() {
-			executor.shutdown();
+		public synchronized void release() {
+			released = true;
 			sys.removeRepositoryConnectionListener(this);
+			executor.shutdown();
 		}
 	}
 }
