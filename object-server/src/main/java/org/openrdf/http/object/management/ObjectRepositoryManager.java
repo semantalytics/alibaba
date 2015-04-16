@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.regex.Matcher;
@@ -53,7 +55,7 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 	public ObjectRepositoryManager(File dataDir) throws OpenRDFException,
 			IOException {
 		LocalRepositoryManager manager = RepositoryProvider
-				.getRepositoryManager(dataDir);
+				.getRepositoryManager(dataDir.getCanonicalFile());
 		this.manager = manager;
 		SystemRepository sys = manager.getSystemRepository();
 		service = new CompiledObjectSchema(sys);
@@ -63,7 +65,7 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 	public ObjectRepositoryManager(File dataDir, ClassLoader cl)
 			throws OpenRDFException, IOException {
 		LocalRepositoryManager manager = RepositoryProvider
-				.getRepositoryManager(dataDir);
+				.getRepositoryManager(dataDir.getCanonicalFile());
 		this.manager = manager;
 		SystemRepository sys = manager.getSystemRepository();
 		service = new CompiledObjectSchema(sys, cl);
@@ -73,7 +75,7 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 	public ObjectRepositoryManager(File dataDir, File libDir, ClassLoader cl)
 			throws OpenRDFException, IOException {
 		LocalRepositoryManager manager = RepositoryProvider
-				.getRepositoryManager(dataDir);
+				.getRepositoryManager(dataDir.getCanonicalFile());
 		this.manager = manager;
 		SystemRepository sys = manager.getSystemRepository();
 		service = new CompiledObjectSchema(sys, libDir, cl);
@@ -282,24 +284,14 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 			}
 		}
 
-		public synchronized void close(RepositoryConnection conn) {
-			if (changed.containsKey(conn) || modified.containsKey(conn)) {
-				try {
-					CompiledObjectSchema service = ref.get();
-					if (service == null) {
-						release();
-					} else if (!released && service.isCompiled()) {
-						service.setCompiling(true);
-						if (recompile != null && !recompile.isDone()) {
-							recompile.cancel(false);
-						}
-						recompile = executor.submit(this);
-					}
-				} finally {
-					changed.remove(conn);
-					modified.remove(conn);
-				}
-			}
+		public void close(RepositoryConnection conn) {
+			awaitRecompile(submitRecompile(conn));
+		}
+
+		public synchronized void release() {
+			released = true;
+			sys.removeRepositoryConnectionListener(this);
+			executor.shutdown();
 		}
 
 		public void run() {
@@ -322,10 +314,55 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 			}
 		}
 
-		public synchronized void release() {
-			released = true;
-			sys.removeRepositoryConnectionListener(this);
-			executor.shutdown();
+		private synchronized Future<?> getRecompile() {
+			return recompile;
+		}
+
+		private synchronized Future<?> setRecompile(Future<?> recompile) {
+			Future<?> previous = this.recompile;
+			this.recompile = recompile;
+			return previous;
+		}
+
+		private synchronized Future<?> submitRecompile(RepositoryConnection conn) {
+			if (changed.containsKey(conn) || modified.containsKey(conn)) {
+				try {
+					CompiledObjectSchema service = ref.get();
+					if (service == null) {
+						release();
+					} else if (!released && service.isCompiled()) {
+						Future<?> next, previous;
+						previous = setRecompile(next = executor.submit(this));
+						service.setCompiling(true);
+						if (previous != null && !previous.isDone()) {
+							previous.cancel(false);
+						}
+						return next;
+					}
+				} finally {
+					changed.remove(conn);
+					modified.remove(conn);
+				}
+			}
+			return null;
+		}
+
+		private void awaitRecompile(Future<?> recompile) {
+			try {
+				if (recompile != null) {
+					if (recompile.isCancelled()) {
+						awaitRecompile(getRecompile());
+					} else {
+						recompile.get();
+					}
+				}
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			} catch (ExecutionException e) {
+				logger.error(e.toString(), e);
+			} catch (CancellationException e) {
+				awaitRecompile(getRecompile());
+			}
 		}
 	}
 }

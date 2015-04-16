@@ -84,7 +84,7 @@ public class ObjectServer implements ObjectServerMBean {
 		for (int i=0;i<dataDir.length;i++) {
 			dataDir[i].mkdirs();
 			ObjectRepositoryManager manager = new ObjectRepositoryManager(dataDir[i], cl);
-			this.managers.put(dataDir[i].toURI().toASCIIString(), manager);
+			this.managers.put(manager.getLocation().toExternalForm(), manager);
 		}
 		serverCacheDir = DirUtil.createTempDir("object-server-cache");
 		DirUtil.deleteOnExit(serverCacheDir);
@@ -96,7 +96,7 @@ public class ObjectServer implements ObjectServerMBean {
 		for (int i=0;i<dataDir.length;i++) {
 			dataDir[i].mkdirs();
 			ObjectRepositoryManager manager = new ObjectRepositoryManager(dataDir[i], libDir, cl);
-			this.managers.put(dataDir[i].toURI().toASCIIString(), manager);
+			this.managers.put(manager.getLocation().toExternalForm(), manager);
 		}
 		serverCacheDir = new File(cacheDir, "server");
 	}
