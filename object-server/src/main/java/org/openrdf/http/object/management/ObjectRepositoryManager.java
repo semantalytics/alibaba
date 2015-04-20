@@ -20,6 +20,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.openrdf.OpenRDFException;
+import org.openrdf.http.object.client.HttpClientFactory;
 import org.openrdf.http.object.concurrent.ManagedExecutors;
 import org.openrdf.model.Resource;
 import org.openrdf.model.URI;
@@ -47,6 +48,7 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 	private static final Pattern URL_PATTERN = Pattern
 			.compile("https?://[a-zA-Z0-9\\-\\._~%!\\$\\&'\\(\\)\\*\\+,;=:/\\[\\]@]+/(?![a-zA-Z0-9\\-\\._~%!\\$\\&'\\(\\)\\*\\+,;=:/\\?\\#\\[\\]@])");
 
+	private final HttpClientFactory httpFactory = HttpClientFactory.getInstance();
 	private final Map<String, ObjectRepository> repositories = new HashMap<String, ObjectRepository>();
 	private final LocalRepositoryManager manager;
 	private final CompiledObjectSchema service;
@@ -57,6 +59,9 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 		LocalRepositoryManager manager = RepositoryProvider
 				.getRepositoryManager(dataDir.getCanonicalFile());
 		this.manager = manager;
+		if (manager.getHttpClient() == null) {
+			manager.setHttpClient(httpFactory.createHttpClient());
+		}
 		SystemRepository sys = manager.getSystemRepository();
 		service = new CompiledObjectSchema(sys);
 		listener = new SchemaListener(sys, service);
@@ -67,6 +72,9 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 		LocalRepositoryManager manager = RepositoryProvider
 				.getRepositoryManager(dataDir.getCanonicalFile());
 		this.manager = manager;
+		if (manager.getHttpClient() == null) {
+			manager.setHttpClient(httpFactory.createHttpClient());
+		}
 		SystemRepository sys = manager.getSystemRepository();
 		service = new CompiledObjectSchema(sys, cl);
 		listener = new SchemaListener(sys, service);
@@ -77,6 +85,9 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 		LocalRepositoryManager manager = RepositoryProvider
 				.getRepositoryManager(dataDir.getCanonicalFile());
 		this.manager = manager;
+		if (manager.getHttpClient() == null) {
+			manager.setHttpClient(httpFactory.createHttpClient());
+		}
 		SystemRepository sys = manager.getSystemRepository();
 		service = new CompiledObjectSchema(sys, libDir, cl);
 		listener = new SchemaListener(sys, service);

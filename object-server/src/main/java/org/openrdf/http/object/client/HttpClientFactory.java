@@ -161,6 +161,14 @@ public class HttpClientFactory implements Closeable {
 		return decorator.removeProxy(proxy);
 	}
 
+	public CloseableHttpClient createHttpClient() {
+		return createHttpClient(null, new SystemDefaultCredentialsProvider());
+	}
+
+	public synchronized CloseableHttpClient createHttpClient(CredentialsProvider credentials) {
+		return createHttpClient(null, credentials);
+	}
+
 	public CloseableHttpClient createHttpClient(String source) {
 		return createHttpClient(source, new SystemDefaultCredentialsProvider());
 	}
@@ -169,7 +177,9 @@ public class HttpClientFactory implements Closeable {
 		CacheConfig cache = getDefaultCacheConfig();
 		ManagedHttpCacheStorage storage = new ManagedHttpCacheStorage(cache);
 		List<BasicHeader> headers = new ArrayList<BasicHeader>();
-		headers.add(new BasicHeader("Origin", getOrigin(source)));
+		if (source != null && source.length() > 0) {
+			headers.add(new BasicHeader("Origin", getOrigin(source)));
+		}
 		return new AutoClosingHttpClient(new CachingHttpClientBuilder() {
 			protected ClientExecChain decorateMainExec(ClientExecChain mainExec) {
 				return super.decorateMainExec(decorator
