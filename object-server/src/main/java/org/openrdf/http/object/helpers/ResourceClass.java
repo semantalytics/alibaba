@@ -551,16 +551,16 @@ public class ResourceClass {
 		if (methods.size() == 1) {
 			return methods.iterator().next();
 		}
-		Collection<Method> filtered = filterPreferResponseType(request, methods);
-		if (filtered.size() == 1)
-			return filtered.iterator().next();
-		Collection<Method> submethods = filterSubMethods(filtered);
+		Collection<Method> submethods = filterSubMethods(methods);
 		if (submethods.isEmpty())
 			return null;
 		Collection<Method> longerPath = filterLongestPathMethods(submethods, url, startingAt);
 		if (longerPath.size() == 1)
 			return longerPath.iterator().next();
-		Method best = findBestMethodByRequestType(request, longerPath);
+		Collection<Method> filtered = filterPreferResponseType(request, longerPath);
+		if (filtered.size() == 1)
+			return filtered.iterator().next();
+		Method best = findBestMethodByRequestType(request, filtered);
 		if (best == null)
 			return submethods.iterator().next();
 		return best;
