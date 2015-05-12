@@ -46,7 +46,14 @@
 		<antcall target="build-sdk"/>
 	</target>
 
-	<target name="package" depends="mvn-build,build-sdk" description="Create release artifacts">
+	<target name="dist" description="Generate the distribution artifacts">
+		<antcall target="mvn">
+			<param name="args" value="-Dmaven.test.skip=true source:jar package install" />
+		</antcall>
+		<antcall target="build-sdk"/>
+	</target>
+
+	<target name="package" depends="clean,mvn-build,build-sdk" description="Create and test release artifacts">
 	</target>
 
 	<target name="mvn-build">
