@@ -35,10 +35,10 @@ public interface Agent {
 
 	/** The gender of this Agent (typically but not necessarily 'male' or 'female'). */
 	@Iri("urn:foaf:gender")
-	public abstract Object getFoafGender();
+	public abstract String getFoafGender();
 
 	/** The gender of this Agent (typically but not necessarily 'male' or 'female'). */
-	public abstract void setFoafGender(Object value);
+	public abstract void setFoafGender(String value);
 
 
 	/** An ICQ chat ID */

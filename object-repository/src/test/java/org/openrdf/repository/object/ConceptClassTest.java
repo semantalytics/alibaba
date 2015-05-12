@@ -12,6 +12,7 @@ import junit.framework.Test;
 import org.openrdf.annotations.Iri;
 import org.openrdf.annotations.Matching;
 import org.openrdf.annotations.ParameterTypes;
+import org.openrdf.annotations.Sparql;
 import org.openrdf.model.Resource;
 import org.openrdf.model.impl.URIImpl;
 import org.openrdf.repository.RepositoryException;
@@ -203,6 +204,13 @@ public class ConceptClassTest extends ObjectRepositoryTestCase {
 			this.employees = employees;
 		}
 
+		@Sparql("SELECT ?employee ?employee_givenNames {\n" +
+				"$this <urn:test:employees> ?employee.\n" +
+				"?employee <urn:test:givenNames> ?employee_givenNames}")
+		public Set<Person> getEmployeesWithGivenNames(){
+			return getEmployees();
+		}
+
 		public boolean isEmployed(Person employee) {
 			return getEmployees().contains(employee);
 		}
@@ -277,6 +285,24 @@ public class ConceptClassTest extends ObjectRepositoryTestCase {
 		assertEquals("company.txt", c.getName());
 		c.setName("My Company");
 		assertEquals("My Company", c.getName());
+	}
+
+	public void testEagerEmployeeSurname() throws Exception {
+		con.prepareUpdate("INSERT DATA { <urn:test:company> a <urn:test:Compnay>; <urn:test:employees> <urn:test:employee>}").execute();
+		con.prepareUpdate("INSERT DATA { <urn:test:employee> a <urn:test:Person>; <urn:test:surname> 'Smith'}").execute();
+		Company c = con.getObject(Company.class, "urn:test:company");
+		Person e = c.getEmployees().iterator().next();
+		con.prepareUpdate("DELETE {?person <urn:test:surname> 'Smith'} INSERT {?person <urn:test:surname> 'Leigh'} WHERE {?person <urn:test:surname> 'Smith'}").execute();
+		assertEquals("Smith", e.getSurname());
+	}
+
+	public void testEagerEmployeeGivenName() throws Exception {
+		con.prepareUpdate("INSERT DATA { <urn:test:company> a <urn:test:Compnay>; <urn:test:employees> <urn:test:employee>}").execute();
+		con.prepareUpdate("INSERT DATA { <urn:test:employee> a <urn:test:Person>; <urn:test:givenNames> 'Megan'; <urn:test:surname> 'Smith'}").execute();
+		Company c = con.getObject(Company.class, "urn:test:company");
+		Person e = c.getEmployeesWithGivenNames().iterator().next();
+		con.prepareUpdate("DELETE {?person <urn:test:givenNames> 'Megan'} INSERT {?person <urn:test:givenNames> 'Clair'} WHERE {?person <urn:test:givenNames> 'Megan'}").execute();
+		assertEquals(Collections.singleton("Megan"), e.getGivenNames());
 	}
 
 	@Override

@@ -21,7 +21,7 @@ public class AgentImpl implements Serializable, Agent {
 	private Set<Object> fundedBy = new HashSet<Object>();
 
 	/** http://xmlns.com/foaf/0.1/gender */
-	private Object gender;
+	private String gender;
 
 	/** http://xmlns.com/foaf/0.1/icqChatID */
 	private Set<Object> icqChatID = new HashSet<Object>();
@@ -92,12 +92,12 @@ public class AgentImpl implements Serializable, Agent {
 
 
 	/** The gender of this Agent (typically but not necessarily 'male' or 'female'). */
-	public Object getFoafGender() {
+	public String getFoafGender() {
 		return gender;
 	}
 
 	/** The gender of this Agent (typically but not necessarily 'male' or 'female'). */
-	public void setFoafGender(Object value) {
+	public void setFoafGender(String value) {
 		this.gender = value;
 	}
 
