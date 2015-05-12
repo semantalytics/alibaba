@@ -153,9 +153,9 @@ public class ResourceTarget {
 			String iri = target.getResource().stringValue();
 			Method method = rClass.getHandlerMethod(iri, req);
 			if (method == null && req.isSafe())
-				throw new NotFound();
+				throw new NotFound("Not Found: " + req.getRequestURL());
 			if (method == null)
-				throw new MethodNotAllowed("No such method for " + req.getIRI());
+				throw new MethodNotAllowed("No such method for " + req.getRequestURL());
 			return invoke(req, method, req.isSafe(), new ResponseBuilder(req));
 		} catch (Error e) {
 			throw e;
