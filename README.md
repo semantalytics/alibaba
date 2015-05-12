@@ -20,11 +20,10 @@ AliBaba
 Installation
 ------------
 
- There are two ways to acquire and run AliBaba: checkout the code repository ar download the ZIP archive.
+ There are two ways to acquire and run AliBaba: checkout the code repository or download the ZIP archive.
 
  If you want to check out the source code, you can do so on Bitbucket via the command git clone https://bitbucket.org/openrdf/alibaba.git. Once you have the source code checked out, you can then execute 'ant dist' from a command line in this top directory to create the ZIP file in the dist directory. Extract that ZIP file into a new directory.
 
  Alternatively, if you download a ZIP archive of a release from http://rdf4j.org/, extract it into a new directory.
 
  The ZIP file includes all the dependent jars in the lib/ directory and the AliBaba jar in the dist/ directory. The script bin/owl-compiler.bat/.sh can be used to compile an RDF model into Java interfaces (run with the -h flag to see the options). The script bin/object-server.bat/.sh can be used to start an AliBaba ObjectServer and the script bin/control-object-server.bat/.sh can be used to stop/control the server (run with the -h flag to see options).
-
