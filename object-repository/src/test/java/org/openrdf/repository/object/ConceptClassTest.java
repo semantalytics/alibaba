@@ -204,10 +204,12 @@ public class ConceptClassTest extends ObjectRepositoryTestCase {
 			this.employees = employees;
 		}
 
-		@Sparql("SELECT ?employee ?employee_givenNames {\n" +
-				"$this <urn:test:employees> ?employee.\n" +
-				"?employee <urn:test:givenNames> ?employee_givenNames}")
-		public Set<Person> getEmployeesWithGivenNames(){
+		@Sparql("SELECT ?employee ?employee_class ?employee_givenNames {\n"
+				+ "$this <urn:test:employees> ?employee\n"
+				+ "OPTIONAL {?employee a ?employee_class}\n"
+				+ "OPTIONAL {?employee <urn:test:givenNames> ?employee_givenNames}\n"
+				+ "}")
+		public Set<Person> getEmployeesWithGivenNames() {
 			return getEmployees();
 		}
 
