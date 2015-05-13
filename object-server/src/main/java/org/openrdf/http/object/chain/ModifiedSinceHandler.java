@@ -69,12 +69,12 @@ public class ModifiedSinceHandler implements AsyncExecChain {
 
 	@Override
 	public Future<HttpResponse> execute(HttpHost target,
-			HttpRequest request, HttpContext context,
+			final HttpRequest request, final HttpContext context,
 			FutureCallback<HttpResponse> callback) {
 		callback = new ResponseCallback(callback) {
 			public void completed(HttpResponse result) {
 				try {
-					resetModified(result);
+					resetModified(request, result, context);
 					super.completed(result);
 				} catch (RuntimeException ex) {
 					super.failed(ex);
@@ -111,9 +111,10 @@ public class ModifiedSinceHandler implements AsyncExecChain {
 		}
 	}
 
-	void resetModified(HttpResponse resp) {
+	void resetModified(HttpRequest request, HttpResponse resp, HttpContext context) {
+		boolean clientRequest = ObjectContext.adapt(context).getOriginalRequest() == null;
 		Header lastHeader = resp.getLastHeader("Last-Modified");
-		if (reset > 0 && lastHeader != null && reset > format.parseDate(lastHeader.getValue())) {
+		if (clientRequest && reset > 0 && lastHeader != null && reset > format.parseDate(lastHeader.getValue())) {
 			resp.setHeader("Last-Modified", format.format(reset));
 		}
 	}
