@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
 
 public class SparqlQuery {
 	private static final Pattern selectWhere = Pattern.compile(
-			"\\sSELECT\\s+([\\?\\$]\\w+)\\s+WHERE\\s*\\{",
+			"\\sSELECT\\s+([\\?\\$]\\w+)(\\s+WHERE)?\\s*\\{",
 			Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 	private static final Pattern limitOffset = Pattern.compile(
 			"\\bLIMIT\\b|\\bOFFSET\\b", Pattern.CASE_INSENSITIVE);
