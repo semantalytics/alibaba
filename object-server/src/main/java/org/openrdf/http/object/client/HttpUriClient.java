@@ -34,8 +34,6 @@ import org.apache.http.client.utils.URIUtils;
 import org.apache.http.conn.ClientConnectionManager;
 import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.DefaultRedirectStrategy;
-import org.apache.http.impl.client.RedirectLocations;
 import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.HttpContext;
 import org.openrdf.http.object.exceptions.ResponseException;
@@ -43,10 +41,29 @@ import org.openrdf.http.object.util.URLUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class HttpUriClient extends CloseableHttpClient implements HttpClient {
+/**
+ * Extends {@link CloseableHttpClient} by providing convenient methods to get
+ * the base URI of the the final response.
+ * 
+ * @author James Leigh
+ * 
+ */
+public class HttpUriClient extends CloseableHttpClient implements HttpClient {
 	private final Logger logger = LoggerFactory.getLogger(HttpUriClient.class);
 
-	protected abstract HttpClient getDelegate() throws IOException;
+	private final HttpClient delegate;
+
+	public HttpUriClient(HttpClient delegate) {
+		this.delegate = delegate;
+	}
+
+	public HttpUriClient(CloseableHttpClient delegate) {
+		this.delegate = delegate;
+	}
+
+	protected HttpClient getDelegate() throws IOException {
+		return delegate;
+	}
 
 	public HttpUriEntity getEntity(String url, String accept)
 			throws IOException, ResponseException {

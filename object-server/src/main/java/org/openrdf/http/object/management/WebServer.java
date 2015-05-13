@@ -31,6 +31,8 @@ package org.openrdf.http.object.management;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.security.NoSuchAlgorithmException;
@@ -41,12 +43,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.GZIPInputStream;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLSession;
 
+import org.apache.http.Header;
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpException;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequestFactory;
@@ -54,6 +59,7 @@ import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.HttpResponseInterceptor;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpExecutionAware;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpRequestWrapper;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.client.utils.URIUtils;
@@ -89,12 +95,17 @@ import org.openrdf.http.object.chain.HeadRequestFilter;
 import org.openrdf.http.object.chain.RequestExecChain;
 import org.openrdf.http.object.chain.ServerNameFilter;
 import org.openrdf.http.object.client.HttpClientFactory;
+import org.openrdf.http.object.client.HttpUriClient;
+import org.openrdf.http.object.client.HttpUriResponse;
 import org.openrdf.http.object.client.UnavailableRequestDirector;
 import org.openrdf.http.object.concurrent.NamedThreadFactory;
 import org.openrdf.http.object.helpers.AsyncRequestHandler;
 import org.openrdf.http.object.helpers.ObjectContextInterceptor;
 import org.openrdf.http.object.util.AnyHttpMethodRequestFactory;
+import org.openrdf.query.MalformedQueryException;
 import org.openrdf.repository.object.ObjectRepository;
+import org.openrdf.repository.object.advisers.SparqlQuery;
+import org.openrdf.repository.object.advisers.SparqlQueryResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -108,6 +119,47 @@ import org.slf4j.LoggerFactory;
 public class WebServer implements IOReactorExceptionHandler, ClientExecChain {
 	protected static final String DEFAULT_NAME = Version.getInstance().getVersion();
 	private static NamedThreadFactory executor = new NamedThreadFactory("WebServer", false);
+	static {
+		// change SparqlQueryResolver to go through WebServer via HttpClientFactory
+		final SparqlQueryResolver delegate = SparqlQueryResolver.getInstance();
+		SparqlQueryResolver.setInstance(new SparqlQueryResolver() {
+			@Override
+			public SparqlQuery resolve(String systemId) throws IOException,
+					MalformedQueryException {
+				if (systemId == null || !systemId.startsWith("http://")
+						&& !systemId.startsWith("https://"))
+					return delegate.resolve(systemId);
+				HttpClientFactory factory = HttpClientFactory.getInstance();
+				HttpUriClient client = factory.createHttpClient();
+				try {
+					HttpGet get = new HttpGet(systemId);
+					get.addHeader("Accept", "application/sparql-query");
+					get.addHeader("Accept-encoding", "gzip");
+					HttpUriResponse resp = client.getResponse(get);
+					try {
+						String base = resp.getSystemId();
+						HttpEntity entity = resp.getEntity();
+						InputStream in = entity.getContent();
+						Header enc = entity.getContentEncoding();
+						if (enc != null && enc.getValue().contains("gzip")) {
+							in = new GZIPInputStream(in);
+						}
+						InputStreamReader reader = new InputStreamReader(in,
+								"UTF-8");
+						try {
+							return new SparqlQuery(reader, base);
+						} finally {
+							reader.close();
+						}
+					} finally {
+						resp.close();
+					}
+				} finally {
+					client.close();
+				}
+			}
+		});
+	}
 
 	final Logger logger = LoggerFactory.getLogger(WebServer.class);
 	private final UnavailableRequestDirector unavailable = new UnavailableRequestDirector();

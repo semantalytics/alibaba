@@ -43,7 +43,6 @@ import org.apache.http.conn.socket.LayeredConnectionSocketFactory;
 import org.apache.http.conn.socket.PlainConnectionSocketFactory;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.DefaultConnectionReuseStrategy;
-import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.DefaultConnectionKeepAliveStrategy;
 import org.apache.http.impl.client.SystemDefaultCredentialsProvider;
 import org.apache.http.impl.client.cache.CacheConfig;
@@ -161,42 +160,45 @@ public class HttpClientFactory implements Closeable {
 		return decorator.removeProxy(proxy);
 	}
 
-	public CloseableHttpClient createHttpClient() {
+	public HttpUriClient createHttpClient() {
 		return createHttpClient(null, new SystemDefaultCredentialsProvider());
 	}
 
-	public synchronized CloseableHttpClient createHttpClient(CredentialsProvider credentials) {
+	public synchronized HttpUriClient createHttpClient(CredentialsProvider credentials) {
 		return createHttpClient(null, credentials);
 	}
 
-	public CloseableHttpClient createHttpClient(String source) {
+	public HttpUriClient createHttpClient(String source) {
 		return createHttpClient(source, new SystemDefaultCredentialsProvider());
 	}
 
-	public synchronized CloseableHttpClient createHttpClient(String source, CredentialsProvider credentials) {
+	public synchronized HttpUriClient createHttpClient(String source,
+			CredentialsProvider credentials) {
 		CacheConfig cache = getDefaultCacheConfig();
 		ManagedHttpCacheStorage storage = new ManagedHttpCacheStorage(cache);
 		List<BasicHeader> headers = new ArrayList<BasicHeader>();
 		if (source != null && source.length() > 0) {
 			headers.add(new BasicHeader("Origin", getOrigin(source)));
 		}
-		return new AutoClosingHttpClient(new CachingHttpClientBuilder() {
-			protected ClientExecChain decorateMainExec(ClientExecChain mainExec) {
-				return super.decorateMainExec(decorator
-						.decorateMainExec(mainExec));
-			}
-		}.setResourceFactory(entryFactory).setHttpCacheStorage(storage)
-				.setCacheConfig(cache)
-				.setConnectionManager(getConnectionManager())
-				.setConnectionReuseStrategy(reuseStrategy)
-				.setKeepAliveStrategy(keepAliveStrategy).useSystemProperties()
-				.disableContentCompression()
-				.setDefaultRequestConfig(getDefaultRequestConfig())
-				.addInterceptorFirst(new GZipInterceptor())
-				.addInterceptorFirst(new GUnzipInterceptor())
-				.setDefaultCredentialsProvider(credentials)
-				.setDefaultHeaders(headers).setUserAgent(DEFAULT_NAME).build(),
-				storage);
+		return new HttpUriClient(new AutoClosingHttpClient(
+				new CachingHttpClientBuilder() {
+					protected ClientExecChain decorateMainExec(
+							ClientExecChain mainExec) {
+						return super.decorateMainExec(decorator
+								.decorateMainExec(mainExec));
+					}
+				}.setResourceFactory(entryFactory).setHttpCacheStorage(storage)
+						.setCacheConfig(cache)
+						.setConnectionManager(getConnectionManager())
+						.setConnectionReuseStrategy(reuseStrategy)
+						.setKeepAliveStrategy(keepAliveStrategy)
+						.useSystemProperties().disableContentCompression()
+						.setDefaultRequestConfig(getDefaultRequestConfig())
+						.addInterceptorFirst(new GZipInterceptor())
+						.addInterceptorFirst(new GUnzipInterceptor())
+						.setDefaultCredentialsProvider(credentials)
+						.setDefaultHeaders(headers).setUserAgent(DEFAULT_NAME)
+						.build(), storage));
 	}
 
 	private HttpClientConnectionManager getConnectionManager() {
