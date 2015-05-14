@@ -73,8 +73,9 @@ public abstract class ObjectIterator<S, E> implements Iterator<E> {
 	public ObjectIterator(CloseableIteration<? extends S, ?> delegate) {
 		this.delegate = delegate;
 		try {
-			if (!hasNext())
+			if (!hasNext()) {
 				close();
+			}
 		} catch (RuntimeException e) {
 			close();
 			throw e;
@@ -97,6 +98,8 @@ public abstract class ObjectIterator<S, E> implements Iterator<E> {
 			if (next == null) {
 				close();
 				return null;
+			} else if (!hasNext()) {
+				close();
 			}
 			return convert(next);
 		} catch (Exception e) {

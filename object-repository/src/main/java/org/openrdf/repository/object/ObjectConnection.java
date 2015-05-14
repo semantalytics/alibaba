@@ -30,11 +30,9 @@ package org.openrdf.repository.object;
 
 import static org.openrdf.query.QueryLanguage.SPARQL;
 import info.aduna.iteration.CloseableIteration;
-import info.aduna.iteration.IterationWrapper;
 import info.aduna.iteration.LookAheadIteration;
 
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -65,6 +63,7 @@ import org.openrdf.repository.object.managers.helpers.WeakValueMap;
 import org.openrdf.repository.object.result.ObjectIterator;
 import org.openrdf.repository.object.traits.Mergeable;
 import org.openrdf.repository.object.traits.RDFObjectBehaviour;
+import org.openrdf.repository.object.traits.Refreshable;
 import org.openrdf.result.Result;
 import org.openrdf.result.impl.ResultImpl;
 import org.openrdf.store.blob.BlobObject;
@@ -545,6 +544,17 @@ public class ObjectConnection extends ContextAwareConnection {
 	}
 
 	/**
+	 * Returns a single object that is presumed to have the given rdf:types.
+	 */
+	public Object getObject(Set<URI> types, Resource resource) {
+		Class<?> proxy = of.getObjectClass(resource, types);
+		RDFObject cached = cached(resource);
+		if (cached != null && cached.getClass().equals(proxy))
+			return cached;
+		return cache(of.createBean(resource, proxy));
+	}
+
+	/**
 	 * Matches objects that have the given concept rdf:type. This method will
 	 * include all objects that implement the given concept or a subclass of the
 	 * concept. The concept must be a named concept and cannot be mapped to
@@ -600,7 +610,7 @@ public class ObjectConnection extends ContextAwareConnection {
 				protected T getNextElement() throws QueryEvaluationException {
 					T next = result.next();
 					if (next != null) {
-						list.remove(cache((RDFObject) next).getResource());
+						list.remove(((RDFObject) next).getResource());
 						return next;
 					}
 					if (!list.isEmpty())
@@ -617,7 +627,18 @@ public class ObjectConnection extends ContextAwareConnection {
 	@SuppressWarnings("unchecked")
 	public <T> T refresh(T object) throws RepositoryException {
 		Resource resource = findResource(object);
-		return (T) cache(of.createObject(resource, types.getTypes(resource)));
+		if (object instanceof Refreshable) {
+			((Refreshable) object).refresh();
+		}
+		Set<URI> types = this.types.getTypes(resource);
+		Class<?> proxy = of.getObjectClass(resource, types);
+		RDFObject cached = cached(resource);
+		if (cached != null && cached != object && cached instanceof Refreshable) {
+			((Refreshable) cached).refresh();
+		}
+		if (cached != null && cached.getClass().equals(proxy))
+			return (T) cached;
+		return (T) cache(of.createBean(resource, proxy));
 	}
 
 	public synchronized BlobObject getBlobObject(final String uri)
@@ -676,7 +697,7 @@ public class ObjectConnection extends ContextAwareConnection {
 		return object;
 	}
 
-	private RDFObject cached(Resource resource) {
+	RDFObject cached(Resource resource) {
 		return cachedObjects.get(resource);
 	}
 
@@ -700,41 +721,7 @@ public class ObjectConnection extends ContextAwareConnection {
 	}
 
 	private ObjectQuery createObjectQuery(TupleQuery query) {
-		return new ObjectQuery(this, query) {
-			public Result<?> evaluate() throws QueryEvaluationException {
-				return new ResultImpl<Object>(wrap(super.evaluate()));
-			}
-
-			public Result<Object[]> evaluate(Class<?>... concepts)
-					throws QueryEvaluationException {
-				return new ResultImpl<Object[]>(wrap(super.evaluate(concepts)));
-			}
-
-			public <T> Result<T> evaluate(Class<T> concept)
-					throws QueryEvaluationException {
-				return new ResultImpl<T>(wrap(super.evaluate(concept)));
-			}
-
-			private <T> CloseableIteration<T, QueryEvaluationException> wrap(
-					CloseableIteration<T, QueryEvaluationException> iter) {
-				return new IterationWrapper<T, QueryEvaluationException>(iter) {
-					public T next() throws QueryEvaluationException {
-						T next = super.next();
-						if (next instanceof RDFObject) {
-							cache((RDFObject) next);
-						} else if (next.getClass().isArray()) {
-							for (int i = 0, n = Array.getLength(next); i < n; i++) {
-								Object object = Array.get(next, i);
-								if (object instanceof RDFObject) {
-									cache((RDFObject) object);
-								}
-							}
-						}
-						return next;
-					}
-				};
-			}
-		};
+		return new ObjectQuery(this, query);
 	}
 
 	private Resource findResource(Object object) {

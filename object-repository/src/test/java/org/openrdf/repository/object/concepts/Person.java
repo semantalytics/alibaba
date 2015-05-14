@@ -27,10 +27,10 @@ public interface Person extends Agent {
 
 	/** The first name of a person. */
 	@Iri("urn:foaf:firstName")
-	public abstract Set<Object> getFoafFirstNames();
+	public abstract Set<String> getFoafFirstNames();
 
 	/** The first name of a person. */
-	public abstract void setFoafFirstNames(Set<Object> value);
+	public abstract void setFoafFirstNames(Set<String> value);
 
 
 	/** A textual geekcode for this person, see http://www.geekcode.com/geek.html */

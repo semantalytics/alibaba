@@ -107,10 +107,10 @@ public interface Agent {
 
 	/** A name for some thing. */
 	@Iri("urn:foaf:name")
-	public abstract Set<Object> getFoafNames();
+	public abstract Set<String> getFoafNames();
 
 	/** A name for some thing. */
-	public abstract void setFoafNames(Set<Object> value);
+	public abstract void setFoafNames(Set<String> value);
 
 
 	/** A theme. */

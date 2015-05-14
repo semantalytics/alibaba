@@ -131,7 +131,7 @@ public class ObjectArrayCursor extends LookAheadIteration<Object, QueryEvaluatio
 					list.add((URI) t);
 				}
 			}
-			obj = of.createObject((Resource) value, list);
+			obj = manager.getObject(list, (Resource) value);
 		} else {
 			try {
 				obj = manager.getObject(value);

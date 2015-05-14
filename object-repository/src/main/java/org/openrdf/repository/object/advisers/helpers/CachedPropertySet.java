@@ -78,13 +78,13 @@ public class CachedPropertySet extends RemotePropertySet implements
 		this.creator = creator;
 	}
 
-	public void usePropertyBindings(String binding, List<BindingSet> bindings) {
+	public synchronized void usePropertyBindings(String binding, List<BindingSet> bindings) {
 		this.binding = binding;
 		this.bindings = bindings;
 	}
 
 	@Override
-	public void refresh() {
+	public synchronized void refresh() {
 		super.refresh();
 		cached = false;
 		cache = null;
@@ -266,7 +266,7 @@ public class CachedPropertySet extends RemotePropertySet implements
 	}
 
 	@Override
-	protected CloseableIteration<?, ?> getObjects() throws RepositoryException,
+	protected synchronized CloseableIteration<?, ?> getObjects() throws RepositoryException,
 			QueryEvaluationException {
 		if (creator == null || factory == null) {
 			return super.getObjects();

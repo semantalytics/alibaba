@@ -212,7 +212,7 @@ public class ObjectFactory {
 	/**
 	 * Creates an object with assumed rdf:types.
 	 */
-	public RDFObject createObject(String uri,  Set<URI> types) {
+	public RDFObject createObject(String uri, Set<URI> types) {
 		if (connection == null)
 			throw new IllegalStateException("No ObjectConnection");
 		ValueFactory vf = connection.getValueFactory();
@@ -224,21 +224,7 @@ public class ObjectFactory {
 	 */
 	public RDFObject createObject(Resource resource, Set<URI> types) {
 		assert resource != null;
-		Class<?> proxy;
-		if (resource instanceof URI) {
-			if (types.isEmpty()) {
-				proxy = resolver.resolveEntity((URI) resource);
-			} else {
-				proxy = resolver.resolveEntity((URI) resource, types);
-			}
-		} else {
-			if (types.isEmpty()) {
-				proxy = resolver.resolveBlankEntity();
-			} else {
-				proxy = resolver.resolveBlankEntity(types);
-			}
-		}
-		return createBean(resource, proxy);
+		return createBean(resource, getObjectClass(resource, types));
 	}
 
 	/**
@@ -353,6 +339,40 @@ public class ObjectFactory {
 		return select.append(where).toString();
 	}
 
+	Class<?> getObjectClass(Resource resource, Set<URI> types) {
+		Class<?> proxy;
+		if (resource instanceof URI) {
+			if (types.isEmpty()) {
+				proxy = resolver.resolveEntity((URI) resource);
+			} else {
+				proxy = resolver.resolveEntity((URI) resource, types);
+			}
+		} else {
+			if (types.isEmpty()) {
+				proxy = resolver.resolveBlankEntity();
+			} else {
+				proxy = resolver.resolveBlankEntity(types);
+			}
+		}
+		return proxy;
+	}
+
+	RDFObject createBean(Resource resource, Class<?> proxy) {
+		if (connection == null)
+			throw new IllegalStateException("No ObjectConnection");
+		try {
+			ObjectQueryFactory factory = createObjectQueryFactory(proxy);
+			Object obj = newInstance(proxy);
+			ManagedRDFObject bean = (ManagedRDFObject) obj;
+			bean.initRDFObject(resource, factory, connection);
+			return (RDFObject) obj;
+		} catch (InstantiationException e) {
+			throw new ObjectCompositionException(e);
+		} catch (IllegalAccessException e) {
+			throw new ObjectCompositionException(e);
+		}
+	}
+
 	private Map<String, String> findEagerProperties(Class<?> type) {
 		Map<String, String> result = properties.findEagerProperties(type);
 		if (result == null && mapper.isNamedTypePresent())
@@ -373,22 +393,6 @@ public class ObjectFactory {
 		}
 		where.append(" <");
 		return where.append(pred).append("> ?subj_").append(name);
-	}
-
-	private RDFObject createBean(Resource resource, Class<?> proxy) {
-		if (connection == null)
-			throw new IllegalStateException("No ObjectConnection");
-		try {
-			ObjectQueryFactory factory = createObjectQueryFactory(proxy);
-			Object obj = newInstance(proxy);
-			ManagedRDFObject bean = (ManagedRDFObject) obj;
-			bean.initRDFObject(resource, factory, connection);
-			return (RDFObject) obj;
-		} catch (InstantiationException e) {
-			throw new ObjectCompositionException(e);
-		} catch (IllegalAccessException e) {
-			throw new ObjectCompositionException(e);
-		}
 	}
 
 	private ObjectQueryFactory createObjectQueryFactory(Class<?> proxy) {

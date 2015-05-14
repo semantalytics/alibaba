@@ -52,7 +52,6 @@ import org.openrdf.query.TupleQueryResult;
 import org.openrdf.repository.Repository;
 import org.openrdf.repository.RepositoryException;
 import org.openrdf.repository.object.ObjectConnection;
-import org.openrdf.repository.object.ObjectFactory;
 import org.openrdf.repository.object.RDFObject;
 import org.openrdf.repository.object.exceptions.ObjectPersistException;
 import org.openrdf.repository.object.exceptions.ObjectStoreException;
@@ -356,7 +355,7 @@ public abstract class RDFSContainer extends AbstractList<Object> implements
 		TupleQuery query = createBlockQuery(b);
 		TupleQueryResult result = query.evaluate();
 		BindingSet bindings = result.next();
-		ObjectFactory of = getObjectConnection().getObjectFactory();
+		ObjectConnection con = getObjectConnection();
 		Object[] list = new Object[BSIZE];
 		while (bindings != null) {
 			URI pred = (URI) bindings.getValue("pred");
@@ -372,9 +371,9 @@ public abstract class RDFSContainer extends AbstractList<Object> implements
 			} while (bindings != null && pred.equals(bindings.getValue("pred")));
 			int i = idx % BSIZE;
 			if (value instanceof Literal) {
-				list[i] = of.createObject((Literal) value);
+				list[i] = con.getObject((Literal) value);
 			} else {
-				list[i] = of.createObject((Resource) value, types);
+				list[i] = con.getObject(types, (Resource) value);
 			}
 		}
 		return list;

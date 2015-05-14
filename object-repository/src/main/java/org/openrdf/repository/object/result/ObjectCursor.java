@@ -110,7 +110,7 @@ public class ObjectCursor extends LookAheadIteration<Object, QueryEvaluationExce
 					list.add((URI) t);
 				}
 			}
-			obj = of.createObject((Resource) value, list);
+			obj = manager.getObject(list, (Resource) value);
 		} else {
 			try {
 				obj = manager.getObject(value);
