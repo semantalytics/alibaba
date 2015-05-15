@@ -48,7 +48,7 @@ public class AgentImpl implements Serializable, Agent {
 	private Set<Object> msnChatID = new HashSet<Object>();
 
 	/** http://xmlns.com/foaf/0.1/name */
-	private Set<Object> name = new HashSet<Object>();
+	private Set<String> name = new HashSet<String>();
 
 	/** http://xmlns.com/foaf/0.1/theme */
 	private Set<Object> theme = new HashSet<Object>();
@@ -191,12 +191,12 @@ public class AgentImpl implements Serializable, Agent {
 
 
 	/** A name for some thing. */
-	public Set<Object> getFoafNames() {
+	public Set<String> getFoafNames() {
 		return name;
 	}
 
 	/** A name for some thing. */
-	public void setFoafNames(Set<Object> value) {
+	public void setFoafNames(Set<String> value) {
 		this.name = value;
 	}
 

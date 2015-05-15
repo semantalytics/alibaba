@@ -257,13 +257,15 @@ public class JavaSourceBuilder {
 
 	private void appendString(StringBuilder sb, String value) {
 		String tab = indent + "\t";
-		String newline = "\\n\" + \n" + tab + "\"";
+		String newline = "\" + \n" + tab + "\"";
 		String str = value;
 		str = value.replace("\\", "\\\\");
 		str = str.replace("\"", "\\\"");
-		str = str.replace("\n", newline);
+		str = str.replace("\r\n", "\\r\\n" + newline);
+		str = str.replace("\n", "\\n" + newline);
+		str = str.replace("\r", "\\r" + newline);
 		if (str.endsWith(newline)) {
-			str = str.substring(0, str.length() - newline.length()) + "\\n";
+			str = str.substring(0, str.length() - newline.length());
 		}
 		sb.append("\"");
 		sb.append(str);

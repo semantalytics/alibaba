@@ -18,7 +18,7 @@ public class PersonImpl extends AgentImpl implements Serializable, Person {
 	private Set<Object> family_name = new HashSet<Object>();
 
 	/** http://xmlns.com/foaf/0.1/firstName */
-	private Set<Object> firstName = new HashSet<Object>();
+	private Set<String> firstName = new HashSet<String>();
 
 	/** http://xmlns.com/foaf/0.1/geekcode */
 	private Set<Object> geekcode = new HashSet<Object>();
@@ -66,12 +66,12 @@ public class PersonImpl extends AgentImpl implements Serializable, Person {
 
 
 	/** The first name of a person. */
-	public Set<Object> getFoafFirstNames() {
+	public Set<String> getFoafFirstNames() {
 		return firstName;
 	}
 
 	/** The first name of a person. */
-	public void setFoafFirstNames(Set<Object> value) {
+	public void setFoafFirstNames(Set<String> value) {
 		this.firstName = value;
 	}
 
