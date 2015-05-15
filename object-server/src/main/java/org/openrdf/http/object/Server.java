@@ -416,7 +416,7 @@ public class Server {
 		Map<String, String> result = new LinkedHashMap<String, String>(
 				list.size());
 		for (String item : list) {
-			result.put(new ParsedURI(item).getPath(), item);
+			result.put(new ParsedURI(item).getPath().replace(':', '|'), item);
 		}
 		return result;
 	}
