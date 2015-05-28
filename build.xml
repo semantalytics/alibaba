@@ -325,8 +325,9 @@
 
 	<target name="mvn">
 		<echo message="mvn -B ${args}" />
-		<exec os="Windows XP, Windows Vista" executable="mvn.bat" failonerror="true">
-			<arg line="-B ${args}" />
+		<exec os="Windows XP, Windows Vista, Windows 7" executable="cmd" failonerror="true">
+			<arg value="/c" />
+			<arg value="mvn -B ${args}" />
 		</exec>
 		<exec os="Linux, Mac OS X" executable="mvn" failonerror="true">
 			<arg line="-B ${args}" />
