@@ -46,15 +46,11 @@ import org.openrdf.http.object.fluid.FluidType;
 import org.openrdf.http.object.fluid.helpers.MessageWriterBase;
 import org.openrdf.http.object.io.TurtleStreamWriterFactory;
 import org.openrdf.model.Literal;
-import org.openrdf.model.Namespace;
 import org.openrdf.model.Statement;
 import org.openrdf.model.URI;
 import org.openrdf.model.Value;
 import org.openrdf.query.GraphQueryResult;
 import org.openrdf.query.QueryEvaluationException;
-import org.openrdf.repository.RepositoryException;
-import org.openrdf.repository.RepositoryResult;
-import org.openrdf.repository.object.ObjectConnection;
 import org.openrdf.rio.RDFFormat;
 import org.openrdf.rio.RDFHandlerException;
 import org.openrdf.rio.RDFWriter;
@@ -90,8 +86,7 @@ public class GraphMessageWriter extends
 
 	@Override
 	public void writeTo(RDFWriterFactory factory, GraphQueryResult result,
-			OutputStream out, Charset charset, String base,
-			ObjectConnection con) throws RDFHandlerException,
+			OutputStream out, Charset charset, String base) throws RDFHandlerException,
 			QueryEvaluationException {
 		RDFFormat rdfFormat = factory.getRDFFormat();
 		RDFWriter writer = getWriter(out, charset, factory, base);
@@ -133,25 +128,6 @@ public class GraphMessageWriter extends
 					writer.handleNamespace(prefix, namespace);
 					firstNamespaces.remove(namespace);
 					reportedNamespaces.add(namespace);
-				}
-			}
-
-			// Report other namespace
-			if (!firstNamespaces.isEmpty() && con != null) {
-				try {
-					RepositoryResult<Namespace> names = con.getNamespaces();
-					while (names.hasNext()) {
-						Namespace ns = names.next();
-						String name = ns.getName();
-						if ((!trimNamespaces || firstNamespaces.contains(name))
-								&& !reportedNamespaces.contains(name)) {
-							writer.handleNamespace(ns.getPrefix(), name);
-							firstNamespaces.remove(name);
-							reportedNamespaces.add(name);
-						}
-					}
-				} catch (RepositoryException e) {
-					throw new RDFHandlerException(e);
 				}
 			}
 		}

@@ -37,7 +37,6 @@ import org.openrdf.http.object.fluid.helpers.MessageWriterBase;
 import org.openrdf.query.resultio.BooleanQueryResultFormat;
 import org.openrdf.query.resultio.BooleanQueryResultWriterFactory;
 import org.openrdf.query.resultio.BooleanQueryResultWriterRegistry;
-import org.openrdf.repository.object.ObjectConnection;
 
 /**
  * Writes a boolean query result.
@@ -56,7 +55,7 @@ public class BooleanMessageWriter
 	@Override
 	public void writeTo(BooleanQueryResultWriterFactory factory,
 			Boolean result, OutputStream out, Charset charset,
-			String base, ObjectConnection con) throws IOException {
+			String base) throws IOException {
 		factory.getWriter(out).write(result != null && result);
 	}
 

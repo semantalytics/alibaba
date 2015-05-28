@@ -99,7 +99,7 @@ public class ResourceTarget {
 		this.context = ObjectContext.adapt(context);
 		this.con = target.getObjectConnection();
 		this.vf = con.getValueFactory();
-		this.writer = ff.builder(con);
+		this.writer = ff.builder();
 	}
 
 	public String toString() {
@@ -364,7 +364,7 @@ public class ResourceTarget {
 		String[] values = list.toArray(new String[list.size()]);
 		FluidType ftype = new FluidType(String[].class, "text/plain", "text/*",
 				"*/*");
-		FluidBuilder fb = FluidFactory.getInstance().builder(con);
+		FluidBuilder fb = FluidFactory.getInstance().builder();
 		return fb.consume(values, request.getIRI(), ftype);
 	}
 

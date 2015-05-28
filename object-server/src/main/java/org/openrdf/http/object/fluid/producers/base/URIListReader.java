@@ -49,7 +49,6 @@ import org.openrdf.query.QueryEvaluationException;
 import org.openrdf.query.TupleQueryResultHandlerException;
 import org.openrdf.query.resultio.QueryResultParseException;
 import org.openrdf.repository.RepositoryException;
-import org.openrdf.repository.object.ObjectConnection;
 
 /**
  * Parses text/uri-list messages.
@@ -59,25 +58,20 @@ public abstract class URIListReader<URI> implements Producer {
 
 	public static URIListReader<org.openrdf.model.URI> RDF_URI = new URIListReader<org.openrdf.model.URI>(
 			org.openrdf.model.URI.class) {
-		protected org.openrdf.model.URI create(ObjectConnection con, String uri) {
-			ValueFactory vf;
-			if (con == null) {
-				vf = ValueFactoryImpl.getInstance();
-			} else {
-				vf = con.getValueFactory();
-			}
+		protected org.openrdf.model.URI create(String uri) {
+			ValueFactory vf = ValueFactoryImpl.getInstance();
 			return vf.createURI(uri);
 		}
 	};
 	public static URIListReader<URL> NET_URL = new URIListReader<URL>(URL.class) {
-		protected URL create(ObjectConnection con, String uri)
+		protected URL create(String uri)
 				throws MalformedURLException {
 			return new URL(uri);
 		}
 	};
 	public static URIListReader<java.net.URI> NET_URI = new URIListReader<java.net.URI>(
 			java.net.URI.class) {
-		protected java.net.URI create(ObjectConnection con, String uri) {
+		protected java.net.URI create(String uri) {
 			return java.net.URI.create(uri);
 		}
 	};
@@ -130,9 +124,9 @@ public abstract class URIListReader<URI> implements Producer {
 					continue;
 				URI url;
 				if (base != null) {
-					url = create(builder.getObjectConnection(), URLUtil.resolve(str.trim(), base));
+					url = create(URLUtil.resolve(str.trim(), base));
 				} else {
-					url = create(builder.getObjectConnection(), canonicalize(str.trim()));
+					url = create(canonicalize(str.trim()));
 				}
 				set.add(url);
 			}
@@ -142,7 +136,7 @@ public abstract class URIListReader<URI> implements Producer {
 		}
 	}
 
-	protected abstract URI create(ObjectConnection con, String uri)
+	protected abstract URI create(String uri)
 			throws MalformedURLException, RepositoryException;
 
 	private String canonicalize(String uri) {

@@ -36,7 +36,6 @@ import org.openrdf.http.object.fluid.consumers.HttpMessageWriter;
 import org.openrdf.http.object.fluid.consumers.InputStreamBodyWriter;
 import org.openrdf.http.object.fluid.consumers.ModelMessageWriter;
 import org.openrdf.http.object.fluid.consumers.PrimitiveBodyWriter;
-import org.openrdf.http.object.fluid.consumers.RDFObjectURIWriter;
 import org.openrdf.http.object.fluid.consumers.ReadableBodyWriter;
 import org.openrdf.http.object.fluid.consumers.ReadableByteChannelBodyWriter;
 import org.openrdf.http.object.fluid.consumers.StringBodyWriter;
@@ -59,7 +58,6 @@ import org.openrdf.http.object.fluid.producers.HttpMessageReader;
 import org.openrdf.http.object.fluid.producers.InputStreamBodyReader;
 import org.openrdf.http.object.fluid.producers.ModelMessageReader;
 import org.openrdf.http.object.fluid.producers.PrimitiveBodyReader;
-import org.openrdf.http.object.fluid.producers.RDFObjectURIReader;
 import org.openrdf.http.object.fluid.producers.ReadableBodyReader;
 import org.openrdf.http.object.fluid.producers.ReadableByteChannelBodyReader;
 import org.openrdf.http.object.fluid.producers.StringBodyReader;
@@ -67,7 +65,6 @@ import org.openrdf.http.object.fluid.producers.TupleMessageReader;
 import org.openrdf.http.object.fluid.producers.VoidReader;
 import org.openrdf.http.object.fluid.producers.XMLEventMessageReader;
 import org.openrdf.http.object.fluid.producers.base.URIListReader;
-import org.openrdf.repository.object.ObjectConnection;
 import org.openrdf.repository.object.ObjectService;
 import org.openrdf.repository.object.ObjectServiceImpl;
 import org.openrdf.repository.object.exceptions.ObjectStoreConfigException;
@@ -96,7 +93,6 @@ public class FluidFactory {
 	private ObjectService service;
 
 	private void init() {
-		consumers.add(new RDFObjectURIWriter());
 		consumers.add(new BooleanMessageWriter());
 		consumers.add(new ModelMessageWriter());
 		consumers.add(new GraphMessageWriter());
@@ -128,7 +124,6 @@ public class FluidFactory {
 		producers.add(URIListReader.RDF_URI);
 		producers.add(URIListReader.NET_URL);
 		producers.add(URIListReader.NET_URI);
-		producers.add(new RDFObjectURIReader());
 		producers.add(new ModelMessageReader());
 		producers.add(new GraphMessageReader());
 		producers.add(new TupleMessageReader());
@@ -152,10 +147,6 @@ public class FluidFactory {
 		producers.add(new BufferedImageReader());
 	}
 
-	public FluidBuilder builder(ObjectConnection con) {
-		return new FluidBuilder(consumers, producers, con);
-	}
-
 	public FluidBuilder builder() {
 		return new FluidBuilder(consumers, producers, getObjectService());
 	}
@@ -163,12 +154,16 @@ public class FluidFactory {
 	private synchronized ObjectService getObjectService() {
 		if (service == null) {
 			try {
-				service = new ObjectServiceImpl();
+				setObjectService(new ObjectServiceImpl());
 			} catch (ObjectStoreConfigException e) {
 				logger.warn(e.toString(), e);
 			}
 		}
 		return service;
+	}
+
+	private void setObjectService(ObjectService service) {
+		this.service = service;
 	}
 
 }

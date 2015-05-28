@@ -31,9 +31,6 @@ import java.util.List;
 import org.openrdf.annotations.Iri;
 import org.openrdf.http.object.exceptions.BadRequest;
 import org.openrdf.http.object.io.ChannelUtil;
-import org.openrdf.model.ValueFactory;
-import org.openrdf.model.impl.ValueFactoryImpl;
-import org.openrdf.repository.object.ObjectConnection;
 import org.openrdf.repository.object.ObjectFactory;
 import org.openrdf.repository.object.ObjectService;
 
@@ -45,8 +42,7 @@ import org.openrdf.repository.object.ObjectService;
  */
 public class FluidBuilder {
 	private final List<Consumer<?>> consumers;
-	private List<Producer> producers;
-	private final ObjectConnection con;
+	List<Producer> producers;
 	private final ObjectFactory of;
 
 	public FluidBuilder(List<Consumer<?>> consumers, List<Producer> producers,
@@ -55,40 +51,11 @@ public class FluidBuilder {
 		assert producers != null;
 		this.consumers = consumers;
 		this.producers = producers;
-		this.con = null;
 		this.of = service == null ? null : service.createObjectFactory();
-	}
-
-	public FluidBuilder(List<Consumer<?>> consumers, List<Producer> producers,
-			ObjectConnection con) {
-		assert consumers != null;
-		assert producers != null;
-		assert con != null;
-		this.consumers = consumers;
-		this.producers = producers;
-		this.con = con;
-		this.of = con == null ? null : con.getObjectFactory();
-	}
-
-	@Override
-	public String toString() {
-		if (con != null)
-			return con.toString();
-		return super.toString();
-	}
-
-	public ObjectConnection getObjectConnection() {
-		return con;
 	}
 
 	public ObjectFactory getObjectFactory() {
 		return of;
-	}
-
-	public ValueFactory getValueFactory() {
-		if (con == null)
-			return ValueFactoryImpl.getInstance();
-		return con.getValueFactory();
 	}
 
 	public boolean isDatatype(Class<?> type) {

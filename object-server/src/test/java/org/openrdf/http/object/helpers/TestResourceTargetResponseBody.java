@@ -423,14 +423,6 @@ public class TestResourceTargetResponseBody extends TestCase {
 		assertPostRoundTrip(RESOURCE, "text/x-integer", "100");
 	}
 
-	public void testResource() throws Exception {
-		assertPostRoundTrip(RESOURCE + "resource", "text/uri-list", RESOURCE);
-	}
-
-	public void testResources() throws Exception {
-		assertPostRoundTrip(RESOURCE + "resources", "text/uri-list", RESOURCE);
-	}
-
 	public void testURL() throws Exception {
 		assertPostRoundTrip(RESOURCE + "url", "text/uri-list", RESOURCE);
 	}

@@ -40,6 +40,7 @@ import org.openrdf.http.object.fluid.Producer;
 import org.openrdf.model.Literal;
 import org.openrdf.model.URI;
 import org.openrdf.model.ValueFactory;
+import org.openrdf.model.impl.ValueFactoryImpl;
 import org.openrdf.query.QueryEvaluationException;
 import org.openrdf.query.TupleQueryResultHandlerException;
 import org.openrdf.query.resultio.QueryResultParseException;
@@ -80,7 +81,7 @@ public class DatatypeReader implements Producer {
 				base, builder);
 		if (value == null)
 			return null;
-		ValueFactory vf = builder.getValueFactory();
+		ValueFactory vf = ValueFactoryImpl.getInstance();
 		ObjectFactory of = builder.getObjectFactory();
 		URI datatype = vf.createURI("java:", type.getName());
 		Literal lit = vf.createLiteral(value, datatype);

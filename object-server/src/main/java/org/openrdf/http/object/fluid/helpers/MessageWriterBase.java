@@ -55,7 +55,6 @@ import org.openrdf.http.object.io.ProducerStream;
 import org.openrdf.http.object.io.ProducerStream.OutputProducer;
 import org.openrdf.query.QueryEvaluationException;
 import org.openrdf.query.TupleQueryResultHandlerException;
-import org.openrdf.repository.object.ObjectConnection;
 import org.openrdf.rio.RDFHandlerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,10 +73,9 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class MessageWriterBase<FF extends FileFormat, S, T> implements
 		Consumer<T> {
-	private final Logger logger = LoggerFactory
-			.getLogger(MessageWriterBase.class);
+	final Logger logger = LoggerFactory.getLogger(MessageWriterBase.class);
 	private final FileFormatServiceRegistry<FF, S> registry;
-	private final String[] mimeTypes;
+	final String[] mimeTypes;
 	private final Class<T> type;
 
 	public MessageWriterBase(FileFormatServiceRegistry<FF, S> registry,
@@ -140,8 +138,7 @@ public abstract class MessageWriterBase<FF extends FileFormat, S, T> implements
 			protected ReadableByteChannel asChannel(FluidType media)
 					throws IOException, OpenRDFException, XMLStreamException,
 					TransformerException, ParserConfigurationException {
-				return write(ftype.as(toChannelMedia(media)),
-						builder.getObjectConnection(), result, base);
+				return write(ftype.as(toChannelMedia(media)), result, base);
 			}
 
 			public String toString() {
@@ -159,12 +156,12 @@ public abstract class MessageWriterBase<FF extends FileFormat, S, T> implements
 	}
 
 	final ReadableByteChannel write(final FluidType mtype,
-			final ObjectConnection con, final T result, final String base)
+			final T result, final String base)
 			throws IOException {
 		return ChannelUtil.newChannel(new ProducerStream(new OutputProducer() {
 			public void produce(OutputStream out) throws IOException {
 				try {
-					writeTo(mtype, con, result, base, out, 1024);
+					writeTo(mtype, result, base, out, 1024);
 				} catch (OpenRDFException e) {
 					throw new IOException(e);
 				} finally {
@@ -186,8 +183,8 @@ public abstract class MessageWriterBase<FF extends FileFormat, S, T> implements
 		}));
 	}
 
-	private void writeTo(FluidType mtype, ObjectConnection con, T result,
-			String base, OutputStream out, int bufSize)
+	void writeTo(FluidType mtype, T result, String base,
+			OutputStream out, int bufSize)
 			throws IOException, OpenRDFException {
 		Charset charset = mtype.getCharset();
 		String mimeType = mtype.preferred();
@@ -196,7 +193,7 @@ public abstract class MessageWriterBase<FF extends FileFormat, S, T> implements
 			charset = getCharset(format, charset);
 		}
 		try {
-			writeTo(getFactory(mimeType), result, out, charset, base, con);
+			writeTo(getFactory(mimeType), result, out, charset, base);
 		} catch (RDFHandlerException e) {
 			Throwable cause = e.getCause();
 			try {
@@ -232,8 +229,7 @@ public abstract class MessageWriterBase<FF extends FileFormat, S, T> implements
 	}
 
 	protected abstract void writeTo(S factory, T result,
-			OutputStream out, Charset charset, String base,
-			ObjectConnection con) throws IOException, RDFHandlerException,
+			OutputStream out, Charset charset, String base) throws IOException, RDFHandlerException,
 			QueryEvaluationException, TupleQueryResultHandlerException;
 
 	protected S getFactory(String mimeType) {

@@ -44,7 +44,6 @@ import org.openrdf.query.resultio.TupleQueryResultFormat;
 import org.openrdf.query.resultio.TupleQueryResultWriter;
 import org.openrdf.query.resultio.TupleQueryResultWriterFactory;
 import org.openrdf.query.resultio.TupleQueryResultWriterRegistry;
-import org.openrdf.repository.object.ObjectConnection;
 
 /**
  * Writes tuple results.
@@ -69,7 +68,7 @@ public class TupleMessageWriter
 	@Override
 	public void writeTo(TupleQueryResultWriterFactory factory,
 			TupleQueryResult result, OutputStream out, Charset charset,
-			String base, ObjectConnection con)
+			String base)
 			throws TupleQueryResultHandlerException, QueryEvaluationException {
 		TupleQueryResultWriter handler = factory.getWriter(out);
 		if (result == null) {
