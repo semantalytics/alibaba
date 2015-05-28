@@ -421,16 +421,18 @@ public class ResourceClass {
 					Type gtype = method.getGenericParameterTypes()[i];
 					if (body.toMedia(new FluidType(gtype, types)) == null) {
 						if (contentType == null) {
-							readable = "Cannot read unknown body into " + gtype;
+							readable = "Cannot read unknown body into " + gtype
+									+ " for " + method.getName();
 						} else {
 							readable = "Cannot read " + contentType + " into "
-									+ gtype;
+									+ gtype + " for " + method.getName();
 						}
 						continue loop;
 					}
 				}
 				if (readable == null && contentType != null) {
-					readable = "Cannot read " + contentType;
+					readable = "Cannot read " + contentType + " for "
+							+ method.getName();
 				}
 				if (readable != null) {
 					continue loop;
@@ -440,7 +442,8 @@ public class ResourceClass {
 				list.add(method);
 				continue loop;
 			}
-			acceptable = "Cannot write " + method.getGenericReturnType();
+			acceptable = "Cannot write " + method.getGenericReturnType()
+					+ " for " + method.getName();
 		}
 		if (list.isEmpty() && readable != null) {
 			throw new UnsupportedMediaType(readable);

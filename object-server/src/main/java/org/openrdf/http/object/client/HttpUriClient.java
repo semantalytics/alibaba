@@ -82,7 +82,7 @@ public class HttpUriClient extends CloseableHttpClient implements HttpClient {
 	}
 
 	public HttpUriResponse getAnyResponse(HttpUriRequest request)
-			throws IOException, ResponseException {
+			throws IOException {
 		HttpClientContext ctx = HttpClientContext.create();
 		ctx.setCookieStore(new BasicCookieStore());
 		CloseableHttpResponse response = execute(request, ctx);
