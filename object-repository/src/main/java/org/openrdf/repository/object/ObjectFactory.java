@@ -51,8 +51,6 @@ import org.openrdf.repository.object.advisers.helpers.ObjectQueryFactory;
 import org.openrdf.repository.object.composition.ClassResolver;
 import org.openrdf.repository.object.exceptions.ObjectCompositionException;
 import org.openrdf.repository.object.managers.LiteralManager;
-import org.openrdf.repository.object.managers.PropertyMapper;
-import org.openrdf.repository.object.managers.RoleMapper;
 import org.openrdf.repository.object.traits.ManagedRDFObject;
 import org.openrdf.repository.object.traits.RDFObjectBehaviour;
 
@@ -66,30 +64,21 @@ public class ObjectFactory {
 	static final String VAR_PREFIX = "subj"; 
 	private LiteralManager lm;
 	private ClassResolver resolver;
-	private RoleMapper mapper;
-	private PropertyMapper properties;
-	private ClassLoader cl;
 	private ObjectConnection connection;
 	private Map<Class<?>, ObjectQueryFactory> factories;
 
-	protected ObjectFactory(RoleMapper mapper, PropertyMapper properties,
-			LiteralManager lm, ClassResolver resolver, ClassLoader cl) {
+	protected ObjectFactory(ClassResolver resolver, LiteralManager lm) {
 		assert lm != null;
-		assert mapper != null;
-		assert properties != null;
 		assert resolver != null;
 		this.lm = lm;
-		this.mapper = mapper;
-		this.properties = properties;
 		this.resolver = resolver;
-		this.cl = cl;
 	}
 
 	/**
 	 * @return The ClassLoader used by this ObjectFactory.
 	 */
 	public ClassLoader getClassLoader() {
-		return cl;
+		return resolver.getClassLoader();
 	}
 
 	/**
@@ -232,7 +221,7 @@ public class ObjectFactory {
 	 *         parameter.
 	 */
 	public boolean isNamedConcept(Class<?> type) {
-		return mapper.findType(type) != null;
+		return resolver.getRoleMapper().findType(type) != null;
 	}
 
 	public boolean isDatatype(Class<?> type) {
@@ -240,7 +229,7 @@ public class ObjectFactory {
 	}
 
 	public URI getNameOf(Class<?> concept) {
-		return mapper.findType(concept);
+		return resolver.getRoleMapper().findType(concept);
 	}
 
 	protected void setObjectConnection(ObjectConnection connection) {
@@ -249,14 +238,14 @@ public class ObjectFactory {
 	}
 
 	protected String createObjectQuery(Class<?> concept, int bindings) {
-		Collection<PropertyDescriptor> subjectProperties = properties
+		Collection<PropertyDescriptor> subjectProperties = resolver.getPropertyMapper()
 				.findFunctionalProperties(concept);
-		Collection<Field> subjectFields = properties
+		Collection<Field> subjectFields = resolver.getPropertyMapper()
 				.findFunctionalFields(concept);
 		StringBuilder select = new StringBuilder();
 		StringBuilder where = new StringBuilder();
 		select.append("SELECT REDUCED ?subj");
-		boolean namedTypePresent = mapper.isNamedTypePresent();
+		boolean namedTypePresent = resolver.getRoleMapper().isNamedTypePresent();
 		if (namedTypePresent) {
 			select.append(" ?subj_class");
 		}
@@ -265,7 +254,7 @@ public class ObjectFactory {
 		boolean typed = uri != null && bindings == 0;
 		if (typed) {
 			Collection<URI> types = new HashSet<URI>();
-			mapper.findSubTypes(concept, types);
+			resolver.getRoleMapper().findSubTypes(concept, types);
 			Iterator<URI> iter = types.iterator();
 			assert iter.hasNext();
 			while (iter.hasNext()) {
@@ -286,7 +275,7 @@ public class ObjectFactory {
 		String type = RDF.TYPE.stringValue();
 		for (PropertyDescriptor pd : subjectProperties) {
 			String name = pd.getName();
-			String pred = properties.findPredicate(pd);
+			String pred = resolver.getPropertyMapper().findPredicate(pd);
 			optional(select, name, where.append("\n"), null, pred);
 			if (pd.getPropertyType().equals(Object.class)) {
 				if (namedTypePresent) {
@@ -306,7 +295,7 @@ public class ObjectFactory {
 		}
 		for (Field f : subjectFields) {
 			String name = f.getName();
-			String pred = properties.findPredicate(f);
+			String pred = resolver.getPropertyMapper().findPredicate(f);
 			optional(select, name, where.append("\n"), null, pred);
 			if (f.getType().equals(Object.class)) {
 				if (namedTypePresent) {
@@ -374,8 +363,8 @@ public class ObjectFactory {
 	}
 
 	private Map<String, String> findEagerProperties(Class<?> type) {
-		Map<String, String> result = properties.findEagerProperties(type);
-		if (result == null && mapper.isNamedTypePresent())
+		Map<String, String> result = resolver.getPropertyMapper().findEagerProperties(type);
+		if (result == null && resolver.getRoleMapper().isNamedTypePresent())
 			return Collections.singletonMap("class", RDF.TYPE.stringValue());
 		if (result == null)
 			return Collections.emptyMap();
@@ -401,7 +390,7 @@ public class ObjectFactory {
 		synchronized (factories) {
 			ObjectQueryFactory factory = factories.get(proxy);
 			if (factory == null) {
-				factory = new ObjectQueryFactory(connection, properties);
+				factory = new ObjectQueryFactory(connection, resolver.getPropertyMapper());
 				factories.put(proxy, factory);
 			}
 			return factory;

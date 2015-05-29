@@ -42,6 +42,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -147,17 +148,9 @@ public class ClassComposer {
 				}
 			}
 		}
-		methods = getMethods();
-		namedMethods = new HashMap<String, Method>(methods.size());
-		for (Method method : methods) {
-			if (method.isAnnotationPresent(Iri.class)) {
-				String uri = method.getAnnotation(Iri.class).value();
-				if (!namedMethods.containsKey(uri)
-						|| !isBridge(method, methods)) {
-					namedMethods.put(uri, method);
-				}
-			}
-		}
+		Collection<Method> all = getAllMethods();
+		methods = getUniqueMethods(all);
+		namedMethods = getNamedMethods(all);
 		for (Method method : methods) {
 			if (!method.getName().startsWith("_$")) {
 				boolean bridge = isBridge(method, methods);
@@ -200,45 +193,56 @@ public class ClassComposer {
 		return special.contains(face.getName());
 	}
 
-	private Collection<Method> getMethods() {
-		Map<List<?>, Method> map = new HashMap<List<?>, Method>();
+	private Collection<Method> getAllMethods() {
+		List<Method> methods = new LinkedList<Method>();
 		for (Class<?> jc : interfaces) {
 			for (Method m : jc.getMethods()) {
 				if (isSpecial(m))
 					continue;
-				Class<?>[] ptypes = getParameterTypes(m);
-				List list = new ArrayList(ptypes.length + 2);
-				list.add(m.getName());
-				list.add(m.getReturnType());
-				list.addAll(Arrays.asList(ptypes));
-				if (map.containsKey(list)) {
-					if (getRank(m) > getRank(map.get(list))) {
-						map.put(list, m);
-					}
-				} else {
-					map.put(list, m);
-				}
+				methods.add(m);
 			}
 		}
 		for (BehaviourFactory factory : allBehaviours) {
 			for (Method m : factory.getMethods()) {
 				if (isSpecial(m))
 					continue;
-				Class<?>[] ptypes = getParameterTypes(m);
-				List list = new ArrayList(ptypes.length + 2);
-				list.add(m.getName());
-				list.add(m.getReturnType());
-				list.addAll(Arrays.asList(ptypes));
-				if (map.containsKey(list)) {
-					if (getRank(m) > getRank(map.get(list))) {
-						map.put(list, m);
-					}
-				} else {
+				methods.add(m);
+			}
+		}
+		return methods;
+	}
+
+	private Collection<Method> getUniqueMethods(Collection<Method> methods) {
+		Map<List<?>, Method> map = new HashMap<List<?>, Method>(methods.size());
+		for (Method m : methods) {
+			Class<?>[] ptypes = getParameterTypes(m);
+			List list = new ArrayList(ptypes.length + 2);
+			list.add(m.getName());
+			list.add(m.getReturnType());
+			list.addAll(Arrays.asList(ptypes));
+			if (map.containsKey(list)) {
+				if (getRank(m) > getRank(map.get(list))) {
 					map.put(list, m);
 				}
+			} else {
+				map.put(list, m);
 			}
 		}
 		return map.values();
+	}
+
+	private Map<String, Method> getNamedMethods(Collection<Method> all) {
+		Map<String, Method> namedMethods = new HashMap<String, Method>(all.size());
+		for (Method method : all) {
+			if (method.isAnnotationPresent(Iri.class)) {
+				String uri = method.getAnnotation(Iri.class).value();
+				if (!namedMethods.containsKey(uri)
+						|| !isBridge(method, methods)) {
+					namedMethods.put(uri, method);
+				}
+			}
+		}
+		return namedMethods;
 	}
 
 	private int getRank(Method m) {

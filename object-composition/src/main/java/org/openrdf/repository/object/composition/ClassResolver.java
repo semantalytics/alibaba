@@ -30,6 +30,8 @@ package org.openrdf.repository.object.composition;
 
 import static java.lang.reflect.Modifier.isAbstract;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -46,8 +48,11 @@ import org.openrdf.repository.object.composition.helpers.BehaviourConstructor;
 import org.openrdf.repository.object.composition.helpers.BehaviourProviderService;
 import org.openrdf.repository.object.composition.helpers.ClassComposer;
 import org.openrdf.repository.object.exceptions.ObjectCompositionException;
+import org.openrdf.repository.object.exceptions.ObjectStoreConfigException;
 import org.openrdf.repository.object.managers.PropertyMapper;
 import org.openrdf.repository.object.managers.RoleMapper;
+import org.openrdf.repository.object.managers.helpers.DirUtil;
+import org.openrdf.repository.object.managers.helpers.RoleClassLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,46 +63,78 @@ import org.slf4j.LoggerFactory;
  *
  */
 public class ClassResolver {
+	private static final Set<URI> EMPTY_SET = Collections.emptySet();
 	private static final String PKG_PREFIX = "object.proxies._";
 	private static final String CLASS_PREFIX = "_EntityProxy";
-	private Logger logger = LoggerFactory.getLogger(ClassResolver.class);
-	private PropertyMapper properties;
-	private ClassFactory cp;
-	private Collection<Class<?>> baseClassRoles;
-	private RoleMapper mapper;
-	private Class<?> blank;
-	private ConcurrentMap<Set<URI>, Class<?>> multiples = new ConcurrentHashMap<Set<URI>, Class<?>>();
-	private BehaviourProviderService behaviourService;
 
-	public void setRoleMapper(RoleMapper mapper) {
-		this.mapper = mapper;
-	}
-
-	public void setPropertyMapper(PropertyMapper properties) {
-		this.properties = properties;
-	}
-
-	public void setClassDefiner(ClassFactory definer) {
-		this.cp = definer;
-		behaviourService = BehaviourProviderService.newInstance(cp);
-	}
-
-	public void setBaseClassRoles(Collection<Class<?>> baseClassRoles) {
-		this.baseClassRoles = new ArrayList<Class<?>>(baseClassRoles.size());
-		for (Class<?> base : baseClassRoles) {
-			try {
-				// ensure the base class has a default constructor
-				base.getConstructor();
-				this.baseClassRoles.add(base);
-			} catch (NoSuchMethodException e) {
-				logger.warn("Concept will only be mergable: {}", base);
-			}
+	private static RoleMapper newRoleMapper(ClassLoader cl) throws ObjectStoreConfigException {
+		if (cl == null) {
+			return newRoleMapper(ClassResolver.class.getClassLoader());
+		} else {
+			RoleMapper mapper = new RoleMapper();
+			new RoleClassLoader(mapper).loadRoles(cl);
+			return mapper;
 		}
 	}
 
-	public void init() {
-		Set<URI> emptySet = Collections.emptySet();
-		blank = resolveBlankEntity(emptySet);
+	private final Logger logger = LoggerFactory.getLogger(ClassResolver.class);
+	private final PropertyMapper properties;
+	private final ClassFactory cp;
+	private final Collection<Class<?>> baseClassRoles;
+	private final RoleMapper mapper;
+	private final Class<?> blank;
+	private final ConcurrentMap<Set<URI>, Class<?>> multiples = new ConcurrentHashMap<Set<URI>, Class<?>>();
+	private final BehaviourProviderService behaviourService;
+
+	public ClassResolver() throws ObjectStoreConfigException {
+		this(Thread.currentThread().getContextClassLoader());
+	}
+
+	public ClassResolver(ClassLoader cl) throws ObjectStoreConfigException {
+		this(newRoleMapper(cl), cl == null ? ClassResolver.class.getClassLoader() : cl);
+	}
+
+	public ClassResolver(RoleMapper mapper, ClassLoader cl)
+			throws ObjectStoreConfigException {
+		this(mapper, new PropertyMapper(cl, mapper.isNamedTypePresent()), cl);
+	}
+
+	public ClassResolver(RoleMapper mapper, PropertyMapper properties,
+			ClassLoader cl) throws ObjectStoreConfigException {
+		this.mapper = mapper;
+		this.properties = properties;
+		try {
+			File dir = DirUtil.createTempDir("classes");
+			DirUtil.deleteOnExit(dir);
+			this.cp = new ClassFactory(dir, cl);
+			behaviourService = BehaviourProviderService.newInstance(cp);
+			Collection<Class<?>> baseClassRoles = mapper.getConceptClasses();
+			this.baseClassRoles = new ArrayList<Class<?>>(baseClassRoles.size());
+			for (Class<?> base : baseClassRoles) {
+				try {
+					// ensure the base class has a default constructor
+					base.getConstructor();
+					this.baseClassRoles.add(base);
+				} catch (NoSuchMethodException e) {
+					logger.warn("Concept will only be mergable: {}", base);
+				}
+			}
+			blank = resolveBlankEntity(EMPTY_SET);
+		} catch (IOException e) {
+			throw new ObjectStoreConfigException(e);
+		}
+	}
+
+	public RoleMapper getRoleMapper() {
+		return mapper;
+	}
+
+	public PropertyMapper getPropertyMapper() {
+		return properties;
+	}
+
+	public ClassLoader getClassLoader() {
+		return cp;
 	}
 
 	public Class<?> resolveBlankEntity() {
@@ -116,7 +153,7 @@ public class ClassResolver {
 
 	public Class<?> resolveEntity(URI resource) {
 		if (resource != null && mapper.isIndividualRolesPresent(resource))
-			return resolveIndividualEntity(resource, Collections.EMPTY_SET);
+			return resolveIndividualEntity(resource, EMPTY_SET);
 		return resolveBlankEntity();
 	}
 

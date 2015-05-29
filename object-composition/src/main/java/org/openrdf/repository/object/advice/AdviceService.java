@@ -49,7 +49,7 @@ public class AdviceService {
 	}
 
 	public static AdviceService newInstance(ClassLoader cl) {
-		return new AdviceService(cl);
+		return new AdviceService(cl == null ? AdviceService.class.getClassLoader() : cl);
 	}
 
 	private final Logger logger = LoggerFactory.getLogger(AdviceService.class);
@@ -57,8 +57,7 @@ public class AdviceService {
 	private final Map<Class<?>, AdviceFactory> factories = new HashMap<Class<?>, AdviceFactory>();
 
 	public AdviceService(ClassLoader cl) {
-		this.loader = ServiceLoader.load(AdviceProvider.class,
-				AdviceService.class.getClassLoader());
+		this.loader = ServiceLoader.load(AdviceProvider.class, cl);
 	}
 
 	public synchronized AdviceFactory getAdviserFactory(Class<?> annotationType) {
