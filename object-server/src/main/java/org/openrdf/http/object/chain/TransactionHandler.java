@@ -154,14 +154,18 @@ public class TransactionHandler implements AsyncExecChain {
 			throws OpenRDFException {
 		int start = iri.indexOf("://") + 3;
 		StringBuilder sparql = new StringBuilder();
-		sparql.append("SELECT ?resource {\n{\n");
 		for (int i = iri.length() - 1; i > start; i = iri.lastIndexOf('/', i - 1)) {
+			if (sparql.length() == 0) {
+				sparql.append("SELECT ?resource {\n{\n");
+			} else {
+				sparql.append("} UNION {\n");
+			}
 			sparql.append("BIND($p").append(i).append(" AS ?resource)\n");
 			sparql.append("FILTER EXISTS { ?resource a ?type }\n");
-			sparql.append("} UNION {\n");
 		}
-		sparql.append("BIND ($p0 AS ?resource)\n}\n");
-		sparql.append("} LIMIT 1");
+		if (sparql.length() == 0)
+			return con.getObject(RDFObject.class, iri);
+		sparql.append("}} ORDER BY desc(?resource) LIMIT 1");
 		ValueFactory vf = con.getValueFactory();
 		ObjectQuery qry = con.prepareObjectQuery(QueryLanguage.SPARQL,
 				sparql.toString());
@@ -169,8 +173,10 @@ public class TransactionHandler implements AsyncExecChain {
 			String path = iri.substring(0, i + 1);
 			qry.setBinding("p" + i, vf.createURI(path));
 		}
-		qry.setBinding("p0", vf.createURI(iri));
-		return qry.evaluate(RDFObject.class).singleResult();
+		RDFObject result = qry.evaluate(RDFObject.class).next();
+		if (result == null)
+			return con.getObject(RDFObject.class, iri);
+		return result;
 	}
 
 	private synchronized Future<HttpResponse> notSetup(Request request,
