@@ -18,11 +18,11 @@ import org.apache.commons.io.FileUtils;
 import org.openrdf.OpenRDFException;
 import org.openrdf.annotations.Method;
 import org.openrdf.annotations.Type;
-import org.openrdf.http.object.io.DirUtil;
 import org.openrdf.http.object.management.ObjectServerMBean;
 import org.openrdf.model.URI;
 import org.openrdf.repository.object.ObjectConnection;
 import org.openrdf.repository.object.RDFObject;
+import org.openrdf.repository.object.managers.helpers.DirUtil;
 import org.openrdf.store.blob.BlobObject;
 
 public class TestServerControl extends TestCase {

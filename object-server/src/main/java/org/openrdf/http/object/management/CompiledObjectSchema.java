@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.openrdf.OpenRDFException;
-import org.openrdf.http.object.io.DirUtil;
 import org.openrdf.model.Model;
 import org.openrdf.model.impl.TreeModel;
 import org.openrdf.repository.Repository;
@@ -14,6 +13,7 @@ import org.openrdf.repository.object.ObjectFactory;
 import org.openrdf.repository.object.ObjectService;
 import org.openrdf.repository.object.ObjectServiceImpl;
 import org.openrdf.repository.object.compiler.OWLCompiler;
+import org.openrdf.repository.object.managers.helpers.DirUtil;
 import org.openrdf.rio.helpers.ContextStatementCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

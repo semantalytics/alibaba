@@ -26,7 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-package org.openrdf.http.object.io;
+package org.openrdf.repository.object.managers.helpers;
 
 import java.io.File;
 import java.io.IOException;

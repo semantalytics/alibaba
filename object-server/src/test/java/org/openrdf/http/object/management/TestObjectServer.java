@@ -16,9 +16,9 @@ import junit.framework.TestCase;
 import org.openrdf.annotations.Method;
 import org.openrdf.annotations.Type;
 import org.openrdf.http.object.io.ChannelUtil;
-import org.openrdf.http.object.io.DirUtil;
 import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.object.ObjectConnection;
+import org.openrdf.repository.object.managers.helpers.DirUtil;
 import org.openrdf.rio.RDFFormat;
 
 public class TestObjectServer extends TestCase {

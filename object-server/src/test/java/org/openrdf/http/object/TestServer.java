@@ -36,7 +36,6 @@ import org.openrdf.OpenRDFException;
 import org.openrdf.annotations.Method;
 import org.openrdf.annotations.Type;
 import org.openrdf.http.object.io.ChannelUtil;
-import org.openrdf.http.object.io.DirUtil;
 import org.openrdf.http.object.management.ConnectionBean;
 import org.openrdf.http.object.management.JVMUsageMBean;
 import org.openrdf.http.object.management.KeyStoreMXBean;
@@ -45,6 +44,7 @@ import org.openrdf.http.object.management.RepositoryMXBean;
 import org.openrdf.model.URI;
 import org.openrdf.repository.object.ObjectConnection;
 import org.openrdf.repository.object.RDFObject;
+import org.openrdf.repository.object.managers.helpers.DirUtil;
 import org.openrdf.store.blob.BlobObject;
 
 public class TestServer extends TestCase {

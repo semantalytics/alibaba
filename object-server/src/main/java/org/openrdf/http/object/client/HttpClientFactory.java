@@ -54,7 +54,7 @@ import org.apache.http.impl.execchain.ClientExecChain;
 import org.apache.http.message.BasicHeader;
 import org.apache.http.protocol.HttpContext;
 import org.openrdf.http.object.Version;
-import org.openrdf.http.object.io.DirUtil;
+import org.openrdf.repository.object.managers.helpers.DirUtil;
 
 /**
  * Manages the connections and cache entries for outgoing requests.
