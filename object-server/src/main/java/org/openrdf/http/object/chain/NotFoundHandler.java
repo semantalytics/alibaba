@@ -67,7 +67,7 @@ public class NotFoundHandler implements ClientExecChain {
 		if ((200 == status || 203 == status || 204 == status)
 				&& "GET".equals(method) && rb.getEntity() == null) {
 			BasicHttpResponse resp = new BasicHttpResponse(
-					HttpVersion.HTTP_1_1, 404, "Not Found");
+					HttpVersion.HTTP_1_1, 404, rb.getStatusLine().getReasonPhrase());
 			for (Header hd : rb.getAllHeaders()) {
 				resp.addHeader(hd);
 			}
