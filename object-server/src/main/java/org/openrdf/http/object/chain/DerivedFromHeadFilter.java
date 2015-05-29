@@ -136,6 +136,9 @@ public class DerivedFromHeadFilter implements AsyncExecChain {
 				head.addHeader(header);
 			}
 		}
+		if ("PUT".equals(line.getMethod()) && request.containsHeader("Content-Type")) {
+			head.setHeader("Accept", request.getFirstHeader("Content-Type").getValue());
+		}
 		return head;
 	}
 
