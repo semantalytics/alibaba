@@ -20,10 +20,6 @@ Runtime dependencies for an OpenRDF application
 	<dependencies>
 		<dependency>
 			<groupId>org.openrdf.alibaba</groupId>
-			<artifactId>alibaba-sail-optimistic</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.openrdf.alibaba</groupId>
 			<artifactId>alibaba-repository-object</artifactId>
 		</dependency>
 		<dependency>

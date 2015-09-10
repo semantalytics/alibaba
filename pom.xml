@@ -12,8 +12,6 @@
 	<version>2.1-SNAPSHOT</version>
 	<packaging>pom</packaging>
 	<modules>
-		<module>keyword-sail</module>
-		<module>optimistic-sail</module>
 		<module>object-composition</module>
 		<module>object-repository</module>
 		<module>blob-store</module>
@@ -45,7 +43,7 @@ AliBaba is a collection of modules that provide simplified RDF store abstraction
 		</site>
 	</distributionManagement>
 	<properties>
-		<sesame.version>2.8.3</sesame.version>
+		<sesame.version>2.8.6</sesame.version>
 		<slf4j.version>1.7.10</slf4j.version>
 		<javassist.version>3.11.0.GA</javassist.version>
 	</properties>
@@ -72,11 +70,6 @@ AliBaba is a collection of modules that provide simplified RDF store abstraction
 	<dependencyManagement>
 		<dependencies>
 			<!-- AliBaba Dependencies -->
-			<dependency>
-				<groupId>org.openrdf.alibaba</groupId>
-				<artifactId>alibaba-sail-optimistic</artifactId>
-				<version>${project.version}</version>
-			</dependency>
 			<dependency>
 				<groupId>org.openrdf.alibaba</groupId>
 				<artifactId>alibaba-composition-object</artifactId>

@@ -73,6 +73,7 @@
         <basename file="${opencsv.url}" property="opencsv.jar" />
         <basename file="${slf4j.url}" property="slf4j.zip" />
         <basename file="${openrdf-sesame.url}" property="openrdf-sesame.jar" />
+        <basename file="${mapdb.url}" property="mapdb.jar" />
         <mkdir dir="${downloads}" />
         <get usetimestamp="true" skipexisting="${lib.present}" dest="${downloads}">
             <url url="${commons-cli.url}" />
@@ -83,6 +84,7 @@
             <url url="${opencsv.url}" />
             <url url="${slf4j.url}" />
             <url url="${openrdf-sesame.url}" />
+            <url url="${mapdb.url}" />
         </get>
         <mkdir dir="${lib}" />
         <unzip overwrite="false" src="${downloads}/${commons-cli.zip}" dest="${lib}">
@@ -134,6 +136,7 @@
             <mapper type="flatten" />
         </unzip>
         <copy file="${downloads}/${openrdf-sesame.jar}" tofile="${lib}/${openrdf-sesame.jar}" />
+        <copy file="${downloads}/${mapdb.jar}" tofile="${lib}/${mapdb.jar}" />
     </target>
 
 	<target name="build-sdk" depends="dependencies">
@@ -155,9 +158,6 @@
 			<param name="path" value="META-INF/services/org.openrdf.repository.config.RepositoryFactory"/>
 		</antcall>
 		<antcall target="concat-file">
-			<param name="path" value="META-INF/services/org.openrdf.sail.config.SailFactory"/>
-		</antcall>
-		<antcall target="concat-file">
 			<param name="path" value="META-INF/services/org.openrdf.repository.object.composition.BehaviourProvider"/>
 		</antcall>
 		<antcall target="concat-file">
@@ -175,7 +175,7 @@
 		<antcall target="concat-file">
 			<param name="path" value="META-INF/org.openrdf.datatypes"/>
 		</antcall>
-		<property name="excludes" value="META-INF/MANIFEST.MF META-INF/services/org.openrdf.repository.config.RepositoryFactory META-INF/services/org.openrdf.sail.config.SailFactory META-INF/services/org.openrdf.repository.object.composition.BehaviourProvider META-INF/services/org.openrdf.repository.object.advice.AdviceProvider META-INF/org.openrdf.annotations META-INF/org.openrdf.behaviours META-INF/org.openrdf.concepts META-INF/org.openrdf.datatypes" />
+		<property name="excludes" value="META-INF/MANIFEST.MF META-INF/services/org.openrdf.repository.config.RepositoryFactory META-INF/services/org.openrdf.repository.object.composition.BehaviourProvider META-INF/services/org.openrdf.repository.object.advice.AdviceProvider META-INF/org.openrdf.annotations META-INF/org.openrdf.behaviours META-INF/org.openrdf.concepts META-INF/org.openrdf.datatypes" />
         <tstamp>
             <format property="build.number" pattern="ddHHmm" timezone="UTC" />
         </tstamp>
@@ -189,9 +189,7 @@
                 <attribute name="Implementation-Vendor" value="${vendor}" />
 			</manifest>
 			<zipfileset dir="target/services/META-INF" prefix="META-INF" />
-			<zipfileset src="keyword-sail/target/alibaba-sail-keyword-${project.version}.jar" excludes="${excludes}" />
 			<zipfileset src="blob-store/target/alibaba-store-blob-${project.version}.jar" excludes="${excludes}" />
-			<zipfileset src="optimistic-sail/target/alibaba-sail-optimistic-${project.version}.jar" excludes="${excludes}" />
 			<zipfileset src="object-composition/target/alibaba-composition-object-${project.version}.jar" excludes="${excludes}" />
 			<zipfileset src="object-repository/target/alibaba-repository-object-${project.version}.jar" excludes="${excludes}" />
 			<zipfileset src="object-server/target/alibaba-http-object-${project.version}.jar" excludes="${excludes}" />
@@ -205,9 +203,7 @@
 			<zipfileset dir="src/dist/bin" prefix="bin" includes="*.sh" filemode="755" />
 			<zipfileset dir="src/dist/bin" prefix="bin" excludes="*.sh" />
 			<zipfileset dir="target/services/META-INF" prefix="src/META-INF" />
-			<zipfileset src="keyword-sail/target/alibaba-sail-keyword-${project.version}-sources.jar" prefix="src" excludes="${excludes}" />
 			<zipfileset src="blob-store/target/alibaba-store-blob-${project.version}-sources.jar" prefix="src" excludes="${excludes}" />
-			<zipfileset src="optimistic-sail/target/alibaba-sail-optimistic-${project.version}-sources.jar" prefix="src" excludes="${excludes}" />
 			<zipfileset src="object-composition/target/alibaba-composition-object-${project.version}-sources.jar" prefix="src" excludes="${excludes}" />
 			<zipfileset src="object-repository/target/alibaba-repository-object-${project.version}-sources.jar" prefix="src" excludes="${excludes}" />
 			<zipfileset src="object-server/target/alibaba-http-object-${project.version}-sources.jar" prefix="src" excludes="${excludes}" />
