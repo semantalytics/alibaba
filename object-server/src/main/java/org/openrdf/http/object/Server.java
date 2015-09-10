@@ -169,7 +169,11 @@ public class Server {
 					dataDir[i++] = new File(name);
 				}
 			}
-			storePID(line.get("pid"), dataDir);
+			try {
+				storePID(line.get("pid"), dataDir);
+			} catch (IOException e) {
+				System.err.println(e.toString());
+			}
 			String serverName = line.get("serverName");
 			String ports = line.has("port") ? Arrays.toString(line.getAll("port")) : null;
 			String ssl = line.has("ssl") ? Arrays.toString(line.getAll("ssl")) : null;
