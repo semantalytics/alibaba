@@ -64,6 +64,7 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 		}
 		SystemRepository sys = manager.getSystemRepository();
 		service = new CompiledObjectSchema(sys);
+		service.setJarResolver(new JarResolver(this));
 		listener = new SchemaListener(sys, service);
 	}
 
@@ -77,6 +78,7 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 		}
 		SystemRepository sys = manager.getSystemRepository();
 		service = new CompiledObjectSchema(sys, cl);
+		service.setJarResolver(new JarResolver(this));
 		listener = new SchemaListener(sys, service);
 	}
 
@@ -90,6 +92,7 @@ public class ObjectRepositoryManager implements RepositoryResolver {
 		}
 		SystemRepository sys = manager.getSystemRepository();
 		service = new CompiledObjectSchema(sys, libDir, cl);
+		service.setJarResolver(new JarResolver(this));
 		listener = new SchemaListener(sys, service);
 	}
 

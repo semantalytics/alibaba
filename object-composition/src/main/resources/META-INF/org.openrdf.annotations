@@ -1,3 +1,2 @@
-org.openrdf.annotations.Classpath#value
 org.openrdf.annotations.Matching#value
 org.openrdf.annotations.Mixin#name
