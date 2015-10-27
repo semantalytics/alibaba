@@ -192,6 +192,23 @@ public class DiskBlob extends BlobObject implements DiskListener {
 		}
 	}
 
+	public synchronized File toFile() throws IOException {
+		init(false);
+		if (deleted)
+			return null;
+		if (writeFile != null)
+			return writeFile;
+		if (readFile == null)
+			return null;
+		Lock read = disk.readLock();
+		try {
+			read.lock();
+			return readFile;
+		} finally {
+			read.unlock();
+		}
+	}
+
 	public synchronized InputStream openInputStream() throws IOException {
 		init(false);
 		if (deleted)

@@ -28,6 +28,7 @@
  */
 package org.openrdf.store.blob;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -81,6 +82,18 @@ public abstract class BlobObject implements FileObject {
 	 * @throws IOException
 	 */
 	public abstract long getLength() throws IOException;
+
+	/**
+	 * Returns a {@link File} object representing this version of this
+	 * BlobObject.
+	 * 
+	 * @return a {@code File} object representing this blob or null
+	 * 
+	 * @throws UnsupportedOperationException
+	 *             if this {@code BlobObject} is not associated with the default
+	 *             provider
+	 */
+	public abstract File toFile() throws IOException;
 
 	public CharSequence getCharContent(boolean ignoreEncodingErrors)
 			throws IOException {

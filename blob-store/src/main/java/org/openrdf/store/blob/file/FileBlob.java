@@ -165,6 +165,23 @@ public class FileBlob extends BlobObject implements FileListener {
 		}
 	}
 
+	public synchronized File toFile() throws IOException {
+		init(false);
+		if (deleted)
+			return null;
+		if (written)
+			return writeFile;
+		Lock read = disk.readLock();
+		try {
+			read.lock();
+			if (readFile == null || !readFile.exists())
+				return null;
+			return readFile;
+		} finally {
+			read.unlock();
+		}
+	}
+
 	public synchronized InputStream openInputStream() throws IOException {
 		init(false);
 		if (deleted)
@@ -278,7 +295,7 @@ public class FileBlob extends BlobObject implements FileListener {
 		return ret;
 	}
 
-	private synchronized void written(boolean success) {
+	synchronized void written(boolean success) {
 		if (success) {
 			written = true;
 			deleted = false;

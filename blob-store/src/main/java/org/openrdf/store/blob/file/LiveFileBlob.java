@@ -28,6 +28,7 @@
  */
 package org.openrdf.store.blob.file;
 
+import java.io.File;
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -167,5 +168,9 @@ public class LiveFileBlob extends BlobObject {
 
 	public InputStream openInputStream() throws IOException {
 		return store.newVersion().open(uri).openInputStream();
+	}
+
+	public File toFile() throws IOException {
+		return store.newVersion().open(uri).toFile();
 	}
 }
