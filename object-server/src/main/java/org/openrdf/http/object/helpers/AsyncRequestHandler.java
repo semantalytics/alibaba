@@ -61,8 +61,7 @@ import org.slf4j.LoggerFactory;
 public class AsyncRequestHandler implements HttpAsyncRequestHandlerMapper,
 		HttpAsyncRequestHandler<HttpRequest> {
 
-	private final Logger logger = LoggerFactory
-			.getLogger(AsyncRequestHandler.class);
+	final Logger logger = LoggerFactory.getLogger(AsyncRequestHandler.class);
 	private final AsyncExecChain handler;
 
 	public AsyncRequestHandler(AsyncExecChain handler) {
@@ -78,14 +77,18 @@ public class AsyncRequestHandler implements HttpAsyncRequestHandlerMapper,
 	public HttpAsyncRequestConsumer<HttpRequest> processRequest(
 			HttpRequest request, HttpContext context) throws HttpException,
 			IOException {
-		logger.debug("Request received {}", request.getRequestLine());
-		ObjectContext cc = ObjectContext.adapt(context);
-		final Request req = new Request(request, cc);
-		final Queue<Exchange> queue = cc.getOrCreateProcessingQueue();
-		final Exchange exchange = new Exchange(req, queue);
-		cc.setExchange(exchange);
-		handle(req, cc, exchange);
-		return exchange.getConsumer();
+		try {
+			logger.debug("Request received {}", request.getRequestLine());
+			ObjectContext cc = ObjectContext.adapt(context);
+			final Request req = new Request(request, cc);
+			final Queue<Exchange> queue = cc.getOrCreateProcessingQueue();
+			final Exchange exchange = new Exchange(req, queue);
+			cc.setExchange(exchange);
+			handle(req, cc, exchange);
+			return exchange.getConsumer();
+		} catch (IllegalArgumentException e) {
+			throw new HttpException(e.getMessage(), e);
+		}
 	}
 
 	@Override

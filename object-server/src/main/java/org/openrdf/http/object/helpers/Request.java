@@ -58,34 +58,29 @@ public class Request extends EditableHttpEntityEnclosingRequest {
 		this(request, ObjectContext.adapt(context).getProtocolScheme());
 	}
 
-	public Request(HttpRequest request, String protocol) {
+	public Request(HttpRequest request, String protocol) throws IllegalArgumentException {
 		super(request);
-		String path = request.getRequestLine().getUri();
+		String uri = request.getRequestLine().getUri();
 		if (protocol == null) {
-			String msg = "Could not determine protocol for " + path;
+			String msg = "Could not determine protocol for " + uri;
 			throw new IllegalStateException(msg);
 		}
 		this.protocol = protocol;
-		try {
-			int qx = path.indexOf('?');
-			if (qx > 0) {
-				path = path.substring(0, qx);
-			}
-			if (path.startsWith("/")) {
-				String scheme = getScheme().toLowerCase();
-				String host = getAuthority().toLowerCase();
-				ParsedURI parsed = new ParsedURI(scheme, host, path, null, null);
-				String uri = parsed.toString();
-				iri = canonicalize(uri);
-				origin = scheme + "://" + host;
-			} else {
-				iri = canonicalize(path);
-				ParsedURI parsed = new ParsedURI(iri);
-				origin = parsed.getScheme() + "://" + parsed.getAuthority();
-			}
-		} catch (IllegalArgumentException e) {
-			throw new BadRequest(e);
+		int qx = uri.indexOf('?');
+		String path = qx > 0 ? uri.substring(0, qx) : uri;
+		if (path.startsWith("/")) {
+			String scheme = getScheme().toLowerCase();
+			String host = getAuthority().toLowerCase();
+			ParsedURI parsed = new ParsedURI(scheme, host, path, null, null);
+			iri = canonicalize(parsed.toString());
+			origin = scheme + "://" + host;
+		} else {
+			iri = canonicalize(path);
+			ParsedURI parsed = new ParsedURI(iri);
+			origin = parsed.getScheme() + "://" + parsed.getAuthority();
 		}
+		// verify query string is valid
+		getRequestURL();
 	}
 
 	public String getHeader(String name) {
@@ -241,12 +236,8 @@ public class Request extends EditableHttpEntityEnclosingRequest {
 		return values.elements();
 	}
 
-	private String canonicalize(String url) {
-		try {
-			return URLUtil.canonicalize(url);
-		} catch (IllegalArgumentException e) {
-			throw new BadRequest(e);
-		}
+	private String canonicalize(String url) throws IllegalArgumentException {
+		return URLUtil.canonicalize(url);
 	}
 
 	private int getCacheControl(String directive, int def) {

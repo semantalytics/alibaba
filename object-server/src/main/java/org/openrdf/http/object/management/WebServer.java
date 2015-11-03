@@ -566,6 +566,8 @@ public class WebServer implements IOReactorExceptionHandler, ClientExecChain {
 				try {
 					if (cause.getClass().equals(IOException.class)) {
 						logger.warn(cause.toString());
+					} else if (cause.getClass().equals(HttpException.class)) {
+						logger.warn(cause.toString());
 					} else {
 						logger.warn(cause.toString(), cause);
 					}
