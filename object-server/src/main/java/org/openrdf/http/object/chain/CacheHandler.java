@@ -134,8 +134,9 @@ public class CacheHandler implements AsyncExecChain {
 			return clients.get(target);
 		logger.debug("Initializing server side cache for {}", target);
 		ManagedHttpCacheStorage storage = new ManagedHttpCacheStorage(config);
-		CachingHttpAsyncClient cachingClient = new CachingHttpAsyncClient(new DelegatingClient(delegate), resourceFactory, storage, config);
-		HttpAsyncClient client = new AutoClosingAsyncClient(cachingClient, storage);
+		HttpAsyncClient backend = new DelegatingClient(delegate);
+		CachingHttpAsyncClient cachingClient = new CachingHttpAsyncClient(backend, resourceFactory, storage, config);
+		HttpAsyncClient client = new AutoClosingAsyncClient(backend, cachingClient, storage);
 		clients.put(target, client);
 		return client;
 	}

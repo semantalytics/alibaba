@@ -28,6 +28,7 @@ import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.impl.client.cache.CachingHttpAsyncClient;
 import org.apache.http.impl.client.cache.ManagedHttpCacheStorage;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
+import org.apache.http.nio.client.HttpAsyncClient;
 import org.apache.http.nio.protocol.HttpAsyncRequestProducer;
 import org.apache.http.nio.protocol.HttpAsyncResponseConsumer;
 import org.apache.http.protocol.HttpContext;
@@ -37,12 +38,15 @@ import org.slf4j.LoggerFactory;
 
 public class AutoClosingAsyncClient extends CloseableHttpAsyncClient {
 	final Logger logger = LoggerFactory.getLogger(AutoClosingAsyncClient.class);
+	private final HttpAsyncClient backend;
 	private final CachingHttpAsyncClient client;
 	private final ManagedHttpCacheStorage storage;
-	private int numberOfClientCalls = 0;
+	int numberOfClientCalls = 0;
 	private boolean running;
 
-	public AutoClosingAsyncClient(CachingHttpAsyncClient client, ManagedHttpCacheStorage storage) {
+	public AutoClosingAsyncClient(HttpAsyncClient backend,
+			CachingHttpAsyncClient client, ManagedHttpCacheStorage storage) {
+		this.backend = backend;
 		this.client = client;
 		this.storage = storage;
 	}
@@ -90,7 +94,12 @@ public class AutoClosingAsyncClient extends CloseableHttpAsyncClient {
 	@Override
 	public Future<HttpResponse> execute(HttpHost target, HttpRequest request,
 			HttpContext context, FutureCallback<HttpResponse> callback) {
-		return client.execute(target, request, context, track(callback));
+		try {
+			return client.execute(target, request, context, track(callback));
+		} catch(Exception e) {
+			logger.error(e.toString(), e);
+			return backend.execute(target, request, context, track(callback));
+		}
 	}
 
 	private FutureCallback<HttpResponse> track(FutureCallback<HttpResponse> callback) {
