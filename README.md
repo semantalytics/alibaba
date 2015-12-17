@@ -9,10 +9,6 @@ AliBaba
 
 [AliBaba's object server](https://bitbucket.org/openrdf/alibaba/src/master/object-server/) makes these objects available as resources on the Web. Using simple annotations object methods can be mapped to request handlers. This gives increased flexibility and URL manageability by allowing request handlers to be moved and shared among Web resources and endpoints.
 
- Most RDF stores are optimized for read and bulk load operations, optimizing small concurrent write operations and data consistency is often overlooked. The [Optimistic SAIL of AliBaba](https://bitbucket.org/openrdf/alibaba/src/master/optimistic-sail/) is designed to improve the performance of small write operations by supporting concurrent write transactions and protects your data from data inconsistency issues when snapshot and serializable transactions are enabled.
-
- Today most people expect to be able to search their data using keywords. However, modern full text indexing has lots of overhead with large indexes and offline indexing. [AliBaba's keyword SAIL](https://bitbucket.org/openrdf/alibaba/src/master/keyword-sail/) allows quick and easy indexing of keywords for RDF resources.
-
  RDF is designed for metadata and is often accompanied by binary or text documents. Integrating binary and RDF store with consistent states is easier with [AliBaba's two phase commit BLOB store](https://bitbucket.org/openrdf/alibaba/src/master/blob-store).
 
  AliBaba includes many features not found in Sesame core to facility building complex, modern RDF applications.

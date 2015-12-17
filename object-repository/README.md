@@ -151,19 +151,6 @@ Figure 7. Executing Queries
     }
     
     
-    // retrieve a Document by title using a named query
-    ValueFactory vf = con.getRepository().getValueFactory();
-    URI myQueryID = vf.createURI("http://example.com/rdf/2012/my-query");
-    
-    NamedQuery named = con.getRepository().createNamedQuery(myQueryID,
-      "PREFIX gs:<http://example.com/rdf/2012/gs#>\n"+
-      "SELECT ?doc WHERE {?doc gs:title ?title}");
-    
-    ObjectQuery query = con.prepareObjectQuery(named.getQueryString());
-    query.setObject("title", "Getting Started");
-    Document doc = query.evaluate(Document.class).singleResult();
-    
-    
     // retrieve a Document by title using a dynamic query
     ObjectQuery query = con.prepareObjectQuery(
       "PREFIX gs:<http://example.com/rdf/2012/gs#>\n"+
