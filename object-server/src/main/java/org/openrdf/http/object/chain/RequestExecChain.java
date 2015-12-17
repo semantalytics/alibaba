@@ -106,8 +106,8 @@ public class RequestExecChain implements AsyncExecChain, ClientExecChain {
 		filter = new ResponseExceptionHandler(filter);
 		filter = new ExpectContinueHandler(filter);
 		filter = new OptionsHandler(filter);
-		filter = new ContentHeadersFilter(filter);
 		filter = new HttpRequestChainInterceptorExecChain(filter);
+		filter = new ContentHeadersFilter(filter);
 		filter = remoteCache = new ModifiedSinceHandler(filter);
 		filter = new UnmodifiedSinceHandler(filter);
 		filter = new DerivedFromHeadFilter(filter);
