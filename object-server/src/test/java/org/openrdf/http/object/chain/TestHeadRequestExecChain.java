@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit;
 import junit.framework.TestCase;
 
 import org.apache.http.Header;
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpException;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
@@ -148,7 +149,9 @@ public class TestHeadRequestExecChain extends TestCase {
 			@Override
 			public void process(HttpRequest request, HttpResponse response,
 					HttpContext context) throws HttpException, IOException {
-				assertTrue(String.valueOf(response.getFirstHeader("Content-Type")).contains("text/plain"));
+				HttpEntity e = response.getEntity();
+				Header ct = e == null ? response.getFirstHeader("Content-Type") : e.getContentType();
+				assertTrue(String.valueOf(ct).contains("text/plain"));
 			}
 		};
 		BasicHttpRequest request = new BasicHttpRequest("GET", RESOURCE + "etag",
