@@ -25,6 +25,7 @@
 		<antcall target="mvn">
 			<param name="args" value="clean" />
 		</antcall>
+		<delete dir="${lib}" />
 	</target>
 
 	<target name="eclipse" depends="eclipse-add-maven-repo" description="Creates .project and .classpath files">
