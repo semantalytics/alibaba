@@ -73,6 +73,11 @@ public class ResponseExceptionHandler implements AsyncExecChain {
 				try {
 					throw ex;
 				} catch (ResponseException e) {
+					if (e.getStatusCode() < 500) {
+						logger.warn(e.getDetailMessage());
+					} else {
+						logger.error(e.getDetailMessage());
+					}
 					super.completed(handle(request, context, e));
 				} catch (Exception e) {
 					String uri = request.getRequestLine().getUri();
