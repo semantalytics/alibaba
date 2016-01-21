@@ -55,6 +55,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.protocol.HttpContext;
+import org.openrdf.http.object.client.HttpUriEntity;
 import org.openrdf.http.object.client.HttpUriResponse;
 import org.openrdf.http.object.exceptions.InternalServerError;
 import org.openrdf.http.object.exceptions.MethodNotAllowed;
@@ -158,6 +159,18 @@ public class ResourceTarget {
 				throw new MethodNotAllowed("No such method for " + req.getRequestURL());
 			HttpUriResponse resp = invoke(req, method, req.isSafe(), new ResponseBuilder(req));
 			for (Header hd : rClass.getAdditionalHeaders(request, method)) {
+				HttpUriEntity entity = resp.getEntity();
+				if (entity != null) {
+					if ("Content-Encoding".equalsIgnoreCase(hd.getName())
+							&& entity.getContentEncoding() != null)
+						continue;
+					if ("Content-Length".equalsIgnoreCase(hd.getName())
+							&& entity.getContentLength() >= 0)
+						continue;
+					if ("Content-Type".equalsIgnoreCase(hd.getName())
+							&& entity.getContentType() != null)
+						continue;
+				}
 				if (!resp.containsHeader(hd.getName())) {
 					resp.addHeader(hd);
 				}
