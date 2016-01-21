@@ -156,7 +156,13 @@ public class ResourceTarget {
 				throw new NotFound("Not Found: " + req.getRequestURL());
 			if (method == null)
 				throw new MethodNotAllowed("No such method for " + req.getRequestURL());
-			return invoke(req, method, req.isSafe(), new ResponseBuilder(req));
+			HttpUriResponse resp = invoke(req, method, req.isSafe(), new ResponseBuilder(req));
+			for (Header hd : rClass.getAdditionalHeaders(request, method)) {
+				if (!resp.containsHeader(hd.getName())) {
+					resp.addHeader(hd);
+				}
+			}
+			return resp;
 		} catch (Error e) {
 			throw e;
 		} catch (RuntimeException e) {

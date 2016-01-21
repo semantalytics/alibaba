@@ -182,15 +182,7 @@ public class ResourceClass {
 						+ " does not start with IRI " + iri);
 			Method method = findMethod(request, url, iri.length());
 			BasicHttpResponse response = new BasicHttpResponse(getResponseStatus(method));
-			response.setHeaders(getAdditionalHeaders(method));
-			String type = getResponseContentType(request, method);
-			if (type != null && !response.containsHeader("Content-Type")) {
-				response.addHeader("Content-Type", type);
-			}
-			String vary = getVaryHeaderValue(method);
-			if (vary != null && !response.containsHeader("Vary")) {
-				response.addHeader("Vary", vary);
-			}
+			response.setHeaders(getAdditionalHeaders(request, method));
 			return new HttpUriResponse(url, response);
 		} catch (RuntimeException e) {
 			throw e;
@@ -255,6 +247,22 @@ public class ResourceClass {
 		if (method == null || method.getReturnType().equals(Void.TYPE))
 			return null;
 		return getContentType(request, method);
+	}
+
+	public Header[] getAdditionalHeaders(HttpRequest request, Method method) {
+		if (method == null)
+			return new Header[0];
+		List<Header> result = new ArrayList<Header>();
+		result.addAll(Arrays.asList(getAdditionalHeaders(method)));
+		String type = getResponseContentType(request, method);
+		if (type != null) {
+			result.add(new BasicHeader("Content-Type", type));
+		}
+		String vary = getVaryHeaderValue(method);
+		if (vary != null) {
+			result.add(new BasicHeader("Vary", vary));
+		}
+		return result.toArray(new Header[result.size()]);
 	}
 
 	private String getContentType(HttpRequest request, Method method) {
