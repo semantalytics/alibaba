@@ -16,6 +16,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.HttpVersion;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.cache.HeapResourceFactory;
 import org.apache.http.message.BasicHttpEntityEnclosingRequest;
 import org.apache.http.message.BasicHttpRequest;
 import org.apache.http.message.BasicHttpResponse;
@@ -35,7 +36,7 @@ import org.openrdf.repository.object.config.ObjectRepositoryFactory;
 import org.openrdf.repository.sail.SailRepository;
 import org.openrdf.sail.memory.MemoryStore;
 
-public class TestHeadRequestExecChain extends TestCase {
+public class TestHeadRequestExecChainWithCache extends TestCase {
 	private static final String RESOURCE = "http://example.org/";
 
 	public static class TestResponse {
@@ -98,7 +99,7 @@ public class TestHeadRequestExecChain extends TestCase {
 		con.add(vf.createURI(RESOURCE), RDF.TYPE,
 				vf.createURI("urn:test:test-response"));
 		con.close();
-		chain = new RequestExecChain();
+		chain = new RequestExecChain(new HeapResourceFactory());
 		chain.addRepository(RESOURCE, repository);
 	}
 
@@ -163,7 +164,7 @@ public class TestHeadRequestExecChain extends TestCase {
 		assertEquals("\"tag\"", resp.getFirstHeader("ETag").getValue());
 		execute(request);
 		InterceptorTester.callback = null;
-		assertEquals(2, TestResponse.counter);
+		assertEquals(1, TestResponse.counter);
 	}
 
 	public void testGetInterceptETagHelloWorld() throws Exception {
@@ -195,7 +196,7 @@ public class TestHeadRequestExecChain extends TestCase {
 				.getStatusLine().getStatusCode());
 		execute(request);
 		InterceptorTester.callback = null;
-		assertEquals(2, TestResponse.counter);
+		assertEquals(1, TestResponse.counter);
 	}
 
 	private HttpResponse execute(HttpRequest request)

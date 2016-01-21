@@ -76,6 +76,8 @@ public class Server {
 		commands.option("n", "serverName").arg("name").desc("Web server name");
 		commands.option("p", "port").arg("number").desc("HTTP port number");
 		commands.option("s", "ssl").arg("number").desc("HTTPS port number");
+		commands.option("c", "caching").desc("Enable HTTP server side caching");
+		commands.option("C", "no-caching").desc("Disable server side caching (no effect on client side caching)");
 		commands.option("trust").desc(
 				"Allow all server code to read, write, and execute all files and directories "
 						+ "according to the file system's ACL");
@@ -199,6 +201,7 @@ public class Server {
 			node.setServerName(serverName);
 			node.setPorts(ports);
 			node.setSSLPorts(ssl);
+			node.setCaching(line.has("caching") || !line.has("no-caching"));
 			registerMBean(node, mbean(ObjectServer.class, name));
 			registerMBean(new JVMUsage(), mbean(JVMUsage.class));
 			LoggingProperties loggingBean = new LoggingProperties();

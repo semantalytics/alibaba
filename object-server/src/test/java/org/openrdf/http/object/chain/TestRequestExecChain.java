@@ -28,6 +28,7 @@ import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.cache.HeapResourceFactory;
 import org.apache.http.message.BasicHttpEntityEnclosingRequest;
 import org.apache.http.message.BasicHttpRequest;
 import org.apache.http.message.BasicHttpResponse;
@@ -221,7 +222,7 @@ public class TestRequestExecChain extends TestCase {
 		con.add(vf.createURI(VERSION), RDF.TYPE,
 				vf.createURI("urn:test:test-version-response"));
 		con.close();
-		chain = new RequestExecChain();
+		chain = new RequestExecChain(new HeapResourceFactory());
 		chain.addRepository(RESOURCE, repository);
 		chain.addRepository(SECURE, repository);
 	}

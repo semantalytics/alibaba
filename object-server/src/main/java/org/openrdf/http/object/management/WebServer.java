@@ -33,7 +33,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.InetSocketAddress;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -131,8 +130,7 @@ public class WebServer implements IOReactorExceptionHandler, ClientExecChain {
 	volatile boolean ssllistening;
 	private final HttpResponseInterceptor[] interceptors;
 
-	public WebServer() throws IOException,
-			NoSuchAlgorithmException {
+	public WebServer() throws IOException {
 		this(new RequestExecChain(), SSLContexts.createSystemDefault(), 0);
 	}
 
@@ -140,17 +138,17 @@ public class WebServer implements IOReactorExceptionHandler, ClientExecChain {
 		this(new RequestExecChain(new FileResourceFactory(cacheDir)), SSLContexts.createSystemDefault(), 0);
 	}
 
-	public WebServer(int timeout) throws IOException,
-			NoSuchAlgorithmException {
+	public WebServer(int timeout) throws IOException {
 		this(new RequestExecChain(), SSLContexts.createSystemDefault(), timeout);
 	}
 
 	public WebServer(File cacheDir, int timeout) throws IOException {
-		this(new RequestExecChain(new FileResourceFactory(cacheDir)), SSLContexts.createSystemDefault(), timeout);
+		this(new RequestExecChain(cacheDir == null ? null
+				: new FileResourceFactory(cacheDir)), SSLContexts
+				.createSystemDefault(), timeout);
 	}
 
-	public WebServer(SSLContext sslcontext) throws IOException,
-			NoSuchAlgorithmException {
+	public WebServer(SSLContext sslcontext) throws IOException {
 		this(new RequestExecChain(), sslcontext, 0);
 	}
 
@@ -158,13 +156,14 @@ public class WebServer implements IOReactorExceptionHandler, ClientExecChain {
 		this(new RequestExecChain(new FileResourceFactory(cacheDir)), sslcontext, 0);
 	}
 
-	public WebServer(SSLContext sslcontext, int timeout) throws IOException,
-			NoSuchAlgorithmException {
+	public WebServer(SSLContext sslcontext, int timeout) throws IOException {
 		this(new RequestExecChain(), sslcontext, timeout);
 	}
 
-	public WebServer(File cacheDir, SSLContext sslcontext, int timeout) throws IOException {
-		this(new RequestExecChain(new FileResourceFactory(cacheDir)), sslcontext, timeout);
+	public WebServer(File cacheDir, SSLContext sslcontext, int timeout)
+			throws IOException {
+		this(new RequestExecChain(cacheDir == null ? null
+				: new FileResourceFactory(cacheDir)), sslcontext, timeout);
 	}
 
 	private WebServer(RequestExecChain chain, SSLContext sslcontext, int timeout) throws IOException {

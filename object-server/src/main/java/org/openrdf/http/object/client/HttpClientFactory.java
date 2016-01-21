@@ -44,6 +44,7 @@ import org.apache.http.conn.socket.PlainConnectionSocketFactory;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.DefaultConnectionReuseStrategy;
 import org.apache.http.impl.client.DefaultConnectionKeepAliveStrategy;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.SystemDefaultCredentialsProvider;
 import org.apache.http.impl.client.cache.CacheConfig;
 import org.apache.http.impl.client.cache.CachingHttpClientBuilder;
@@ -54,7 +55,6 @@ import org.apache.http.impl.execchain.ClientExecChain;
 import org.apache.http.message.BasicHeader;
 import org.apache.http.protocol.HttpContext;
 import org.openrdf.http.object.Version;
-import org.openrdf.repository.object.managers.helpers.DirUtil;
 
 /**
  * Manages the connections and cache entries for outgoing requests.
@@ -65,25 +65,7 @@ import org.openrdf.repository.object.managers.helpers.DirUtil;
 public class HttpClientFactory implements Closeable {
 	private static final String DEFAULT_NAME = Version.getInstance()
 			.getVersion();
-	static HttpClientFactory instance;
-	static {
-		try {
-			File dir = DirUtil.createTempDir("http-client-cache");
-			DirUtil.deleteOnExit(dir);
-			setCacheDirectory(dir);
-		} catch (IOException e) {
-			throw new AssertionError(e);
-		}
-		Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
-			public void run() {
-				synchronized (HttpClientFactory.class) {
-					if (instance != null) {
-						instance.close();
-					}
-				}
-			}
-		}));
-	}
+	static HttpClientFactory instance = new HttpClientFactory();
 
 	public static synchronized HttpClientFactory getInstance() {
 		return instance;
@@ -99,14 +81,12 @@ public class HttpClientFactory implements Closeable {
 
 	final long KEEPALIVE = getClientKeepAliveTimeout();
 	final ProxyClientExecDecorator decorator;
-	private final ResourceFactory entryFactory;
+	private ResourceFactory entryFactory;
 	final PoolingHttpClientConnectionManager connManager;
 	private final ConnectionReuseStrategy reuseStrategy;
 	private final ConnectionKeepAliveStrategy keepAliveStrategy;
 
-	private HttpClientFactory(File cacheDir) throws IOException {
-		cacheDir.mkdirs();
-		entryFactory = new FileResourceFactory(cacheDir);
+	private HttpClientFactory() {
 		decorator = new ProxyClientExecDecorator();
 		LayeredConnectionSocketFactory sslSocketFactory = SSLConnectionSocketFactory
 				.getSystemSocketFactory();
@@ -131,6 +111,14 @@ public class HttpClientFactory implements Closeable {
 				return KEEPALIVE;
 			}
 		};
+	}
+
+	private HttpClientFactory(File cacheDir) throws IOException {
+		this();
+		if (cacheDir != null) {
+			cacheDir.mkdirs();
+			entryFactory = new FileResourceFactory(cacheDir);
+		}
 	}
 
 	public synchronized void close() {
@@ -175,20 +163,14 @@ public class HttpClientFactory implements Closeable {
 	public synchronized HttpUriClient createHttpClient(String source,
 			CredentialsProvider credentials) {
 		CacheConfig cache = getDefaultCacheConfig();
-		ManagedHttpCacheStorage storage = new ManagedHttpCacheStorage(cache);
+		ManagedHttpCacheStorage storage = entryFactory == null ? null
+				: new ManagedHttpCacheStorage(cache);
 		List<BasicHeader> headers = new ArrayList<BasicHeader>();
 		if (source != null && source.length() > 0) {
 			headers.add(new BasicHeader("Origin", getOrigin(source)));
 		}
 		return new HttpUriClient(new AutoClosingHttpClient(
-				new CachingHttpClientBuilder() {
-					protected ClientExecChain decorateMainExec(
-							ClientExecChain mainExec) {
-						return super.decorateMainExec(decorator
-								.decorateMainExec(mainExec));
-					}
-				}.setResourceFactory(entryFactory).setHttpCacheStorage(storage)
-						.setCacheConfig(cache)
+				createHttpClientBuilder(cache, storage)
 						.setConnectionManager(getConnectionManager())
 						.setConnectionReuseStrategy(reuseStrategy)
 						.setKeepAliveStrategy(keepAliveStrategy)
@@ -199,6 +181,27 @@ public class HttpClientFactory implements Closeable {
 						.setDefaultCredentialsProvider(credentials)
 						.setDefaultHeaders(headers).setUserAgent(DEFAULT_NAME)
 						.build(), storage));
+	}
+
+	private HttpClientBuilder createHttpClientBuilder(CacheConfig cache,
+			ManagedHttpCacheStorage storage) {
+		if (entryFactory == null)
+			return new HttpClientBuilder() {
+				protected ClientExecChain decorateMainExec(
+						ClientExecChain mainExec) {
+					return super.decorateMainExec(decorator
+							.decorateMainExec(mainExec));
+				}
+			};
+		else
+			return new CachingHttpClientBuilder() {
+				protected ClientExecChain decorateMainExec(
+						ClientExecChain mainExec) {
+					return super.decorateMainExec(decorator
+							.decorateMainExec(mainExec));
+				}
+			}.setResourceFactory(entryFactory).setHttpCacheStorage(storage)
+					.setCacheConfig(cache);
 	}
 
 	private HttpClientConnectionManager getConnectionManager() {

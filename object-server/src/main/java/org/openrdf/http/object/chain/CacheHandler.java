@@ -102,6 +102,9 @@ public class CacheHandler implements AsyncExecChain {
 	private final Map<HttpHost, HttpAsyncClient> clients = new HashMap<HttpHost, HttpAsyncClient>();
 
 	public CacheHandler(AsyncExecChain delegate, ResourceFactory resourceFactory, CacheConfig config) {
+		assert delegate != null;
+		assert resourceFactory != null;
+		assert config != null;
 		this.delegate = delegate;
 		this.resourceFactory = resourceFactory;
 		this.config = config;

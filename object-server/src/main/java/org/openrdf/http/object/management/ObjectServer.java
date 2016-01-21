@@ -40,6 +40,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.nio.NHttpConnection;
 import org.openrdf.OpenRDFException;
 import org.openrdf.http.object.Version;
+import org.openrdf.http.object.client.HttpClientFactory;
 import org.openrdf.http.object.helpers.Exchange;
 import org.openrdf.http.object.helpers.ObjectContext;
 import org.openrdf.http.object.util.PrefixMap;
@@ -65,7 +66,7 @@ import org.slf4j.LoggerFactory;
 public class ObjectServer implements ObjectServerMBean {
 	private final Logger logger = LoggerFactory.getLogger(ObjectServer.class);
 	private final PrefixMap<ObjectRepositoryManager> managers = new PrefixMap<ObjectRepositoryManager>();
-	private final File serverCacheDir;
+	private File serverCacheDir;
 	private String serverName = ObjectServer.class.getSimpleName();
 	private int[] ports = new int[0];
 	private int[] sslPorts = new int[0];
@@ -88,6 +89,9 @@ public class ObjectServer implements ObjectServerMBean {
 		}
 		serverCacheDir = DirUtil.createTempDir("object-server-cache");
 		DirUtil.deleteOnExit(serverCacheDir);
+		File clientCacheDir = DirUtil.createTempDir("http-client-cache");
+		DirUtil.deleteOnExit(clientCacheDir);
+		HttpClientFactory.setCacheDirectory(clientCacheDir);
 	}
 
 	public ObjectServer(File cacheDir, ClassLoader cl, File... dataDir)
@@ -99,6 +103,7 @@ public class ObjectServer implements ObjectServerMBean {
 			this.managers.put(manager.getLocation().toExternalForm(), manager);
 		}
 		serverCacheDir = new File(cacheDir, "server");
+		HttpClientFactory.setCacheDirectory(new File(cacheDir, "client"));
 	}
 
 	public String toString() {
@@ -179,6 +184,25 @@ public class ObjectServer implements ObjectServerMBean {
 
 	public void setTimeout(int timeout) {
 		this.timeout = timeout;
+	}
+
+	public boolean isCaching() {
+		return this.serverCacheDir != null;
+	}
+
+	public void setCaching(boolean caching) throws IOException {
+		if (caching && this.serverCacheDir == null) {
+			serverCacheDir = DirUtil.createTempDir("object-server-cache");
+			DirUtil.deleteOnExit(serverCacheDir);
+			File clientCacheDir = DirUtil.createTempDir("http-client-cache");
+			DirUtil.deleteOnExit(clientCacheDir);
+			HttpClientFactory.setCacheDirectory(clientCacheDir);
+			logger.info("Enabling server side caching");
+		} else if (!caching && this.serverCacheDir != null) {
+			this.serverCacheDir = null;
+			HttpClientFactory.setCacheDirectory(null);
+			logger.info("Disabling server side caching");
+		}
 	}
 
 	public boolean isStartingInProgress() {
@@ -570,11 +594,18 @@ public class ObjectServer implements ObjectServerMBean {
 
 	private WebServer createServer(File serverCacheDir, int timeout,
 			int[] ports, int[] sslPorts) throws OpenRDFException, IOException {
-		serverCacheDir.mkdirs();
-		WebServer server = new WebServer(serverCacheDir, timeout);
-		server.setName(getServerName());
-		server.listen(ports, sslPorts);
-		return server;
+		if (serverCacheDir == null) {
+			WebServer server = new WebServer(timeout);
+			server.setName(getServerName());
+			server.listen(ports, sslPorts);
+			return server;
+		} else {
+			serverCacheDir.mkdirs();
+			WebServer server = new WebServer(serverCacheDir, timeout);
+			server.setName(getServerName());
+			server.listen(ports, sslPorts);
+			return server;
+		}
 	}
 
 	private synchronized void startRepository(ObjectRepositoryManager manager,

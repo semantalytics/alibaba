@@ -54,16 +54,22 @@ public class AutoClosingHttpClient extends CloseableHttpClient {
 	@Override
 	protected void finalize() throws Throwable {
 		client.close();
-		storage.shutdown();
+		if (storage != null) {
+			storage.shutdown();
+		}
 	}
 
 	public void cleanResources() {
-		storage.cleanResources();
+		if (storage != null) {
+			storage.cleanResources();
+		}
 	}
 
     public void close() throws IOException {
 		// ignore close request and wait for finalisation
-		storage.cleanResources();
+		if (storage != null) {
+			storage.cleanResources();
+		}
     }
 
 	@Override

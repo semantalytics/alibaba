@@ -52,7 +52,6 @@ import org.apache.http.client.utils.URIUtils;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.impl.client.cache.CacheConfig;
-import org.apache.http.impl.client.cache.HeapResourceFactory;
 import org.apache.http.impl.execchain.ClientExecChain;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
@@ -92,7 +91,7 @@ public class RequestExecChain implements AsyncExecChain, ClientExecChain {
 	final ModifiedSinceHandler remoteCache;
 
 	public RequestExecChain() {
-		this(new HeapResourceFactory());
+		this(null);
 	}
 
 	public RequestExecChain(ResourceFactory factory) {
@@ -115,7 +114,11 @@ public class RequestExecChain implements AsyncExecChain, ClientExecChain {
 		filter = new GZipFilter(filter);
 		// exec in i/o thread
 		filter = new PooledExecChain(filter, triaging);
-		filter = cache = new CacheHandler(filter, factory, getDefaultCacheConfig());
+		if (factory == null) {
+			cache = null;
+		} else {
+			filter = cache = new CacheHandler(filter, factory, getDefaultCacheConfig());
+		}
 		filter = new GUnzipFilter(filter);
 		filter = new PingOptionsHandler(filter);
 		filter = new SecureChannelFilter(filter);
@@ -157,7 +160,9 @@ public class RequestExecChain implements AsyncExecChain, ClientExecChain {
 	public void resetCacheNow() {
 		try {
 			logger.info("Resetting cache");
-			cache.reset();
+			if (cache != null) {
+				cache.reset();
+			}
 			remoteCache.invalidate();
 		} catch (Error e) {
 			logger.error(e.toString(), e);
