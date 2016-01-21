@@ -39,7 +39,7 @@ import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.impl.execchain.ClientExecChain;
 import org.apache.http.protocol.HttpContext;
 import org.openrdf.http.object.helpers.CompletedResponse;
-import org.openrdf.http.object.helpers.DelegatingFuture;
+import org.openrdf.http.object.helpers.StagedFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,14 +62,14 @@ public class PooledExecChain implements AsyncExecChain {
 			final HttpRequest request, final HttpContext context,
 			final FutureCallback<HttpResponse> callback) {
 		try {
-			final DelegatingFuture future = new DelegatingFuture(callback);
+			final StagedFuture future = new StagedFuture(callback);
 			final Future<?> first = executor.submit(new Runnable() {
 				public void run() {
 					try {
 						if (future.isCancelled()) {
 							future.cancelled();
 						} else {
-							future.setDelegate(delegate.execute(target, request,
+							future.addStage(delegate.execute(target, request,
 									context, future));
 						}
 					} catch (RuntimeException ex) {
@@ -81,7 +81,7 @@ public class PooledExecChain implements AsyncExecChain {
 					}
 				}
 			});
-			future.setDelegateIfNull(first);
+			future.addStage(first);
 			return future;
 		} catch (RejectedExecutionException e) {
 			CompletedResponse future = new CompletedResponse(callback);

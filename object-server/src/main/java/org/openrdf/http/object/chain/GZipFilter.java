@@ -41,7 +41,7 @@ import org.apache.http.protocol.HttpContext;
 import org.openrdf.http.object.client.CloseableEntity;
 import org.openrdf.http.object.client.GUnzipEntity;
 import org.openrdf.http.object.client.GZipEntity;
-import org.openrdf.http.object.helpers.DelegatingFuture;
+import org.openrdf.http.object.helpers.StagedFuture;
 
 /**
  * Compresses safe responses.
@@ -59,7 +59,7 @@ public class GZipFilter implements AsyncExecChain {
 		String method = request.getRequestLine().getMethod();
 		if (!method.equals("GET") && !method.equals("HEAD"))
 			return delegate.execute(target, request, context, callback);
-		final DelegatingFuture future = new DelegatingFuture(callback) {
+		final StagedFuture future = new StagedFuture(callback) {
 			public void completed(HttpResponse result) {
 				try {
 					super.completed(gzip(result));
@@ -70,7 +70,7 @@ public class GZipFilter implements AsyncExecChain {
 				}
 			}
 		};
-		future.setDelegate(delegate.execute(target, request, context, future));
+		future.addStage(delegate.execute(target, request, context, future));
 		return future;
 	}
 
