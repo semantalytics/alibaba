@@ -573,7 +573,7 @@ public class ResourceClass {
 			return filtered.iterator().next();
 		Method best = findBestMethodByRequestType(request, filtered);
 		if (best == null)
-			return submethods.iterator().next();
+			return filtered.iterator().next();
 		return best;
 	}
 
@@ -670,13 +670,14 @@ public class ResourceClass {
 		for (Method m : methods) {
 			Pattern path = getLongestMatchingPath(m, url, startingAt);
 			int len = path == null ? -1 : path.pattern().length();
-			if (len > length || len == length && isLiteral(path)
-					&& !isLiteral(longest)) {
+			if (len > length || len == length && path != null
+					&& isLiteral(path) && !isLiteral(longest)) {
 				result.clear();
 				longest = path;
 				length = len;
 			}
-			if (len >= length && (isLiteral(path) || !isLiteral(longest))) {
+			if (len >= length
+					&& (path == null || isLiteral(path) || !isLiteral(longest))) {
 				result.add(m);
 			}
 		}
