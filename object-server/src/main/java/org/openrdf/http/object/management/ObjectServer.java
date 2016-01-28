@@ -26,6 +26,7 @@ import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
+import java.net.SocketException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -71,6 +72,7 @@ public class ObjectServer implements ObjectServerMBean {
 	private int[] ports = new int[0];
 	private int[] sslPorts = new int[0];
 	private int timeout;
+	private boolean noDelay;
 	private volatile boolean starting;
 	private volatile boolean stopping;
 	WebServer server;
@@ -184,6 +186,27 @@ public class ObjectServer implements ObjectServerMBean {
 
 	public void setTimeout(int timeout) {
 		this.timeout = timeout;
+	}
+
+	/**
+	 * Tests if TCP_NODELAY is enabled.
+	 * 
+	 * @return a <code>boolean</code> indicating whether or not TCP_NODELAY is
+	 *         enabled.
+	 */
+	public boolean isTcpNoDelay() {
+		return noDelay;
+	}
+
+	/**
+	 * Enable/disable TCP_NODELAY (disable/enable Nagle's algorithm).
+	 * 
+	 * @param on
+	 *            <code>true</code> to enable TCP_NODELAY, <code>false</code> to
+	 *            disable.
+	 */
+	public void setTcpNoDelay(boolean noDelay) {
+		this.noDelay = noDelay;
 	}
 
 	public boolean isCaching() {
@@ -481,7 +504,7 @@ public class ObjectServer implements ObjectServerMBean {
 				server.destroy();
 			}
 			server = createServer(this.serverCacheDir, this.timeout,
-					this.ports, this.sslPorts);
+					this.noDelay, this.ports, this.sslPorts);
 			for (ObjectRepositoryManager manager : managers.values()) {
 				for (String id : manager.getRepositoryIDs()) {
 					startRepository(manager, id);
@@ -577,7 +600,7 @@ public class ObjectServer implements ObjectServerMBean {
 			manager.refresh();
 		}
 		recompileSchema();
-		server = createServer(this.serverCacheDir, this.timeout,
+		server = createServer(this.serverCacheDir, this.timeout, this.noDelay,
 				this.ports, this.sslPorts);
 		start();
 	}
@@ -593,15 +616,16 @@ public class ObjectServer implements ObjectServerMBean {
 	}
 
 	private WebServer createServer(File serverCacheDir, int timeout,
-			int[] ports, int[] sslPorts) throws OpenRDFException, IOException {
+			boolean noDelay, int[] ports, int[] sslPorts)
+			throws OpenRDFException, IOException {
 		if (serverCacheDir == null) {
-			WebServer server = new WebServer(timeout);
+			WebServer server = new WebServer(timeout, noDelay);
 			server.setName(getServerName());
 			server.listen(ports, sslPorts);
 			return server;
 		} else {
 			serverCacheDir.mkdirs();
-			WebServer server = new WebServer(serverCacheDir, timeout);
+			WebServer server = new WebServer(serverCacheDir, timeout, noDelay);
 			server.setName(getServerName());
 			server.listen(ports, sslPorts);
 			return server;

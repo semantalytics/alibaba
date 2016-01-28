@@ -76,6 +76,8 @@ public class Server {
 		commands.option("n", "serverName").arg("name").desc("Web server name");
 		commands.option("p", "port").arg("number").desc("HTTP port number");
 		commands.option("s", "ssl").arg("number").desc("HTTPS port number");
+		commands.option("t", "timeout").arg("number").desc("socket timeout in milliseconds for TCP operations");
+		commands.option("D", "no-delay").desc("Disables TCP_NODELAY (Nagle's algorithm)");
 		commands.option("c", "caching").desc("Enable HTTP server side caching");
 		commands.option("C", "no-caching").desc("Disable server side caching (no effect on client side caching)");
 		commands.option("trust").desc(
@@ -201,6 +203,12 @@ public class Server {
 			node.setServerName(serverName);
 			node.setPorts(ports);
 			node.setSSLPorts(ssl);
+			if (line.has("timeout")) {
+				node.setTimeout(Integer.parseInt(line.get("timeout")));
+			}
+			if (line.has("no-delay")) {
+				node.setTcpNoDelay(true);
+			}
 			node.setCaching(line.has("caching") || !line.has("no-caching"));
 			registerMBean(node, mbean(ObjectServer.class, name));
 			registerMBean(new JVMUsage(), mbean(JVMUsage.class));

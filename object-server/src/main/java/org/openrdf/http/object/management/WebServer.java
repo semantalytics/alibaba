@@ -131,42 +131,50 @@ public class WebServer implements IOReactorExceptionHandler, ClientExecChain {
 	private final HttpResponseInterceptor[] interceptors;
 
 	public WebServer() throws IOException {
-		this(new RequestExecChain(), SSLContexts.createSystemDefault(), 0);
+		this(new RequestExecChain(), SSLContexts.createSystemDefault(), 0,
+				false);
 	}
 
 	public WebServer(File cacheDir) throws IOException {
-		this(new RequestExecChain(new FileResourceFactory(cacheDir)), SSLContexts.createSystemDefault(), 0);
+		this(new RequestExecChain(new FileResourceFactory(cacheDir)),
+				SSLContexts.createSystemDefault(), 0, false);
 	}
 
-	public WebServer(int timeout) throws IOException {
-		this(new RequestExecChain(), SSLContexts.createSystemDefault(), timeout);
+	public WebServer(int timeout, boolean noDelay) throws IOException {
+		this(new RequestExecChain(), SSLContexts.createSystemDefault(),
+				timeout, noDelay);
 	}
 
-	public WebServer(File cacheDir, int timeout) throws IOException {
+	public WebServer(File cacheDir, int timeout, boolean noDelay)
+			throws IOException {
 		this(new RequestExecChain(cacheDir == null ? null
 				: new FileResourceFactory(cacheDir)), SSLContexts
-				.createSystemDefault(), timeout);
+				.createSystemDefault(), timeout, noDelay);
 	}
 
 	public WebServer(SSLContext sslcontext) throws IOException {
-		this(new RequestExecChain(), sslcontext, 0);
+		this(new RequestExecChain(), sslcontext, 0, false);
 	}
 
 	public WebServer(File cacheDir, SSLContext sslcontext) throws IOException {
-		this(new RequestExecChain(new FileResourceFactory(cacheDir)), sslcontext, 0);
+		this(new RequestExecChain(new FileResourceFactory(cacheDir)),
+				sslcontext, 0, false);
 	}
 
-	public WebServer(SSLContext sslcontext, int timeout) throws IOException {
-		this(new RequestExecChain(), sslcontext, timeout);
-	}
-
-	public WebServer(File cacheDir, SSLContext sslcontext, int timeout)
+	public WebServer(SSLContext sslcontext, int timeout, boolean noDelay)
 			throws IOException {
-		this(new RequestExecChain(cacheDir == null ? null
-				: new FileResourceFactory(cacheDir)), sslcontext, timeout);
+		this(new RequestExecChain(), sslcontext, timeout, noDelay);
 	}
 
-	private WebServer(RequestExecChain chain, SSLContext sslcontext, int timeout) throws IOException {
+	public WebServer(File cacheDir, SSLContext sslcontext, int timeout,
+			boolean noDelay) throws IOException {
+		this(new RequestExecChain(cacheDir == null ? null
+				: new FileResourceFactory(cacheDir)), sslcontext, timeout,
+				noDelay);
+	}
+
+	private WebServer(RequestExecChain chain, SSLContext sslcontext,
+			int timeout, boolean noDelay) throws IOException {
 		this.chain = chain;
 		interceptors = new HttpResponseInterceptor[] { new ResponseDate(),
 				new ResponseContent(true), new ResponseConnControl(),
@@ -174,7 +182,7 @@ public class WebServer implements IOReactorExceptionHandler, ClientExecChain {
 				new HeadRequestFilter() };
 		HttpRequestFactory rfactory = new AnyHttpMethodRequestFactory();
 		HeapByteBufferAllocator allocator = new HeapByteBufferAllocator();
-		IOReactorConfig config = createIOReactorConfig(timeout);
+		IOReactorConfig config = createIOReactorConfig(timeout, noDelay);
 		// Create server-side I/O event dispatch
 		dispatch = createIODispatch(rfactory, allocator);
 		// Create server-side I/O reactor
@@ -529,12 +537,12 @@ public class WebServer implements IOReactorExceptionHandler, ClientExecChain {
 		return ConnectionConfig.DEFAULT;
 	}
 
-	private IOReactorConfig createIOReactorConfig(int timeout) {
+	private IOReactorConfig createIOReactorConfig(int timeout, boolean noDelay) {
 		return IOReactorConfig.custom().setConnectTimeout(timeout)
 				.setIoThreadCount(Runtime.getRuntime().availableProcessors())
 				.setSndBufSize(8 * 1024).setSoKeepAlive(true)
 				.setSoReuseAddress(true).setSoTimeout(timeout)
-				.setTcpNoDelay(false).build();
+				.setTcpNoDelay(noDelay).build();
 	}
 
 	private HttpAsyncService createProtocolHandler(HttpProcessor httpproc,
