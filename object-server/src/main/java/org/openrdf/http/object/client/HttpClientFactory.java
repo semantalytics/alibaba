@@ -90,6 +90,7 @@ public class HttpClientFactory implements Closeable {
 		decorator = new ProxyClientExecDecorator();
 		LayeredConnectionSocketFactory sslSocketFactory = SSLConnectionSocketFactory
 				.getSystemSocketFactory();
+
 		connManager = new PoolingHttpClientConnectionManager(RegistryBuilder
 				.<ConnectionSocketFactory> create()
 				.register("http", PlainConnectionSocketFactory.getSocketFactory())
@@ -99,6 +100,7 @@ public class HttpClientFactory implements Closeable {
 		int max = Integer.parseInt(System.getProperty("http.maxConnections", "20"));
 		connManager.setDefaultMaxPerRoute(max);
 		connManager.setMaxTotal(2 * max);
+
 		reuseStrategy = DefaultConnectionReuseStrategy.INSTANCE;
 		keepAliveStrategy = new ConnectionKeepAliveStrategy() {
 			private ConnectionKeepAliveStrategy delegate = DefaultConnectionKeepAliveStrategy.INSTANCE;
@@ -122,7 +124,7 @@ public class HttpClientFactory implements Closeable {
 	}
 
 	public synchronized void close() {
-		connManager.shutdown();
+		//connManager.shutdown();
 	}
 
 	public synchronized ClientExecChain getProxy(HttpHost destination) {
